@@ -1,0 +1,9 @@
+.agents/
+extracted_plan.txt
+Agile_Sprint_Plan_NGO_Events_MVP.pdf
+skills-lock.json
+.turbo/
+node_modules/
+dist/
+.env
+*.log

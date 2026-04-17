@@ -1,0 +1,84 @@
+version: "3.8"
+
+services:
+  # ─── PostgreSQL ───────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${DB_NAME}_postgres
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Redis ────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: evently_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Backend API (Node/Express) ───────────────────
+  server:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile.dev
+    container_name: evently_server
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-4000}:4000"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      PORT: 4000
+    volumes:
+      - ./packages/server/src:/app/packages/server/src
+      - ./packages/shared/src:/app/packages/shared/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ─── Frontend (React + Vite) ──────────────────────
+  client:
+    build:
+      context: .
+      dockerfile: packages/client/Dockerfile.dev
+    container_name: evently_client
+    restart: unless-stopped
+    ports:
+      - "${CLIENT_PORT:-3000}:3000"
+    environment:
+      VITE_API_URL: http://localhost:${API_PORT:-4000}/api/v1
+    volumes:
+      - ./packages/client/src:/app/packages/client/src
+      - ./packages/shared/src:/app/packages/shared/src
+    depends_on:
+      - server
+
+volumes:
+  pg_data:
+  redis_data:
