@@ -1,0 +1,102 @@
+import type { CookieOptions, Request, RequestHandler, Response } from "express";
+import { env } from "../config/env";
+import { ApiError } from "../utils/errors";
+import {
+  getCurrentUser,
+  loginUser,
+  loginWithGoogle,
+  logoutSession,
+  refreshSession,
+  registerUser,
+  type AuthResult,
+} from "../services/auth.service";
+import { refreshTtlMs } from "../services/session.service";
+import { API_PREFIX } from "@application/shared";
+
+const REFRESH_COOKIE = "Evently_rt";
+const REFRESH_COOKIE_PATH = `${API_PREFIX}/auth`;
+
+const cookieOptions = (): CookieOptions => ({
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: REFRESH_COOKIE_PATH,
+  maxAge: refreshTtlMs,
+  ...(env.COOKIE_DOMAIN ? { domain: env.COOKIE_DOMAIN } : {}),
+});
+
+const extractMeta = (req: Request) => ({
+  userAgent: req.headers["user-agent"] ?? null,
+  ipAddress: req.ip ?? null,
+});
+
+const setRefreshCookie = (res: Response, refreshToken: string) =>
+  res.cookie(REFRESH_COOKIE, refreshToken, cookieOptions());
+
+const clearRefreshCookie = (res: Response) =>
+  res.clearCookie(REFRESH_COOKIE, { ...cookieOptions(), maxAge: 0 });
+
+const sendAuthResult = (res: Response, result: AuthResult, status = 200) => {
+  setRefreshCookie(res, result.refreshToken);
+  res
+    .status(status)
+    .json({ user: result.user, accessToken: result.accessToken });
+};
+
+export const register: RequestHandler = async (req, res, next) => {
+  try {
+    const result = await registerUser(req.body, extractMeta(req));
+    sendAuthResult(res, result, 201);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const login: RequestHandler = async (req, res, next) => {
+  try {
+    const result = await loginUser(req.body, extractMeta(req));
+    sendAuthResult(res, result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const google: RequestHandler = async (req, res, next) => {
+  try {
+    const result = await loginWithGoogle(req.body, extractMeta(req));
+    sendAuthResult(res, result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const refresh: RequestHandler = async (req, res, next) => {
+  try {
+    const token = req.cookies?.[REFRESH_COOKIE];
+    if (!token) throw ApiError.unauthorized("Missing refresh token");
+    const result = await refreshSession(token, extractMeta(req));
+    sendAuthResult(res, result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const logout: RequestHandler = async (req, res, next) => {
+  try {
+    await logoutSession(req.cookies?.[REFRESH_COOKIE]);
+    clearRefreshCookie(res);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const me: RequestHandler = async (req, res, next) => {
+  try {
+    if (!req.user) throw ApiError.unauthorized();
+    const user = await getCurrentUser(req.user.id);
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+};
