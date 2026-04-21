@@ -1,0 +1,23 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy root workspace files
+COPY package.json package-lock.json turbo.json tsconfig.json ./
+
+# Copy package.json files for workspace resolution
+COPY packages/client/package.json ./packages/client/
+COPY packages/shared/package.json ./packages/shared/
+
+# Install all deps from root (npm workspaces)
+RUN npm ci
+
+# Copy source code
+COPY packages/client ./packages/client
+COPY packages/shared ./packages/shared
+
+WORKDIR /app/packages/client
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

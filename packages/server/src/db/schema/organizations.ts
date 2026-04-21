@@ -1,0 +1,19 @@
+import { pgTable, uuid, varchar, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+
+export const organizations = pgTable("organizations", {
+  id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+  name: varchar("name", { length: 160 }).notNull(),
+  slug: varchar("slug", { length: 80 }).notNull().unique(),
+  description: text("description"),
+  logoUrl: text("logo_url"),
+  websiteUrl: text("website_url"),
+  contactEmail: varchar("contact_email", { length: 320 }),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+
+export type Organization = typeof organizations.$inferSelect;
+export type NewOrganization = typeof organizations.$inferInsert;

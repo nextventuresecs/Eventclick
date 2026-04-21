@@ -1,0 +1,18 @@
+import { Router } from "express";
+import { authRouter } from "./auth.routes";
+import { roomRouter } from "./room.routes";
+import { logRouter } from "./log.routes";
+
+export const apiRouter = Router();
+
+apiRouter.get("/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
+apiRouter.use("/auth", authRouter);
+apiRouter.use("/rooms", roomRouter);
+apiRouter.use("/logs", logRouter);
