@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
-import { Copy, Users, Clock, Plus, ExternalLink, CalendarClock } from "lucide-react";
+import { Copy, Users, Clock, Plus, CalendarClock, FormInput, ClipboardList, Radio } from "lucide-react";
 import type { EventRoom } from "@application/shared";
 import { roomsApi, ApiClientError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -131,22 +131,37 @@ export const Dashboard = () => {
                   )}
                 </div>
               </CardContent>
-              <CardFooter className="pt-4 border-t border-border flex justify-between gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1 gap-2"
-                  onClick={() => copyToClipboard(room.shareToken)} // Basic share handling for now
+              <CardFooter className="pt-4 border-t border-border flex flex-wrap gap-2">
+                <Link
+                  to={`/rooms/${room.id}/live`}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 h-8 text-xs font-medium hover:bg-muted transition-colors"
+                >
+                  <Radio className="w-3 h-3" />
+                  Live
+                </Link>
+                <Link
+                  to={`/rooms/${room.id}/form-builder`}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 h-8 text-xs font-medium hover:bg-muted transition-colors"
+                >
+                  <FormInput className="w-3 h-3" />
+                  Form
+                </Link>
+                <Link
+                  to={`/rooms/${room.id}/attendance`}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 h-8 text-xs font-medium hover:bg-muted transition-colors"
+                >
+                  <ClipboardList className="w-3 h-3" />
+                  Attendance
+                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto gap-1"
+                  onClick={() => copyToClipboard(room.shareUrl)}
                 >
                   <Copy className="w-3 h-3" />
-                  Copy Link
+                  Copy
                 </Button>
-                {/* 
-                  Commented out until RoomDetails exists 
-                  <Button variant="default" size="sm" asChild>
-                    <Link href={`/rooms/${room.id}`}>Manage</Link>
-                  </Button>
-                */}
               </CardFooter>
             </Card>
           ))}

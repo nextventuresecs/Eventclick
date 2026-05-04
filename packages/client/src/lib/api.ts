@@ -107,6 +107,7 @@ const request = async <T>(
 export const api = {
   get: <T>(path: string) => request<T>("GET", path),
   post: <T>(path: string, body?: Body) => request<T>("POST", path, body),
+  put: <T>(path: string, body?: Body) => request<T>("PUT", path, body),
   patch: <T>(path: string, body?: Body) => request<T>("PATCH", path, body),
   delete: <T>(path: string) => request<T>("DELETE", path),
 };
@@ -122,7 +123,20 @@ export const authApi = {
   refresh: () => refreshOnce(),
 };
 
-import type { EventRoom, CreateRoomInput, UpdateRoomInput } from "@application/shared";
+import type {
+  AttendanceEntry,
+  CreateRoomInput,
+  EventRoom,
+  FormDefinition,
+  FormDefinitionInput,
+  LiveTokenResponse,
+  PhotoUploadRequestInput,
+  PhotoUploadResponse,
+  PresenceSnapshot,
+  SharedRoom,
+  SubmitAttendanceInput,
+  UpdateRoomInput,
+} from "@application/shared";
 
 export const roomsApi = {
   list: () => api.get<{ items: EventRoom[] }>("/rooms"),
@@ -130,4 +144,56 @@ export const roomsApi = {
   create: (body: CreateRoomInput) => api.post<EventRoom>("/rooms", body),
   update: (id: string, body: UpdateRoomInput) => api.patch<EventRoom>(`/rooms/${id}`, body),
   delete: (id: string) => api.delete<void>(`/rooms/${id}`),
+  setYouTubeFallback: (id: string, youtubeWatchUrl: string) =>
+    api.post<EventRoom>(`/rooms/${id}/fallback/youtube`, { youtubeWatchUrl }),
+  clearFallback: (id: string) => api.post<EventRoom>(`/rooms/${id}/fallback/clear`),
+};
+
+export const formsApi = {
+  get: (roomId: string) => api.get<FormDefinition | null>(`/rooms/${roomId}/form`),
+  save: (roomId: string, body: FormDefinitionInput) =>
+    api.put<FormDefinition>(`/rooms/${roomId}/form`, body),
+};
+
+export const shareApi = {
+  get: (token: string) => api.get<SharedRoom>(`/share/${token}`),
+  getToken: (token: string, name?: string) =>
+    api.post<LiveTokenResponse>(`/share/${token}/live-token`, name ? { name } : undefined),
+  presence: (token: string) =>
+    api.get<PresenceSnapshot>(`/share/${token}/presence`),
+};
+
+export const presenceApi = {
+  get: (roomId: string) =>
+    api.get<PresenceSnapshot>(`/rooms/${roomId}/presence`),
+};
+
+export const liveApi = {
+  getToken: (roomId: string) =>
+    api.post<LiveTokenResponse>(`/rooms/${roomId}/live-token`),
+  start: (roomId: string) => api.post<EventRoom>(`/rooms/${roomId}/start`),
+  stop: (roomId: string) => api.post<EventRoom>(`/rooms/${roomId}/stop`),
+};
+
+export const attendanceApi = {
+  list: (roomId: string) =>
+    api.get<{ items: AttendanceEntry[] }>(`/rooms/${roomId}/attendance`),
+  submit: (roomId: string, body: SubmitAttendanceInput) =>
+    api.post<AttendanceEntry>(`/rooms/${roomId}/attendance`, body),
+  presignPhoto: (roomId: string, body: PhotoUploadRequestInput) =>
+    api.post<PhotoUploadResponse>(`/rooms/${roomId}/attendance/photo-upload`, body),
+};
+
+export const uploadToPresignedUrl = async (
+  url: string,
+  blob: Blob,
+): Promise<void> => {
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": blob.type },
+    body: blob,
+  });
+  if (!res.ok) {
+    throw new ApiClientError(res.status, "UPLOAD_FAILED", `Upload failed: ${res.status}`);
+  }
 };

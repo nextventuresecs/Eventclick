@@ -7,6 +7,10 @@ import { RegisterPage } from "./pages/Register";
 import { DashboardLayout } from "./components/layouts/DashboardLayout";
 import { Dashboard } from "./pages/Dashboard";
 import { CreateRoom } from "./pages/CreateRoom";
+import { RoomFormBuilder } from "./pages/RoomFormBuilder";
+import { Attendance } from "./pages/Attendance";
+import { RoomLive } from "./pages/RoomLive";
+import { RoomWatch } from "./pages/RoomWatch";
 // import { RoomDetails } from "./pages/RoomDetails"; // Next steps
 
 const ProtectedRoute = () => {
@@ -43,6 +47,10 @@ const router = createBrowserRouter([
     element: <Navigate to="/dashboard" replace />,
   },
   {
+    path: "watch/:token",
+    element: <RoomWatch />,
+  },
+  {
     element: <AuthRoute />,
     children: [
       { path: "login", element: <LoginPage /> },
@@ -57,6 +65,9 @@ const router = createBrowserRouter([
         children: [
           { path: "dashboard", element: <Dashboard /> },
           { path: "rooms/create", element: <CreateRoom /> },
+          { path: "rooms/:id/form-builder", element: <RoomFormBuilder /> },
+          { path: "rooms/:id/attendance", element: <Attendance /> },
+          { path: "rooms/:id/live", element: <RoomLive /> },
           // { path: "rooms/:id", element: <RoomDetails /> },
         ],
       },

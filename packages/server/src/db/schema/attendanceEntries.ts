@@ -1,0 +1,41 @@
+import {
+  pgTable,
+  uuid,
+  text,
+  varchar,
+  timestamp,
+  jsonb,
+  index,
+} from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { eventRooms } from "./eventRooms";
+import { formDefinitions } from "./formDefinitions";
+import { users } from "./users";
+
+export const attendanceEntries = pgTable(
+  "attendance_entries",
+  {
+    id: uuid("id").primaryKey().default(sql`uuid_generate_v4()`),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => eventRooms.id, { onDelete: "cascade" }),
+    formDefinitionId: uuid("form_definition_id")
+      .notNull()
+      .references(() => formDefinitions.id, { onDelete: "restrict" }),
+    submittedBy: uuid("submitted_by").references(() => users.id, { onDelete: "set null" }),
+    data: jsonb("data").$type<Record<string, string | number | boolean | null>>().notNull(),
+    photoKey: varchar("photo_key", { length: 256 }),
+    photoUrl: text("photo_url"),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: text("user_agent"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("attendance_entries_room_idx").on(t.roomId),
+    index("attendance_entries_form_idx").on(t.formDefinitionId),
+    index("attendance_entries_submitted_at_idx").on(t.submittedAt),
+  ],
+);
+
+export type AttendanceEntryRow = typeof attendanceEntries.$inferSelect;
+export type NewAttendanceEntry = typeof attendanceEntries.$inferInsert;

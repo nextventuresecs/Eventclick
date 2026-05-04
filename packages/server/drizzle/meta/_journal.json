@@ -8,6 +8,20 @@
       "when": 1776327389044,
       "tag": "0000_public_falcon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776779288656,
+      "tag": "0001_tearful_albert_cleary",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776840451764,
+      "tag": "0002_wakeful_pyro",
+      "breakpoints": true
     }
   ]
 }

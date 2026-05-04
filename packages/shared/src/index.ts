@@ -58,6 +58,29 @@ export interface AuthResponse {
   tokens: AuthTokens;
 }
 
+// ─── Stream Provider (LiveKit primary, YouTube fallback) ──
+export const STREAM_PROVIDERS = ["livekit", "youtube"] as const;
+export const StreamProviderSchema = z.enum(STREAM_PROVIDERS);
+export type StreamProvider = z.infer<typeof StreamProviderSchema>;
+
+const YOUTUBE_URL_REGEX =
+  /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)[\w-]{11}(?:[?&][\w=&-]*)?$/;
+
+export const SetYouTubeFallbackSchema = z.object({
+  youtubeWatchUrl: z
+    .string()
+    .url()
+    .regex(YOUTUBE_URL_REGEX, "Must be a valid YouTube video/live URL"),
+});
+export type SetYouTubeFallbackInput = z.infer<typeof SetYouTubeFallbackSchema>;
+
+export const extractYouTubeVideoId = (url: string): string | null => {
+  const match = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|live\/|embed\/)|youtu\.be\/)([\w-]{11})/,
+  );
+  return match?.[1] ?? null;
+};
+
 // ─── Event Room DTOs ────────────────────────────────
 export const CreateRoomSchema = z.object({
   title: z.string().min(1).max(200),
@@ -92,8 +115,25 @@ export interface EventRoom {
   maxParticipants: number | null;
   shareToken: string;
   shareUrl: string;
+  streamProvider: StreamProvider;
+  youtubeWatchUrl: string | null;
+  youtubeEmbedUrl: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+// Public view for unauth attendees joining via share token
+export interface SharedRoom {
+  id: string;
+  title: string;
+  description: string | null;
+  status: RoomStatus;
+  scheduledStart: string;
+  scheduledEnd: string;
+  actualStart: string | null;
+  actualEnd: string | null;
+  streamProvider: StreamProvider;
+  youtubeEmbedUrl: string | null;
 }
 
 // ─── Generic Responses ──────────────────────────────
@@ -114,6 +154,137 @@ export interface Paginated<T> {
   total: number;
   page: number;
   pageSize: number;
+}
+
+// ─── Attendance Form Builder ────────────────────────
+export const FIELD_TYPES = [
+  "text",
+  "email",
+  "phone",
+  "number",
+  "select",
+  "checkbox",
+] as const;
+export const FieldTypeSchema = z.enum(FIELD_TYPES);
+export type FieldType = z.infer<typeof FieldTypeSchema>;
+
+export const FormFieldSchema = z
+  .object({
+    id: z.string().min(1).max(64),
+    label: z.string().min(1).max(120),
+    type: FieldTypeSchema,
+    required: z.boolean().default(false),
+    placeholder: z.string().max(120).optional(),
+    helpText: z.string().max(200).optional(),
+    options: z.array(z.string().min(1).max(80)).max(50).optional(),
+  })
+  .superRefine((f, ctx) => {
+    if (f.type === "select" && (!f.options || f.options.length === 0)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "select field requires options",
+        path: ["options"],
+      });
+    }
+  });
+export type FormField = z.infer<typeof FormFieldSchema>;
+
+export const FormDefinitionSchema = z.object({
+  fields: z.array(FormFieldSchema).min(1).max(30),
+});
+export type FormDefinitionInput = z.infer<typeof FormDefinitionSchema>;
+
+export interface FormDefinition {
+  id: string;
+  roomId: string;
+  version: number;
+  fields: FormField[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Attendance Submission ──────────────────────────
+const ATTENDANCE_VALUE = z.union([
+  z.string().max(500),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+
+export const SubmitAttendanceSchema = z.object({
+  formDefinitionId: z.uuid(),
+  data: z.record(z.string().min(1).max(64), ATTENDANCE_VALUE),
+  photoKey: z.string().min(1).max(200).optional(),
+});
+export type SubmitAttendanceInput = z.infer<typeof SubmitAttendanceSchema>;
+
+export interface AttendanceEntry {
+  id: string;
+  roomId: string;
+  formDefinitionId: string;
+  data: Record<string, string | number | boolean | null>;
+  photoUrl: string | null;
+  submittedAt: string;
+}
+
+// ─── LiveKit Token ──────────────────────────────────
+export const LIVE_ROLES = ["publisher", "viewer"] as const;
+export const LiveRoleSchema = z.enum(LIVE_ROLES);
+export type LiveRole = z.infer<typeof LiveRoleSchema>;
+
+export interface LiveTokenResponse {
+  token: string;
+  url: string;
+  identity: string;
+  roomName: string;
+  role: LiveRole;
+}
+
+// ─── Photo Upload (presigned PUT) ───────────────────
+export const PhotoUploadRequestSchema = z.object({
+  contentType: z
+    .string()
+    .regex(/^image\/(jpeg|png|webp)$/, "Must be image/jpeg, png, or webp"),
+  sizeBytes: z.number().int().positive().max(5 * 1024 * 1024),
+});
+export type PhotoUploadRequestInput = z.infer<typeof PhotoUploadRequestSchema>;
+
+export interface PhotoUploadResponse {
+  uploadUrl: string;
+  key: string;
+  publicUrl: string;
+  expiresIn: number;
+}
+
+// ─── Room Recording ─────────────────────────────────
+export const RECORDING_STATUSES = [
+  "pending",
+  "active",
+  "completed",
+  "failed",
+] as const;
+export const RecordingStatusSchema = z.enum(RECORDING_STATUSES);
+export type RecordingStatus = z.infer<typeof RecordingStatusSchema>;
+
+export interface RoomRecording {
+  id: string;
+  roomId: string;
+  status: RecordingStatus;
+  egressId: string | null;
+  s3Key: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  publicUrl: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  createdAt: string;
+}
+
+// ─── Presence ───────────────────────────────────────
+export interface PresenceSnapshot {
+  roomId: string;
+  count: number;
+  updatedAt: string;
 }
 
 // ─── Client Log Ingest ──────────────────────────────

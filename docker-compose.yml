@@ -37,6 +37,58 @@ services:
       timeout: 3s
       retries: 5
 
+  # ─── LiveKit (self-hosted WebRTC SFU) ─────────────
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: evently_livekit
+    restart: unless-stopped
+    command: --dev --bind 0.0.0.0
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+
+  # ─── MinIO (S3-compatible object storage for dev) ─
+  minio:
+    image: minio/minio:latest
+    container_name: evently_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "${S3_PORT:-9000}:9000"
+      - "${S3_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Seed bucket on first run, then exit
+  minio-init:
+    image: minio/mc:latest
+    container_name: evently_minio_init
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 $${S3_ACCESS_KEY} $${S3_SECRET_KEY}; do sleep 1; done;
+      mc mb -p local/$${S3_BUCKET} || true;
+      mc anonymous set download local/$${S3_BUCKET} || true;
+      exit 0;
+      "
+    environment:
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+
   # ─── Backend API (Node/Express) ───────────────────
   server:
     build:
@@ -53,6 +105,17 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       PORT: 4000
+      LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_PUBLIC_URL: ${LIVEKIT_PUBLIC_URL:-ws://localhost:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_FORCE_PATH_STYLE: "true"
     volumes:
       - ./packages/server/src:/app/packages/server/src
       - ./packages/shared/src:/app/packages/shared/src
@@ -61,6 +124,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      livekit:
+        condition: service_started
+      minio:
+        condition: service_started
 
   # ─── Frontend (React + Vite) ──────────────────────
   client:
@@ -73,6 +140,7 @@ services:
       - "${CLIENT_PORT:-3000}:3000"
     environment:
       VITE_API_URL: http://localhost:${API_PORT:-4000}/api/v1
+      VITE_LIVEKIT_URL: ws://localhost:7880
     volumes:
       - ./packages/client/src:/app/packages/client/src
       - ./packages/shared/src:/app/packages/shared/src
@@ -82,3 +150,4 @@ services:
 volumes:
   pg_data:
   redis_data:
+  minio_data:

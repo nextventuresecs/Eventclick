@@ -26,6 +26,26 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
 
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
+
+  // ─── LiveKit ──────────────────────────────────────
+  LIVEKIT_URL: z.string().min(1, "LIVEKIT_URL is required"),
+  LIVEKIT_PUBLIC_URL: z.string().min(1, "LIVEKIT_PUBLIC_URL is required"),
+  LIVEKIT_API_KEY: z.string().min(1, "LIVEKIT_API_KEY is required"),
+  LIVEKIT_API_SECRET: z
+    .string()
+    .min(16, "LIVEKIT_API_SECRET must be at least 16 chars"),
+
+  // ─── S3 (MinIO dev / Cloudflare R2 prod) ──────────
+  S3_ENDPOINT: z.url(),
+  S3_PUBLIC_ENDPOINT: z.url(),
+  S3_REGION: z.string().default("us-east-1"),
+  S3_BUCKET: z.string().min(1),
+  S3_ACCESS_KEY: z.string().min(1),
+  S3_SECRET_KEY: z.string().min(1),
+  S3_FORCE_PATH_STYLE: z
+    .string()
+    .default("true")
+    .transform((v) => v === "true"),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

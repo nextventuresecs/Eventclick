@@ -1,6 +1,6 @@
 import { pgTable, uuid, varchar, text, timestamp, integer, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { roomStatusEnum } from "./enums";
+import { roomStatusEnum, streamProviderEnum } from "./enums";
 import { users } from "./users";
 import { organizations } from "./organizations";
 
@@ -20,6 +20,9 @@ export const eventRooms = pgTable(
     maxParticipants: integer("max_participants"),
     shareToken: varchar("share_token", { length: 32 }).notNull().unique(),
     livekitRoomName: varchar("livekit_room_name", { length: 80 }),
+    streamProvider: streamProviderEnum("stream_provider").notNull().default("livekit"),
+    youtubeWatchUrl: text("youtube_watch_url"),
+    youtubeEmbedUrl: text("youtube_embed_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

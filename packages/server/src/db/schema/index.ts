@@ -4,3 +4,6 @@ export * from "./users";
 export * from "./orgMembers";
 export * from "./eventRooms";
 export * from "./sessions";
+export * from "./formDefinitions";
+export * from "./attendanceEntries";
+export * from "./roomRecordings";
