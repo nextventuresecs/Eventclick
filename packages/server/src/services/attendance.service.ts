@@ -28,7 +28,7 @@ const toAttendanceEntry = (row: AttendanceEntryRow): AttendanceEntry => ({
   submittedAt: row.submittedAt.toISOString(),
 });
 
-const assertRoomInOrg = async (roomId: string, orgId: string): Promise<void> => {
+export const assertRoomInOrg = async (roomId: string, orgId: string): Promise<void> => {
   const [room] = await db
     .select({ id: eventRooms.id })
     .from(eventRooms)

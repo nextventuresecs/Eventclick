@@ -6,6 +6,7 @@ import type {
 } from "@application/shared";
 import { ApiError } from "../utils/errors";
 import {
+  assertRoomInOrg,
   listAttendance,
   submitAttendance,
 } from "../services/attendance.service";
@@ -22,8 +23,12 @@ const requireOrgId = (organizationId: string | null): string => {
 
 export const presignAttendancePhoto: RequestHandler = async (req, res, next) => {
   try {
+    const orgId = requireOrgId(req.user!.organizationId);
     const roomId = req.params.id as string;
     const { contentType } = req.body as PhotoUploadRequestInput;
+
+    // Verify the user's org owns the room before issuing a presigned URL
+    await assertRoomInOrg(roomId, orgId);
 
     const key = buildPhotoKey(roomId, contentType);
     const { uploadUrl, expiresIn } = await createPresignedPut(key, contentType);

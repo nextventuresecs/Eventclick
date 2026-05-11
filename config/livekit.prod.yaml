@@ -1,0 +1,29 @@
+# LiveKit production configuration
+# This file is referenced by docker-compose.prod.yml.
+# Replace <LIVEKIT_API_KEY> / <LIVEKIT_API_SECRET> with actual values,
+# or let docker-compose inject them via environment variable substitution.
+
+port: 7880
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50100
+  use_external_ip: true   # Enable when behind NAT/cloud provider
+
+# Keys map (runtime value comes from LIVEKIT_KEYS env var in compose)
+# The env format is "key: secret" (note the space after colon)
+
+# Redis-backed room state — required for multi-node / HA setups
+redis:
+  address: redis:6379
+  # Uncomment and set password if Redis auth is enabled
+  # password: ${REDIS_PASSWORD}
+
+# Room defaults
+room:
+  empty_timeout: 300       # seconds before an empty room is cleaned up
+  max_participants: 500
+
+logging:
+  level: info
+  sample: true             # Sample verbose logs to reduce noise

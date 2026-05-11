@@ -12,6 +12,10 @@
     "typecheck": {
       "dependsOn": ["^build"]
     },
-    "lint": {}
+    "lint": {},
+    "test": {
+      "dependsOn": ["^build"],
+      "cache": false
+    }
   }
 }

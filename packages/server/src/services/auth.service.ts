@@ -203,12 +203,7 @@ export const refreshSession = async (
   const session = await findActiveSessionByToken(refreshToken);
   if (!session) throw ApiError.unauthorized("Invalid refresh token");
 
-  const next = await rotateSession(session, meta).catch((err) => {
-    if (err instanceof Error && err.message === "SESSION_REUSE_DETECTED") {
-      throw ApiError.unauthorized("Session invalidated — please log in again");
-    }
-    throw ApiError.unauthorized("Session expired");
-  });
+  const next = await rotateSession(session, meta);
 
   const user = await findUserById(session.userId);
   if (!user || !user.isActive) throw ApiError.unauthorized("Account no longer active");
