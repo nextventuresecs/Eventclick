@@ -4,6 +4,7 @@ import { db } from "../db";
 import { sessions, type Session } from "../db/schema";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
+import { ApiError } from "../utils/errors";
 
 const REFRESH_BYTES = 48;
 
@@ -77,9 +78,9 @@ export const rotateSession = async (
   if (current.revokedAt) {
     logger.warn({ sessionId: current.id, familyId: current.familyId }, "refresh token reuse detected — revoking family");
     await revokeSessionFamily(current.familyId);
-    throw new Error("SESSION_REUSE_DETECTED");
+    throw ApiError.unauthorized("Session compromised — please log in again");
   }
-  if (current.expiresAt.getTime() < Date.now()) throw new Error("SESSION_EXPIRED");
+  if (current.expiresAt.getTime() < Date.now()) throw ApiError.unauthorized("Session expired");
 
   const next = await issueRefreshToken(current.userId, meta, current.familyId);
   await db

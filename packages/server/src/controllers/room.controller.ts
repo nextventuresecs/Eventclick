@@ -45,14 +45,18 @@ const requireOrgId = (organizationId: string | null): string => {
 export const listRooms: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
 
     const rows = await db
       .select()
       .from(eventRooms)
       .where(and(eq(eventRooms.organizationId, orgId), isNull(eventRooms.deletedAt)))
-      .orderBy(desc(eventRooms.createdAt));
+      .orderBy(desc(eventRooms.createdAt))
+      .limit(limit)
+      .offset(offset);
 
-    res.json({ items: rows.map(toEventRoom) });
+    res.json({ items: rows.map(toEventRoom), limit, offset });
   } catch (err) {
     next(err);
   }

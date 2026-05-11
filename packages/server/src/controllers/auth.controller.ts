@@ -77,6 +77,7 @@ export const refresh: RequestHandler = async (req, res, next) => {
     const result = await refreshSession(token, extractMeta(req));
     sendAuthResult(res, result);
   } catch (err) {
+    clearRefreshCookie(res);
     next(err);
   }
 };

@@ -13,11 +13,33 @@ import { RoomLive } from "./pages/RoomLive";
 import { RoomWatch } from "./pages/RoomWatch";
 // import { RoomDetails } from "./pages/RoomDetails"; // Next steps
 
+const ConnectionError = () => {
+  const { retryAuth } = useAuth();
+  return (
+    <div className="flex min-h-screen items-center justify-center p-8">
+      <div className="text-center">
+        <h2 className="text-xl font-semibold">Unable to connect</h2>
+        <p className="mt-2 text-muted-foreground">The server may be down. Please try again.</p>
+        <button
+          onClick={retryAuth}
+          className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const ProtectedRoute = () => {
   const { status } = useAuth();
   
   if (status === "loading") {
     return <div className="p-8 text-center text-muted-foreground">Loading session...</div>;
+  }
+
+  if (status === "error") {
+    return <ConnectionError />;
   }
   
   if (status === "unauthenticated") {
@@ -32,6 +54,10 @@ const AuthRoute = () => {
   
   if (status === "loading") {
     return <div className="p-8 text-center text-muted-foreground">Loading session...</div>;
+  }
+
+  if (status === "error") {
+    return <ConnectionError />;
   }
   
   if (status === "authenticated") {

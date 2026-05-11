@@ -4,41 +4,56 @@ import { authApi, setAccessToken, setOnUnauthorized } from "@/lib/api";
 
 interface AuthContextValue {
   user: AuthUser | null;
-  status: "loading" | "authenticated" | "unauthenticated";
+  status: "loading" | "authenticated" | "unauthenticated" | "error";
   login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; password: string; fullName: string; organizationName?: string }) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
+  retryAuth: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const AUTH_TIMEOUT_MS = 10_000;
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthContextValue["status"]>("loading");
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), AUTH_TIMEOUT_MS);
+
     (async () => {
-      const token = await authApi.refresh();
-      if (cancelled) return;
-      if (!token) {
-        setStatus("unauthenticated");
-        return;
-      }
       try {
+        const token = await authApi.refresh();
+        if (cancelled) return;
+        if (!token) {
+          setStatus("unauthenticated");
+          return;
+        }
         const { user: me } = await authApi.me();
         if (!cancelled) {
           setUser(me);
           setStatus("authenticated");
         }
       } catch {
-        if (!cancelled) setStatus("unauthenticated");
+        if (!cancelled) setStatus("error");
+      } finally {
+        clearTimeout(timeout);
       }
     })();
     return () => {
       cancelled = true;
+      controller.abort();
     };
+  }, [attempt]);
+
+  const retryAuth = useCallback(() => {
+    setStatus("loading");
+    setAttempt((n) => n + 1);
   }, []);
 
   const handleUnauthorized = useCallback(() => {
@@ -72,8 +87,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           handleUnauthorized();
         }
       },
+      retryAuth,
     }),
-    [user, status, handleUnauthorized],
+    [user, status, handleUnauthorized, retryAuth],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

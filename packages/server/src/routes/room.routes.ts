@@ -59,7 +59,7 @@ roomRouter.get("/:id/presence", getPresence);
 roomRouter.get("/:id/form", getRoomForm);
 roomRouter.put(
   "/:id/form",
-  canManageFallback,
+  canManageRooms,
   validate(FormDefinitionSchema),
   saveRoomForm,
 );
