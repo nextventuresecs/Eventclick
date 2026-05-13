@@ -14,6 +14,7 @@ import {
   type FormDefinitionRow,
 } from "../db/schema";
 import { ApiError } from "../utils/errors";
+import { buildLiveAttendanceWindow } from "./attendance-live-window.service";
 import { buildPublicUrl } from "./storage.service";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -57,14 +58,6 @@ const getRoomInOrg = async (
 
 export const assertRoomInOrg = async (roomId: string, orgId: string): Promise<void> => {
   await getRoomInOrg(roomId, orgId);
-};
-
-export const buildLiveAttendanceWindow = (
-  actualStart: Date | null,
-  actualEnd: Date | null,
-): { start: Date; end: Date | null } | null => {
-  if (!actualStart) return null;
-  return { start: actualStart, end: actualEnd };
 };
 
 const fieldSchema = (field: FormField): z.ZodTypeAny => {

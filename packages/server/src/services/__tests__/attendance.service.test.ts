@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLiveAttendanceWindow } from "../attendance.service";
+import { buildLiveAttendanceWindow } from "../attendance-live-window.service";
 
 describe("attendance.service", () => {
   it("returns null when room has not started live event yet", () => {
