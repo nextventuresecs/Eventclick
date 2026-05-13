@@ -59,6 +59,14 @@ export const assertRoomInOrg = async (roomId: string, orgId: string): Promise<vo
   await getRoomInOrg(roomId, orgId);
 };
 
+export const buildLiveAttendanceWindow = (
+  actualStart: Date | null,
+  actualEnd: Date | null,
+): { start: Date; end: Date | null } | null => {
+  if (!actualStart) return null;
+  return { start: actualStart, end: actualEnd };
+};
+
 const fieldSchema = (field: FormField): z.ZodTypeAny => {
   switch (field.type) {
     case "text": {
@@ -176,10 +184,11 @@ export const listAttendance = async (
   const whereClauses = [eq(attendanceEntries.roomId, roomId)];
 
   if (opts.liveOnly) {
-    if (!room.actualStart) return [];
-    whereClauses.push(gte(attendanceEntries.submittedAt, room.actualStart));
-    if (room.actualEnd) {
-      whereClauses.push(lte(attendanceEntries.submittedAt, room.actualEnd));
+    const liveWindow = buildLiveAttendanceWindow(room.actualStart, room.actualEnd);
+    if (!liveWindow) return [];
+    whereClauses.push(gte(attendanceEntries.submittedAt, liveWindow.start));
+    if (liveWindow.end) {
+      whereClauses.push(lte(attendanceEntries.submittedAt, liveWindow.end));
     }
   }
 
