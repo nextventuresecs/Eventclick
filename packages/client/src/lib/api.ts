@@ -176,8 +176,13 @@ export const liveApi = {
 };
 
 export const attendanceApi = {
-  list: (roomId: string) =>
-    api.get<{ items: AttendanceEntry[] }>(`/rooms/${roomId}/attendance`),
+  list: (roomId: string, opts?: { liveOnly?: boolean }) => {
+    const params = new URLSearchParams();
+    if (opts?.liveOnly) params.set("liveOnly", "true");
+    const queryString = params.toString();
+    const query = queryString ? `?${queryString}` : "";
+    return api.get<{ items: AttendanceEntry[] }>(`/rooms/${roomId}/attendance${query}`);
+  },
   submit: (roomId: string, body: SubmitAttendanceInput) =>
     api.post<AttendanceEntry>(`/rooms/${roomId}/attendance`, body),
   presignPhoto: (roomId: string, body: PhotoUploadRequestInput) =>
