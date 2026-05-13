@@ -9,6 +9,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { CreateRoom } from "./pages/CreateRoom";
 import { RoomFormBuilder } from "./pages/RoomFormBuilder";
 import { Attendance } from "./pages/Attendance";
+import { AttendanceRecords } from "./pages/AttendanceRecords";
 import { RoomLive } from "./pages/RoomLive";
 import { RoomWatch } from "./pages/RoomWatch";
 // import { RoomDetails } from "./pages/RoomDetails"; // Next steps
@@ -93,6 +94,7 @@ const router = createBrowserRouter([
           { path: "rooms/create", element: <CreateRoom /> },
           { path: "rooms/:id/form-builder", element: <RoomFormBuilder /> },
           { path: "rooms/:id/attendance", element: <Attendance /> },
+          { path: "rooms/:id/attendance/records", element: <AttendanceRecords /> },
           { path: "rooms/:id/live", element: <RoomLive /> },
           // { path: "rooms/:id", element: <RoomDetails /> },
         ],

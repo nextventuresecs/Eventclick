@@ -1,28 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { Copy, Users, Clock, Plus, CalendarClock, FormInput, ClipboardList, Radio } from "lucide-react";
-import type { AttendanceEntry, EventRoom } from "@application/shared";
-import { attendanceApi, roomsApi, ApiClientError } from "@/lib/api";
+import type { EventRoom } from "@application/shared";
+import { roomsApi, ApiClientError } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const formatAttendanceValue = (value: string | number | boolean | null): string => {
-  if (value === null) return "—";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  return String(value);
-};
-
 export const Dashboard = () => {
   const [rooms, setRooms] = useState<EventRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedAttendanceRooms, setExpandedAttendanceRooms] = useState<Record<string, boolean>>({});
-  const [attendanceByRoomId, setAttendanceByRoomId] = useState<Record<string, AttendanceEntry[]>>({});
-  const [attendanceLoadingByRoomId, setAttendanceLoadingByRoomId] = useState<Record<string, boolean>>({});
-  const [attendanceErrorByRoomId, setAttendanceErrorByRoomId] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,48 +34,6 @@ export const Dashboard = () => {
       () => toast("Link copied to clipboard!", "success"),
       () => toast("Failed to copy link.", "error"),
     );
-  };
-
-  const attendanceColumnsByRoomId = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(attendanceByRoomId).map(([roomId, entries]) => [
-          roomId,
-          Array.from(new Set(entries.flatMap((entry) => Object.keys(entry.data)))).sort(),
-        ]),
-      ) as Record<string, string[]>,
-    [attendanceByRoomId],
-  );
-
-  const toggleAttendanceForRoom = async (roomId: string) => {
-    const isExpanded = Boolean(expandedAttendanceRooms[roomId]);
-    if (isExpanded) {
-      setExpandedAttendanceRooms((prev) => ({ ...prev, [roomId]: false }));
-      return;
-    }
-
-    setExpandedAttendanceRooms((prev) => ({ ...prev, [roomId]: true }));
-
-    if (attendanceByRoomId[roomId] || attendanceLoadingByRoomId[roomId]) return;
-
-    setAttendanceLoadingByRoomId((prev) => ({ ...prev, [roomId]: true }));
-    setAttendanceErrorByRoomId((prev) => {
-      const next = { ...prev };
-      delete next[roomId];
-      return next;
-    });
-
-    try {
-      const { items } = await attendanceApi.list(roomId, { liveOnly: true });
-      setAttendanceByRoomId((prev) => ({ ...prev, [roomId]: items }));
-    } catch (err) {
-      setAttendanceErrorByRoomId((prev) => ({
-        ...prev,
-        [roomId]: err instanceof ApiClientError ? err.message : "Failed to load attendance list",
-      }));
-    } finally {
-      setAttendanceLoadingByRoomId((prev) => ({ ...prev, [roomId]: false }));
-    }
   };
 
   const getStatusBadge = (status: EventRoom["status"]) => {
@@ -205,71 +153,40 @@ export const Dashboard = () => {
               </CardHeader>
               <CardContent className="pb-4 flex-1">
                 <div className="space-y-3 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 shrink-0" />
-                    <span className="truncate">
-                      {format(new Date(room.scheduledStart), 'MMM d, h:mm a')}
+                  {/* Primary action — Records */}
+                  <Link
+                    to={`/rooms/${room.id}/attendance/records`}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 py-3 text-sm font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm group/rec"
+                  >
+                    <Users className="w-4 h-4 group-hover/rec:scale-110 transition-transform" />
+                    <span>View Records</span>
+                    <span className="ml-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary/20 px-1.5 text-[10px] group-hover/rec:bg-primary-foreground group-hover/rec:text-primary transition-colors">
+                      {room.attendanceCount ?? 0}
                     </span>
-                  </div>
-                  {room.maxParticipants && (
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 shrink-0" />
-                      <span>Max {room.maxParticipants} attendees</span>
+                  </Link>
+
+                  <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground border-t border-border/50">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{format(new Date(room.scheduledStart), 'MMM d, h:mm a')}</span>
                     </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <ClipboardList className="w-4 h-4 shrink-0" />
-                    <button
-                      type="button"
-                      onClick={() => void toggleAttendanceForRoom(room.id)}
-                      className="text-left hover:text-foreground transition-colors"
-                    >
-                      Attendance taken: {room.attendanceCount ?? 0}
-                    </button>
-                  </div>
-                </div>
-                {expandedAttendanceRooms[room.id] && (
-                  <div className="mt-4 rounded-md border border-border overflow-x-auto">
-                    {attendanceLoadingByRoomId[room.id] ? (
-                      <div className="p-3 text-xs text-muted-foreground">Loading attendance…</div>
-                    ) : attendanceErrorByRoomId[room.id] ? (
-                      <div className="p-3 text-xs text-destructive">{attendanceErrorByRoomId[room.id]}</div>
-                    ) : (attendanceByRoomId[room.id] ?? []).length === 0 ? (
-                      <div className="p-3 text-xs text-muted-foreground">
-                        No attendance recorded during the live event.
+                    {room.maxParticipants && (
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>Max {room.maxParticipants}</span>
                       </div>
-                    ) : (
-                      <table className="w-full text-xs">
-                        <thead className="bg-muted/40">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-medium">Submitted At</th>
-                            {(attendanceColumnsByRoomId[room.id] ?? []).map((column) => (
-                              <th key={column} className="px-3 py-2 text-left font-medium">
-                                {column}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(attendanceByRoomId[room.id] ?? []).map((entry) => (
-                            <tr key={entry.id} className="border-t border-border">
-                              <td className="px-3 py-2 whitespace-nowrap">
-                                {format(new Date(entry.submittedAt), "MMM d, h:mm a")}
-                              </td>
-                              {(attendanceColumnsByRoomId[room.id] ?? []).map((column) => (
-                                <td key={`${entry.id}-${column}`} className="px-3 py-2 align-top">
-                                  {formatAttendanceValue(entry.data[column] ?? null)}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
                     )}
                   </div>
-                )}
+                </div>
               </CardContent>
               <CardFooter className="pt-4 border-t border-border flex flex-wrap gap-2">
+                <Link
+                  to={`/rooms/${room.id}/attendance`}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-primary py-1.5 px-3 h-8 text-xs font-bold text-primary-foreground hover:opacity-90 transition-all shadow-sm shadow-primary/10 group/att"
+                >
+                  <ClipboardList className="w-3 h-3 group-hover/att:scale-110 transition-transform" />
+                  <span>Take Attendance</span>
+                </Link>
                 <Link
                   to={`/rooms/${room.id}/live`}
                   className="inline-flex items-center gap-1 rounded-md border border-border px-2 h-8 text-xs font-medium hover:bg-muted transition-colors"
@@ -284,23 +201,17 @@ export const Dashboard = () => {
                   <FormInput className="w-3 h-3" />
                   Form
                 </Link>
-                <Link
-                  to={`/rooms/${room.id}/attendance`}
-                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 h-8 text-xs font-medium hover:bg-muted transition-colors"
-                >
-                  <ClipboardList className="w-3 h-3" />
-                  Attendance
-                </Link>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="ml-auto gap-1"
+                  className="ml-auto h-8 px-2.5 gap-1.5 text-xs font-medium"
                   onClick={() => copyToClipboard(room.shareUrl)}
                 >
                   <Copy className="w-3 h-3" />
                   Copy
                 </Button>
               </CardFooter>
+
             </Card>
           ))}
         </div>

@@ -5,7 +5,8 @@ export interface AttendanceCountRow {
 
 export const buildAttendanceCountMap = (
   rows: AttendanceCountRow[],
-): Map<string, number> => new Map(rows.map((row) => [row.roomId, row.count]));
+): Map<string, number> =>
+  new Map(rows.map((row) => [row.roomId, Number(row.count) || 0]));
 
 export const attendanceCountForRoom = (
   countsByRoomId: Map<string, number>,

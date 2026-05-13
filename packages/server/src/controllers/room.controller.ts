@@ -67,7 +67,7 @@ export const listRooms: RequestHandler = async (req, res, next) => {
         : await db
             .select({
               roomId: attendanceEntries.roomId,
-              count: sql<number>`count(*)`.mapWith(Number),
+              count: sql<number>`cast(count(*) as int)`,
             })
             .from(attendanceEntries)
             .where(inArray(attendanceEntries.roomId, roomIds))
