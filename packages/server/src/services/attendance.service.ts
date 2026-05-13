@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte } from "drizzle-orm";
 import { z } from "zod";
 import type {
   AttendanceEntry,
@@ -28,9 +28,20 @@ const toAttendanceEntry = (row: AttendanceEntryRow): AttendanceEntry => ({
   submittedAt: row.submittedAt.toISOString(),
 });
 
-export const assertRoomInOrg = async (roomId: string, orgId: string): Promise<void> => {
+const getRoomInOrg = async (
+  roomId: string,
+  orgId: string,
+): Promise<{
+  id: string;
+  actualStart: Date | null;
+  actualEnd: Date | null;
+}> => {
   const [room] = await db
-    .select({ id: eventRooms.id })
+    .select({
+      id: eventRooms.id,
+      actualStart: eventRooms.actualStart,
+      actualEnd: eventRooms.actualEnd,
+    })
     .from(eventRooms)
     .where(
       and(
@@ -41,6 +52,11 @@ export const assertRoomInOrg = async (roomId: string, orgId: string): Promise<vo
     )
     .limit(1);
   if (!room) throw ApiError.notFound("Room not found");
+  return room;
+};
+
+export const assertRoomInOrg = async (roomId: string, orgId: string): Promise<void> => {
+  await getRoomInOrg(roomId, orgId);
 };
 
 const fieldSchema = (field: FormField): z.ZodTypeAny => {
@@ -151,17 +167,26 @@ export const submitAttendance = async (
 export const listAttendance = async (
   roomId: string,
   orgId: string,
-  opts: { limit?: number; offset?: number } = {},
+  opts: { limit?: number; offset?: number; liveOnly?: boolean } = {},
 ): Promise<AttendanceEntry[]> => {
-  await assertRoomInOrg(roomId, orgId);
+  const room = await getRoomInOrg(roomId, orgId);
 
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
   const offset = Math.max(opts.offset ?? 0, 0);
+  const whereClauses = [eq(attendanceEntries.roomId, roomId)];
+
+  if (opts.liveOnly) {
+    if (!room.actualStart) return [];
+    whereClauses.push(gte(attendanceEntries.submittedAt, room.actualStart));
+    if (room.actualEnd) {
+      whereClauses.push(lte(attendanceEntries.submittedAt, room.actualEnd));
+    }
+  }
 
   const rows = await db
     .select()
     .from(attendanceEntries)
-    .where(eq(attendanceEntries.roomId, roomId))
+    .where(and(...whereClauses))
     .orderBy(desc(attendanceEntries.submittedAt))
     .limit(limit)
     .offset(offset);

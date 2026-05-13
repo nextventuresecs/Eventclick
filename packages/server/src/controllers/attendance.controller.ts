@@ -67,8 +67,10 @@ export const listRoomAttendance: RequestHandler = async (req, res, next) => {
     const roomId = req.params.id as string;
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
     const offset = req.query.offset ? Number(req.query.offset) : undefined;
+    const liveOnly =
+      req.query.liveOnly === "true" || req.query.liveOnly === "1";
 
-    const items = await listAttendance(roomId, orgId, { limit, offset });
+    const items = await listAttendance(roomId, orgId, { limit, offset, liveOnly });
     res.json({ items });
   } catch (err) {
     next(err);
