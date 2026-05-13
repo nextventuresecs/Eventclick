@@ -118,6 +118,7 @@ export interface EventRoom {
   streamProvider: StreamProvider;
   youtubeWatchUrl: string | null;
   youtubeEmbedUrl: string | null;
+  attendanceCount?: number;
   createdAt: string;
   updatedAt: string;
 }
