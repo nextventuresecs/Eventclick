@@ -258,7 +258,7 @@ export const Dashboard = () => {
                               </td>
                               {(attendanceColumnsByRoomId[room.id] ?? []).map((column) => (
                                 <td key={`${entry.id}-${column}`} className="px-3 py-2 align-top">
-                                  {formatAttendanceValue((entry.data[column] ?? null) as string | number | boolean | null)}
+                                  {formatAttendanceValue(entry.data[column] ?? null)}
                                 </td>
                               ))}
                             </tr>

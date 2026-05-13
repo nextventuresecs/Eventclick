@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildLiveAttendanceWindow } from "../attendance-live-window.service";
 
-describe("attendance.service", () => {
+describe("attendance-live-window.service", () => {
   it("returns null when room has not started live event yet", () => {
     expect(buildLiveAttendanceWindow(null, null)).toBeNull();
   });
