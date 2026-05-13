@@ -165,6 +165,10 @@ export const Dashboard = () => {
                       <span>Max {room.maxParticipants} attendees</span>
                     </div>
                   )}
+                  <div className="flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 shrink-0" />
+                    <span>Attendance taken: {room.attendanceCount ?? 0}</span>
+                  </div>
                 </div>
               </CardContent>
               <CardFooter className="pt-4 border-t border-border flex flex-wrap gap-2">

@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type {
   CreateRoomInput,
@@ -10,11 +10,15 @@ import type {
 } from "@application/shared";
 import { extractYouTubeVideoId } from "@application/shared";
 import { db } from "../db";
-import { eventRooms, users, type EventRoomRow } from "../db/schema";
+import { attendanceEntries, eventRooms, users, type EventRoomRow } from "../db/schema";
 import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
 import { issueLiveToken } from "../services/livekit.service";
 import { getRoomPresence } from "../services/presence.service";
+import {
+  attendanceCountForRoom,
+  buildAttendanceCountMap,
+} from "../services/attendance-counts.service";
 
 const toEventRoom = (row: EventRoomRow): EventRoom => ({
   id: row.id,
@@ -56,7 +60,26 @@ export const listRooms: RequestHandler = async (req, res, next) => {
       .limit(limit)
       .offset(offset);
 
-    res.json({ items: rows.map(toEventRoom), limit, offset });
+    const roomIds = rows.map((row) => row.id);
+    const attendanceCounts =
+      roomIds.length === 0
+        ? []
+        : await db
+            .select({
+              roomId: attendanceEntries.roomId,
+              count: sql<number>`count(*)`.mapWith(Number),
+            })
+            .from(attendanceEntries)
+            .where(inArray(attendanceEntries.roomId, roomIds))
+            .groupBy(attendanceEntries.roomId);
+
+    const countsByRoomId = buildAttendanceCountMap(attendanceCounts);
+    const items = rows.map((row) => ({
+      ...toEventRoom(row),
+      attendanceCount: attendanceCountForRoom(countsByRoomId, row.id),
+    }));
+
+    res.json({ items, limit, offset });
   } catch (err) {
     next(err);
   }
