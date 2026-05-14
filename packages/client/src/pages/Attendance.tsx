@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 type FieldValue = string | number | boolean;
+const CAMERA_READY_TIMEOUT_MS = 3000;
 
 const blankValue = (f: FormField): FieldValue => {
   if (f.type === "checkbox") return false;
@@ -23,6 +24,8 @@ const blankValue = (f: FormField): FieldValue => {
 
 const buildInitialData = (fields: FormField[]): Record<string, FieldValue> =>
   Object.fromEntries(fields.map((f) => [f.id, blankValue(f)]));
+const isVideoFrameReady = (video: HTMLVideoElement): boolean =>
+  video.videoWidth > 0 && video.videoHeight > 0;
 
 export const Attendance = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +39,7 @@ export const Attendance = () => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -72,8 +76,14 @@ export const Attendance = () => {
   );
 
   const stopCamera = () => {
+    const video = videoRef.current;
+    if (video) {
+      video.pause();
+      video.srcObject = null;
+    }
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    setCameraReady(false);
     setCameraOpen(false);
   };
 
@@ -81,20 +91,68 @@ export const Attendance = () => {
 
   const openCamera = async () => {
     setCameraError(null);
+    setCameraReady(false);
+    let stream: MediaStream | null = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 } },
         audio: false,
       });
       streamRef.current = stream;
       setCameraOpen(true);
-      queueMicrotask(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play();
-        }
-      });
+
+      let video: HTMLVideoElement | null = null;
+      for (let attempt = 0; attempt < 10 && !video; attempt += 1) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        video = videoRef.current;
+      }
+      if (!video) {
+        throw new Error("Camera preview failed to initialize");
+      }
+
+      video.srcObject = stream;
+      try {
+        await video.play();
+      } catch {
+        // Some browsers resolve playback readiness via metadata/canplay events.
+      }
+
+      if (!isVideoFrameReady(video)) {
+        await new Promise<void>((resolve, reject) => {
+          let timeout = 0;
+          const onReady = () => {
+            if (isVideoFrameReady(video)) {
+              cleanup();
+              resolve();
+            }
+          };
+          const cleanup = () => {
+            window.clearTimeout(timeout);
+            video.removeEventListener("loadedmetadata", onReady);
+            video.removeEventListener("canplay", onReady);
+            video.removeEventListener("playing", onReady);
+          };
+          timeout = window.setTimeout(() => {
+            cleanup();
+            reject(
+              new Error(
+                "Camera failed to initialize in time. Please close and reopen the camera.",
+              ),
+            );
+          }, CAMERA_READY_TIMEOUT_MS);
+          video.addEventListener("loadedmetadata", onReady);
+          video.addEventListener("canplay", onReady);
+          video.addEventListener("playing", onReady);
+          onReady();
+        });
+      }
+
+      setCameraReady(true);
     } catch (err) {
+      stream?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      setCameraOpen(false);
+      setCameraReady(false);
       const msg = err instanceof Error ? err.message : "Camera unavailable";
       setCameraError(
         msg.includes("Permission")
@@ -106,17 +164,36 @@ export const Attendance = () => {
 
   const capturePhoto = () => {
     const video = videoRef.current;
-    if (!video || !streamRef.current) return;
+    if (!video || !streamRef.current) {
+      setCameraError("Camera is not active. Reopen camera and try again.");
+      return;
+    }
+
+    if (
+      !cameraReady ||
+      !isVideoFrameReady(video) ||
+      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+    ) {
+      setCameraError("Camera is still initializing. Wait for preview, then tap Capture.");
+      return;
+    }
 
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      setCameraError("Failed to capture photo. Please try again.");
+      return;
+    }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob(
       (blob) => {
-        if (!blob) return;
+        if (!blob) {
+          setCameraError("Failed to capture photo. Please try again.");
+          return;
+        }
+        setCameraError(null);
         const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
         setPhotoFile(file);
         stopCamera();
@@ -322,9 +399,14 @@ export const Attendance = () => {
                 className="w-full max-h-64 object-contain rounded-md border border-border bg-black"
               />
               <div className="flex gap-2">
-                <Button type="button" onClick={capturePhoto} className="flex-1">
+                <Button
+                  type="button"
+                  onClick={capturePhoto}
+                  className="flex-1"
+                  disabled={!cameraReady}
+                >
                   <Camera className="w-4 h-4" />
-                  Capture
+                  {cameraReady ? "Capture" : "Preparing camera…"}
                 </Button>
                 <Button type="button" variant="outline" onClick={stopCamera}>
                   <X className="w-4 h-4" />
