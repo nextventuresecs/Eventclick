@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 type FieldValue = string | number | boolean;
+const CAMERA_READY_TIMEOUT_MS = 3000;
 
 const blankValue = (f: FormField): FieldValue => {
   if (f.type === "checkbox") return false;
@@ -23,6 +24,8 @@ const blankValue = (f: FormField): FieldValue => {
 
 const buildInitialData = (fields: FormField[]): Record<string, FieldValue> =>
   Object.fromEntries(fields.map((f) => [f.id, blankValue(f)]));
+const isVideoFrameReady = (video: HTMLVideoElement): boolean =>
+  video.videoWidth > 0 && video.videoHeight > 0;
 
 export const Attendance = () => {
   const { id } = useParams<{ id: string }>();
@@ -98,8 +101,11 @@ export const Attendance = () => {
       streamRef.current = stream;
       setCameraOpen(true);
 
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-      const video = videoRef.current;
+      let video: HTMLVideoElement | null = null;
+      for (let attempt = 0; attempt < 10 && !video; attempt += 1) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        video = videoRef.current;
+      }
       if (!video) {
         throw new Error("Camera preview failed to initialize");
       }
@@ -111,14 +117,11 @@ export const Attendance = () => {
         // Some browsers resolve playback readiness via metadata/canplay events.
       }
 
-      if (video.videoWidth <= 0 || video.videoHeight <= 0) {
+      if (!isVideoFrameReady(video)) {
         await new Promise<void>((resolve, reject) => {
-          const timeout = window.setTimeout(() => {
-            cleanup();
-            reject(new Error("Camera preview is not ready yet. Please try again."));
-          }, 3000);
+          let timeout = 0;
           const onReady = () => {
-            if (video.videoWidth > 0 && video.videoHeight > 0) {
+            if (isVideoFrameReady(video)) {
               cleanup();
               resolve();
             }
@@ -129,6 +132,14 @@ export const Attendance = () => {
             video.removeEventListener("canplay", onReady);
             video.removeEventListener("playing", onReady);
           };
+          timeout = window.setTimeout(() => {
+            cleanup();
+            reject(
+              new Error(
+                "Camera failed to initialize in time. Please close and reopen the camera.",
+              ),
+            );
+          }, CAMERA_READY_TIMEOUT_MS);
           video.addEventListener("loadedmetadata", onReady);
           video.addEventListener("canplay", onReady);
           video.addEventListener("playing", onReady);
@@ -160,8 +171,7 @@ export const Attendance = () => {
 
     if (
       !cameraReady ||
-      video.videoWidth <= 0 ||
-      video.videoHeight <= 0 ||
+      !isVideoFrameReady(video) ||
       video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
     ) {
       setCameraError("Camera is still initializing. Wait for preview, then tap Capture.");
