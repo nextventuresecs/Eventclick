@@ -223,7 +223,7 @@ export const Dashboard = () => {
                     )}
                   </div>
                 </div>
-              </CardContent>
+               </CardContent>
                <CardFooter className="pt-4 border-t border-border flex flex-wrap gap-2">
                  {canTakeAttendance && (
                    <Link

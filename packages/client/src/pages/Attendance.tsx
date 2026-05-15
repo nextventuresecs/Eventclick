@@ -493,9 +493,9 @@ export const Attendance = () => {
               {uploadProgress ?? "Submitting…"}
             </>
           ) : (
-             "Submit Attendance Record"
-           )}
-         </Button>
+            "Submit Attendance Record"
+          )}
+        </Button>
       </form>
     </div>
   );
