@@ -5,9 +5,57 @@ export const API_VERSION = "v1";
 export const API_PREFIX = `/api/${API_VERSION}`;
 
 // ─── Role Enum ──────────────────────────────────────
-export const USER_ROLES = ["super_admin", "event_admin", "organizer"] as const;
+export const USER_ROLES = ["ngo_admin", "event_admin", "volunteer"] as const;
 export const UserRoleSchema = z.enum(USER_ROLES);
 export type UserRole = z.infer<typeof UserRoleSchema>;
+
+export const ROLE_LABELS = {
+  ngo_admin: "NGO Admin",
+  event_admin: "Event Admin",
+  volunteer: "Volunteer",
+} as const satisfies Record<UserRole, string>;
+
+export const ROLE_PERMISSIONS = [
+  "manage_rooms",
+  "manage_live_session",
+  "create_attendance_form",
+  "take_attendance",
+  "view_reports",
+  "view_live_session",
+  "share_live_link",
+  "manage_users",
+] as const;
+export const RolePermissionSchema = z.enum(ROLE_PERMISSIONS);
+export type RolePermission = z.infer<typeof RolePermissionSchema>;
+
+const ROLE_PERMISSION_MAP: Record<UserRole, readonly RolePermission[]> = {
+  ngo_admin: [
+    "manage_rooms",
+    "manage_live_session",
+    "create_attendance_form",
+    "take_attendance",
+    "view_reports",
+    "view_live_session",
+    "share_live_link",
+    "manage_users",
+  ],
+  event_admin: [
+    "manage_rooms",
+    "manage_live_session",
+    "create_attendance_form",
+    "take_attendance",
+    "view_reports",
+    "view_live_session",
+    "share_live_link",
+  ],
+  volunteer: ["take_attendance", "view_live_session", "share_live_link"],
+};
+
+export const getRolePermissions = (role: UserRole): readonly RolePermission[] =>
+  ROLE_PERMISSION_MAP[role];
+
+export const hasRolePermission = (role: UserRole, permission: RolePermission): boolean =>
+  ROLE_PERMISSION_MAP[role].includes(permission);
 
 // ─── Room Status Enum ───────────────────────────────
 export const ROOM_STATUSES = [

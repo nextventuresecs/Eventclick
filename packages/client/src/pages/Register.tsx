@@ -126,13 +126,16 @@ export const RegisterPage = () => {
               </p>
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="organizationName">Organization (optional)</Label>
+              <Label htmlFor="organizationName">Organization</Label>
               <Input
                 id="organizationName"
                 value={organizationName}
                 onChange={(e) => setOrganizationName(e.target.value)}
                 disabled={submitting}
               />
+              <p className="text-xs text-muted-foreground">
+                Add your NGO name to create the top-level NGO admin account.
+              </p>
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
