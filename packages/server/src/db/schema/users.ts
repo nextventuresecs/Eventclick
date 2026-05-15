@@ -10,7 +10,7 @@ export const users = pgTable(
     email: varchar("email", { length: 320 }).notNull().unique(),
     passwordHash: text("password_hash"),
     fullName: varchar("full_name", { length: 120 }).notNull(),
-    role: userRoleEnum("role").notNull().default("organizer"),
+    role: userRoleEnum("role").notNull().default("volunteer"),
     organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "set null" }),
     googleId: varchar("google_id", { length: 128 }).unique(),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),

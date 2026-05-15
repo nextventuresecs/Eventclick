@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Camera, Check, Loader2, RefreshCw, X } from "lucide-react";
-import type { FormField, FormDefinition } from "@application/shared";
+import { ROLE_LABELS, type FormField, type FormDefinition } from "@application/shared";
 import {
   ApiClientError,
   attendanceApi,
   formsApi,
   uploadToPresignedUrl,
 } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import { compressImage } from "@/lib/imageCompress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ const isVideoFrameReady = (video: HTMLVideoElement): boolean =>
 
 export const Attendance = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [form, setForm] = useState<FormDefinition | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -305,8 +307,15 @@ export const Attendance = () => {
         </Link>
         <div className="min-w-0">
           <h2 className="text-lg font-bold truncate">Attendance</h2>
-          <p className="text-xs text-muted-foreground">Form v{form.version}</p>
+          <p className="text-xs text-muted-foreground">
+            Form v{form.version} · {user ? ROLE_LABELS[user.role] : "User"} workflow
+          </p>
         </div>
+      </div>
+
+      <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+        Record attendance on behalf of village attendees during the live session. Volunteers can
+        capture a supporting photo before submitting the attendance record.
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
@@ -387,7 +396,7 @@ export const Attendance = () => {
         ))}
 
         <div className="space-y-2">
-          <Label className="text-sm">Photo (optional)</Label>
+          <Label className="text-sm">Proof photo (optional)</Label>
 
           {cameraOpen && (
             <div className="space-y-2">
@@ -484,9 +493,9 @@ export const Attendance = () => {
               {uploadProgress ?? "Submitting…"}
             </>
           ) : (
-            "Submit Entry"
-          )}
-        </Button>
+             "Submit Attendance Record"
+           )}
+         </Button>
       </form>
     </div>
   );

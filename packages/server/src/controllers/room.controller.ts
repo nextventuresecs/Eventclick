@@ -7,8 +7,9 @@ import type {
   LiveRole,
   SetYouTubeFallbackInput,
   UpdateRoomInput,
+  UserRole,
 } from "@application/shared";
-import { extractYouTubeVideoId } from "@application/shared";
+import { extractYouTubeVideoId, hasRolePermission } from "@application/shared";
 import { db } from "../db";
 import { attendanceEntries, eventRooms, users, type EventRoomRow } from "../db/schema";
 import { env } from "../config/env";
@@ -259,8 +260,8 @@ export const deleteRoom: RequestHandler = async (req, res, next) => {
   }
 };
 
-const roleForUser = (userRole: string): LiveRole =>
-  userRole === "super_admin" || userRole === "event_admin" || userRole === "organizer"
+const roleForUser = (userRole: UserRole): LiveRole =>
+  hasRolePermission(userRole, "manage_live_session")
     ? "publisher"
     : "viewer";
 

@@ -76,7 +76,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
 
   const created = await db.transaction(async (tx) => {
     let orgId: string | null = null;
-    let role: "event_admin" | "organizer" = "organizer";
+    let role: "ngo_admin" | "volunteer" = "volunteer";
 
     if (input.organizationName) {
       const slug = `${slugify(input.organizationName)}-${nanoid(6).toLowerCase()}`;
@@ -86,7 +86,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
         .returning({ id: organizations.id });
       if (!org) throw ApiError.internal("Failed to create organization");
       orgId = org.id;
-      role = "event_admin";
+      role = "ngo_admin";
       logger.info({ orgId, slug, event: "organization.created" }, "organization created");
     }
 
@@ -179,14 +179,14 @@ export const loginWithGoogle = async (
   } else {
     const [created] = await db
       .insert(users)
-      .values({
-        email: profile.email,
-        fullName: profile.fullName,
-        googleId: profile.googleId,
-        emailVerifiedAt: new Date(),
-        role: "organizer",
-      })
-      .returning();
+        .values({
+          email: profile.email,
+          fullName: profile.fullName,
+          googleId: profile.googleId,
+          emailVerifiedAt: new Date(),
+          role: "volunteer",
+        })
+        .returning();
     if (!created) throw ApiError.internal("Failed to create user");
     user = created;
     logger.info({ userId: user.id, event: "user.registered", via: "google" }, "user registered via google");

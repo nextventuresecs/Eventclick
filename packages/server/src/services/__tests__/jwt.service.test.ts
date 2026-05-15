@@ -25,12 +25,12 @@ describe("jwt.service", () => {
     it("embeds the correct claims", () => {
       const token = signAccessToken({
         sub: "user-123",
-        role: "organizer",
+        role: "volunteer",
         orgId: null,
       });
       const claims = verifyAccessToken(token);
       expect(claims.sub).toBe("user-123");
-      expect(claims.role).toBe("organizer");
+      expect(claims.role).toBe("volunteer");
       expect(claims.orgId).toBeNull();
     });
   });
@@ -51,7 +51,7 @@ describe("jwt.service", () => {
     it("throws on a tampered token", () => {
       const token = signAccessToken({
         sub: "u1",
-        role: "organizer",
+        role: "volunteer",
         orgId: null,
       });
       // Tamper with the payload section

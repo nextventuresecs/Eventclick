@@ -14,16 +14,15 @@ import {
   StopCircle,
   Users,
 } from "lucide-react";
-import type {
+import {
   EventRoom,
   LiveTokenResponse,
   PresenceSnapshot,
+  hasRolePermission,
 } from "@application/shared";
 import { ApiClientError, liveApi, presenceApi, roomsApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-
-const PUBLISHER_ROLES = new Set(["super_admin", "event_admin", "organizer"]);
 
 export const RoomLive = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,7 +36,7 @@ export const RoomLive = () => {
   const [presence, setPresence] = useState<PresenceSnapshot | null>(null);
 
   const canPublish = useMemo(
-    () => (user ? PUBLISHER_ROLES.has(user.role) : false),
+    () => (user ? hasRolePermission(user.role, "manage_live_session") : false),
     [user],
   );
 
@@ -231,7 +230,7 @@ export const RoomLive = () => {
               <p className="text-sm">
                 {canPublish
                   ? 'Press "Go Live" to start streaming'
-                  : "Waiting for organizer to start the stream…"}
+                  : "Waiting for an NGO or event admin to start the stream…"}
               </p>
             </div>
           )}

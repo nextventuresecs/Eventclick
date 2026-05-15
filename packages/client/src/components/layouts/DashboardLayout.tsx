@@ -1,5 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { LogOut, Home, PlusCircle, Settings } from "lucide-react";
+import { ROLE_LABELS, hasRolePermission } from "@application/shared";
+import { LogOut, Home, PlusCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
@@ -9,7 +10,9 @@ export const DashboardLayout = () => {
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard", icon: Home },
-    { name: "Create Room", path: "/rooms/create", icon: PlusCircle },
+    ...(user && hasRolePermission(user.role, "manage_rooms")
+      ? [{ name: "Create Room", path: "/rooms/create", icon: PlusCircle }]
+      : []),
   ];
 
   return (
@@ -49,7 +52,9 @@ export const DashboardLayout = () => {
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="text-sm font-medium truncate">{user?.fullName}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.role}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {user ? ROLE_LABELS[user.role] : "Unknown role"}
+              </p>
             </div>
           </div>
           

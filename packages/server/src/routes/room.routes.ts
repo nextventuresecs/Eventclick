@@ -8,7 +8,7 @@ import {
   UpdateRoomSchema,
 } from "@application/shared";
 import { requireAuth } from "../middleware/requireAuth";
-import { requireRole } from "../middleware/requireRole";
+import { requirePermission } from "../middleware/requirePermission";
 import { validate } from "../middleware/validate";
 import {
   listRooms,
@@ -34,8 +34,12 @@ export const roomRouter = Router();
 
 roomRouter.use(requireAuth);
 
-const canManageRooms = requireRole("super_admin", "event_admin", "organizer");
-const canManageFallback = requireRole("super_admin", "event_admin");
+const canManageRooms = requirePermission("manage_rooms");
+const canManageLiveSession = requirePermission("manage_live_session");
+const canCreateAttendanceForm = requirePermission("create_attendance_form");
+const canTakeAttendance = requirePermission("take_attendance");
+const canViewReports = requirePermission("view_reports");
+const canViewLiveSession = requirePermission("view_live_session");
 
 roomRouter.get("/", listRooms);
 roomRouter.post("/", canManageRooms, validate(CreateRoomSchema), createRoom);
@@ -45,33 +49,35 @@ roomRouter.delete("/:id", canManageRooms, deleteRoom);
 
 roomRouter.post(
   "/:id/fallback/youtube",
-  canManageFallback,
+  canManageLiveSession,
   validate(SetYouTubeFallbackSchema),
   setYouTubeFallback,
 );
-roomRouter.post("/:id/fallback/clear", canManageFallback, clearFallback);
+roomRouter.post("/:id/fallback/clear", canManageLiveSession, clearFallback);
 
-roomRouter.post("/:id/live-token", getLiveToken);
-roomRouter.post("/:id/start", canManageRooms, startLive);
-roomRouter.post("/:id/stop", canManageRooms, stopLive);
+roomRouter.post("/:id/live-token", canViewLiveSession, getLiveToken);
+roomRouter.post("/:id/start", canManageLiveSession, startLive);
+roomRouter.post("/:id/stop", canManageLiveSession, stopLive);
 roomRouter.get("/:id/presence", getPresence);
 
 roomRouter.get("/:id/form", getRoomForm);
 roomRouter.put(
   "/:id/form",
-  canManageRooms,
+  canCreateAttendanceForm,
   validate(FormDefinitionSchema),
   saveRoomForm,
 );
 
 roomRouter.post(
   "/:id/attendance/photo-upload",
+  canTakeAttendance,
   validate(PhotoUploadRequestSchema),
   presignAttendancePhoto,
 );
 roomRouter.post(
   "/:id/attendance",
+  canTakeAttendance,
   validate(SubmitAttendanceSchema),
   postAttendance,
 );
-roomRouter.get("/:id/attendance", canManageFallback, listRoomAttendance);
+roomRouter.get("/:id/attendance", canViewReports, listRoomAttendance);

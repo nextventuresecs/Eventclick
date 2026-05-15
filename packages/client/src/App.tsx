@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
+import { hasRolePermission, type RolePermission } from "@application/shared";
 import { useAuth } from "./hooks/useAuth";
 
 // Pages
@@ -50,6 +51,42 @@ const ProtectedRoute = () => {
   return <Outlet />;
 };
 
+const AccessDenied = ({ permission }: { permission: RolePermission }) => (
+  <div className="mx-auto flex min-h-[50vh] max-w-lg items-center justify-center p-6">
+    <div className="space-y-3 text-center">
+      <h2 className="text-2xl font-semibold">Access limited</h2>
+      <p className="text-sm text-muted-foreground">
+        Your role does not allow this action yet ({permission.replaceAll("_", " ")}).
+      </p>
+      <a href="/dashboard" className="text-sm font-medium text-primary hover:underline">
+        Return to dashboard
+      </a>
+    </div>
+  </div>
+);
+
+const PermissionRoute = ({ permission }: { permission: RolePermission }) => {
+  const { status, user } = useAuth();
+
+  if (status === "loading") {
+    return <div className="p-8 text-center text-muted-foreground">Loading session...</div>;
+  }
+
+  if (status === "error") {
+    return <ConnectionError />;
+  }
+
+  if (status === "unauthenticated") {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user || !hasRolePermission(user.role, permission)) {
+    return <AccessDenied permission={permission} />;
+  }
+
+  return <Outlet />;
+};
+
 const AuthRoute = () => {
   const { status } = useAuth();
   
@@ -91,11 +128,26 @@ const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { path: "dashboard", element: <Dashboard /> },
-          { path: "rooms/create", element: <CreateRoom /> },
-          { path: "rooms/:id/form-builder", element: <RoomFormBuilder /> },
-          { path: "rooms/:id/attendance", element: <Attendance /> },
-          { path: "rooms/:id/attendance/records", element: <AttendanceRecords /> },
-          { path: "rooms/:id/live", element: <RoomLive /> },
+          {
+            element: <PermissionRoute permission="manage_rooms" />,
+            children: [{ path: "rooms/create", element: <CreateRoom /> }],
+          },
+          {
+            element: <PermissionRoute permission="create_attendance_form" />,
+            children: [{ path: "rooms/:id/form-builder", element: <RoomFormBuilder /> }],
+          },
+          {
+            element: <PermissionRoute permission="take_attendance" />,
+            children: [{ path: "rooms/:id/attendance", element: <Attendance /> }],
+          },
+          {
+            element: <PermissionRoute permission="view_reports" />,
+            children: [{ path: "rooms/:id/attendance/records", element: <AttendanceRecords /> }],
+          },
+          {
+            element: <PermissionRoute permission="view_live_session" />,
+            children: [{ path: "rooms/:id/live", element: <RoomLive /> }],
+          },
           // { path: "rooms/:id", element: <RoomDetails /> },
         ],
       },
