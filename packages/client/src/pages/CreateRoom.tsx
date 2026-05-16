@@ -1,15 +1,17 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Loader2, Calendar } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { roomsApi, ApiClientError } from "@/lib/api";
-import { CreateRoomSchema } from "@application/shared";
+import { CreateRoomSchema, hasRolePermission } from "@application/shared";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
 export const CreateRoom = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,6 +21,28 @@ export const CreateRoom = () => {
   const [scheduledStart, setScheduledStart] = useState("");
   const [scheduledEnd, setScheduledEnd] = useState("");
   const [maxParticipants, setMaxParticipants] = useState("");
+
+  // Defensive programming: Verify permission even though routing layer already checks
+  const canCreateRooms = user ? hasRolePermission(user.role, "manage_rooms") : false;
+
+  if (!canCreateRooms) {
+    return (
+      <div className="mx-auto flex min-h-[50vh] max-w-lg items-center justify-center p-6">
+        <div className="space-y-3 text-center">
+          <h2 className="text-2xl font-semibold">Access Limited</h2>
+          <p className="text-sm text-muted-foreground">
+            Your role does not have permission to create rooms. Only NGO Admins and Event Admins can create new event rooms.
+          </p>
+          <Link
+            to="/dashboard"
+            className="inline-block text-sm font-medium text-primary hover:underline"
+          >
+            Return to dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -71,7 +95,7 @@ export const CreateRoom = () => {
               <Label htmlFor="title">Event Title <span className="text-destructive">*</span></Label>
               <Input
                 id="title"
-                placeholder="e.g. Q3 Company All Hands"
+                placeholder="e.g. Finance Mela"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={submitting}
@@ -84,7 +108,7 @@ export const CreateRoom = () => {
               <textarea
                 id="description"
                 placeholder="Brief description of the event..."
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={submitting}
