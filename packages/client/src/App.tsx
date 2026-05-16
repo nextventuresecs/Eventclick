@@ -13,6 +13,7 @@ import { Attendance } from "./pages/Attendance";
 import { AttendanceRecords } from "./pages/AttendanceRecords";
 import { RoomLive } from "./pages/RoomLive";
 import { RoomWatch } from "./pages/RoomWatch";
+import { EventAssignments } from "./pages/EventAssignments";
 // import { RoomDetails } from "./pages/RoomDetails"; // Next steps
 
 const ConnectionError = () => {
@@ -147,6 +148,10 @@ const router = createBrowserRouter([
           {
             element: <PermissionRoute permission="view_live_session" />,
             children: [{ path: "rooms/:id/live", element: <RoomLive /> }],
+          },
+          {
+            element: <PermissionRoute permission="manage_users" />,
+            children: [{ path: "admin/event-assignments", element: <EventAssignments /> }],
           },
           // { path: "rooms/:id", element: <RoomDetails /> },
         ],

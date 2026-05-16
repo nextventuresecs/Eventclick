@@ -11,7 +11,7 @@ import type {
 } from "@application/shared";
 import { extractYouTubeVideoId, hasRolePermission } from "@application/shared";
 import { db } from "../db";
-import { attendanceEntries, eventRooms, users, type EventRoomRow } from "../db/schema";
+import { attendanceEntries, eventAdminAssignments, eventRooms, users, type EventRoomRow } from "../db/schema";
 import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
 import { issueLiveToken } from "../services/livekit.service";
@@ -20,6 +20,10 @@ import {
   attendanceCountForRoom,
   buildAttendanceCountMap,
 } from "../services/attendance-counts.service";
+import {
+  assertRoomAccessForUser,
+  listAssignedRoomIdsForEventAdmin,
+} from "../services/event-assignment.service";
 
 const toEventRoom = (row: EventRoomRow): EventRoom => ({
   id: row.id,
@@ -52,11 +56,28 @@ export const listRooms: RequestHandler = async (req, res, next) => {
     const orgId = requireOrgId(req.user!.organizationId);
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
     const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const user = req.user!;
+
+    const assignedRoomIds =
+      user.role === "event_admin"
+        ? await listAssignedRoomIdsForEventAdmin(orgId, user.id)
+        : null;
+
+    if (assignedRoomIds && assignedRoomIds.length === 0) {
+      res.json({ items: [], limit, offset });
+      return;
+    }
 
     const rows = await db
       .select()
       .from(eventRooms)
-      .where(and(eq(eventRooms.organizationId, orgId), isNull(eventRooms.deletedAt)))
+      .where(
+        and(
+          eq(eventRooms.organizationId, orgId),
+          isNull(eventRooms.deletedAt),
+          ...(assignedRoomIds ? [inArray(eventRooms.id, assignedRoomIds)] : []),
+        ),
+      )
       .orderBy(desc(eventRooms.createdAt))
       .limit(limit)
       .offset(offset);
@@ -106,6 +127,28 @@ export const createRoom: RequestHandler = async (req, res, next) => {
       .returning();
 
     if (!row) throw ApiError.internal("Failed to create room");
+
+    if (req.user!.role === "event_admin") {
+      await db
+        .insert(eventAdminAssignments)
+        .values({
+          organizationId: orgId,
+          userId: req.user!.id,
+          roomId: row.id,
+          assignedRole: "event_admin",
+          assignedBy: req.user!.id,
+        })
+        .onConflictDoUpdate({
+          target: [eventAdminAssignments.userId, eventAdminAssignments.roomId],
+          set: {
+            revokedAt: null,
+            assignedRole: "event_admin",
+            assignedBy: req.user!.id,
+            updatedAt: new Date(),
+          },
+        });
+    }
+
     res.status(201).json(toEventRoom(row));
   } catch (err) {
     next(err);
@@ -116,6 +159,7 @@ export const getRoom: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const [row] = await db
       .select()
@@ -141,6 +185,7 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
     const input = req.body as UpdateRoomInput;
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const patch: Partial<typeof eventRooms.$inferInsert> = { updatedAt: new Date() };
     if (input.title !== undefined) patch.title = input.title;
@@ -178,6 +223,7 @@ export const setYouTubeFallback: RequestHandler = async (req, res, next) => {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
     const { youtubeWatchUrl } = req.body as SetYouTubeFallbackInput;
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const videoId = extractYouTubeVideoId(youtubeWatchUrl);
     if (!videoId) throw ApiError.badRequest("Could not extract YouTube video ID");
@@ -211,6 +257,7 @@ export const clearFallback: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const [row] = await db
       .update(eventRooms)
@@ -240,6 +287,7 @@ export const deleteRoom: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const [deleted] = await db
       .update(eventRooms)
@@ -269,6 +317,7 @@ export const getLiveToken: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const [user] = await db
       .select({ fullName: users.fullName })
@@ -294,6 +343,7 @@ export const startLive: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const [row] = await db
       .update(eventRooms)
@@ -318,6 +368,7 @@ export const stopLive: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const [row] = await db
       .update(eventRooms)
@@ -342,6 +393,7 @@ export const getPresence: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
     res.json(await getRoomPresence(id, orgId));
   } catch (err) {
     next(err);

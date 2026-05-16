@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import type { FormDefinition, FormField } from "@application/shared";
+import type { FormDefinition, FormField, UserRole } from "@application/shared";
 import { db } from "../db";
 import {
   eventRooms,
@@ -7,6 +7,7 @@ import {
   type FormDefinitionRow,
 } from "../db/schema";
 import { ApiError } from "../utils/errors";
+import { assertRoomAccessForUser } from "./event-assignment.service";
 
 const toFormDefinition = (row: FormDefinitionRow): FormDefinition => ({
   id: row.id,
@@ -32,11 +33,18 @@ const assertRoomInOrg = async (roomId: string, orgId: string): Promise<void> => 
   if (!room) throw ApiError.notFound("Room not found");
 };
 
+interface RoomAccessPrincipal {
+  id: string;
+  role: UserRole;
+}
+
 export const getLatestFormDefinition = async (
   roomId: string,
   orgId: string,
+  user: RoomAccessPrincipal,
 ): Promise<FormDefinition | null> => {
   await assertRoomInOrg(roomId, orgId);
+  await assertRoomAccessForUser({ ...user, organizationId: orgId }, orgId, roomId);
   const [row] = await db
     .select()
     .from(formDefinitions)
@@ -49,9 +57,11 @@ export const getLatestFormDefinition = async (
 export const saveFormDefinition = async (
   roomId: string,
   orgId: string,
+  user: RoomAccessPrincipal,
   fields: FormField[],
 ): Promise<FormDefinition> => {
   await assertRoomInOrg(roomId, orgId);
+  await assertRoomAccessForUser({ ...user, organizationId: orgId }, orgId, roomId);
 
   const [latest] = await db
     .select({ version: formDefinitions.version })

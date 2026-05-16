@@ -4,6 +4,7 @@ import type {
   AttendanceEntry,
   FormField,
   SubmitAttendanceInput,
+  UserRole,
 } from "@application/shared";
 import { db } from "../db";
 import {
@@ -16,6 +17,7 @@ import {
 import { ApiError } from "../utils/errors";
 import { buildLiveAttendanceWindow } from "./attendance-live-window.service";
 import { buildPublicUrl } from "./storage.service";
+import { assertRoomAccessForUser } from "./event-assignment.service";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[0-9\s\-()]{7,20}$/;
@@ -58,6 +60,20 @@ const getRoomInOrg = async (
 
 export const assertRoomInOrg = async (roomId: string, orgId: string): Promise<void> => {
   await getRoomInOrg(roomId, orgId);
+};
+
+interface RoomAccessPrincipal {
+  id: string;
+  role: UserRole;
+}
+
+const assertRoomAccess = async (
+  roomId: string,
+  orgId: string,
+  user: RoomAccessPrincipal,
+): Promise<void> => {
+  await assertRoomInOrg(roomId, orgId);
+  await assertRoomAccessForUser({ ...user, organizationId: orgId }, orgId, roomId);
 };
 
 const fieldSchema = (field: FormField): z.ZodTypeAny => {
@@ -124,6 +140,7 @@ interface SubmitContext {
   roomId: string;
   orgId: string;
   submittedBy: string | null;
+  user: RoomAccessPrincipal;
   input: SubmitAttendanceInput;
   ipAddress?: string;
   userAgent?: string;
@@ -132,7 +149,7 @@ interface SubmitContext {
 export const submitAttendance = async (
   ctx: SubmitContext,
 ): Promise<AttendanceEntry> => {
-  await assertRoomInOrg(ctx.roomId, ctx.orgId);
+  await assertRoomAccess(ctx.roomId, ctx.orgId, ctx.user);
 
   const [formDef] = await db
     .select()
@@ -168,8 +185,10 @@ export const submitAttendance = async (
 export const listAttendance = async (
   roomId: string,
   orgId: string,
+  user: RoomAccessPrincipal,
   opts: { limit?: number; offset?: number; liveOnly?: boolean } = {},
 ): Promise<AttendanceEntry[]> => {
+  await assertRoomAccess(roomId, orgId, user);
   const room = await getRoomInOrg(roomId, orgId);
 
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);

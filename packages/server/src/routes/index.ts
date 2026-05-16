@@ -3,6 +3,7 @@ import { authRouter } from "./auth.routes";
 import { roomRouter } from "./room.routes";
 import { shareRouter } from "./share.routes";
 import { logRouter } from "./log.routes";
+import { eventAssignmentRouter } from "./event-assignment.routes";
 
 export const apiRouter = Router();
 
@@ -18,3 +19,4 @@ apiRouter.use("/auth", authRouter);
 apiRouter.use("/share", shareRouter);
 apiRouter.use("/rooms", roomRouter);
 apiRouter.use("/logs", logRouter);
+apiRouter.use("/event-assignments", eventAssignmentRouter);
