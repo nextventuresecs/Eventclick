@@ -19,9 +19,9 @@ describe("event assignment policy", () => {
   });
 
   it("enforces room scoping for event admins only", () => {
-    expect(canAccessRoomByAssignment("event_admin", ["room-1"], "room-1")).toBe(true);
-    expect(canAccessRoomByAssignment("event_admin", ["room-1"], "room-2")).toBe(false);
-    expect(canAccessRoomByAssignment("ngo_admin", [], "room-2")).toBe(true);
-    expect(canAccessRoomByAssignment("volunteer", [], "room-2")).toBe(true);
+    expect(canAccessRoomByAssignment("event_admin", true)).toBe(true);
+    expect(canAccessRoomByAssignment("event_admin", false)).toBe(false);
+    expect(canAccessRoomByAssignment("ngo_admin", false)).toBe(true);
+    expect(canAccessRoomByAssignment("volunteer", false)).toBe(true);
   });
 });

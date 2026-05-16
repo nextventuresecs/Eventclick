@@ -138,7 +138,15 @@ export const createRoom: RequestHandler = async (req, res, next) => {
           assignedRole: "event_admin",
           assignedBy: req.user!.id,
         })
-        .onConflictDoNothing();
+        .onConflictDoUpdate({
+          target: [eventAdminAssignments.userId, eventAdminAssignments.roomId],
+          set: {
+            revokedAt: null,
+            assignedRole: "event_admin",
+            assignedBy: req.user!.id,
+            updatedAt: new Date(),
+          },
+        });
     }
 
     res.status(201).json(toEventRoom(row));

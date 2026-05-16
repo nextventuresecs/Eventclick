@@ -162,14 +162,30 @@ export const assignEventAdminToRoom = async ({
 
   await db.transaction(async (tx) => {
     if (user.role !== "event_admin") {
+      const [existingMember] = await tx
+        .select({ id: orgMembers.id })
+        .from(orgMembers)
+        .where(and(eq(orgMembers.userId, user.id), eq(orgMembers.organizationId, orgId)))
+        .limit(1);
+
       await tx
         .update(users)
         .set({ role: "event_admin", updatedAt: new Date() })
         .where(eq(users.id, user.id));
-      await tx
-        .update(orgMembers)
-        .set({ role: "event_admin", updatedAt: new Date() })
-        .where(and(eq(orgMembers.userId, user.id), eq(orgMembers.organizationId, orgId)));
+
+      if (!existingMember) {
+        await tx.insert(orgMembers).values({
+          userId: user.id,
+          organizationId: orgId,
+          role: "event_admin",
+          invitedBy: assignedBy,
+        });
+      } else {
+        await tx
+          .update(orgMembers)
+          .set({ role: "event_admin", updatedAt: new Date() })
+          .where(eq(orgMembers.id, existingMember.id));
+      }
     }
 
     await tx
@@ -328,7 +344,7 @@ export const assertRoomAccessForUser = async (
     )
     .limit(1);
 
-  if (!canAccessRoomByAssignment(user.role, row ? [roomId] : [], roomId)) {
+  if (!canAccessRoomByAssignment(user.role, Boolean(row))) {
     throw ApiError.forbidden("Room is not assigned to this Event Admin");
   }
 };

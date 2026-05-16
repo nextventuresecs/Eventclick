@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { hasRolePermission, type EventAdminAssignment, type EventRoom, type OrgUserSummary } from "@application/shared";
 import { ApiClientError, eventAssignmentsApi, roomsApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,7 +25,7 @@ export const EventAssignments = () => {
     [users],
   );
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setError(null);
     try {
       const [usersRes, roomsRes, assignmentsRes] = await Promise.all([
@@ -42,12 +42,12 @@ export const EventAssignments = () => {
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Failed to load assignment data");
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!canManageUsers) return;
     void load();
-  }, [canManageUsers]);
+  }, [canManageUsers, load]);
 
   const assign = async () => {
     if (!selectedUserId || !selectedRoomId) return;
@@ -177,6 +177,9 @@ export const EventAssignments = () => {
                   }
                   disabled={pending}
                 >
+                  {!rooms.some((room) => room.id === assignment.roomId) && (
+                    <option value={assignment.roomId}>{assignment.room.title} (archived)</option>
+                  )}
                   {rooms.map((room) => (
                     <option key={room.id} value={room.id}>
                       {room.title}

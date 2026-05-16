@@ -7,6 +7,5 @@ export const canBeAssignedToEvent = (role: UserRole): boolean =>
 
 export const canAccessRoomByAssignment = (
   role: UserRole,
-  assignedRoomIds: readonly string[],
-  roomId: string,
-): boolean => role !== "event_admin" || assignedRoomIds.includes(roomId);
+  assignmentExists: boolean,
+): boolean => role !== "event_admin" || assignmentExists;
