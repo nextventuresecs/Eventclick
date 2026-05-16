@@ -3,7 +3,6 @@ import {
   canAccessRoomByAssignment,
   canBeAssignedToEvent,
   canManageAssignments,
-  isSelfAssignment,
 } from "../event-assignment-policy.service";
 
 describe("event assignment policy", () => {
@@ -11,11 +10,6 @@ describe("event assignment policy", () => {
     expect(canManageAssignments("ngo_admin")).toBe(true);
     expect(canManageAssignments("event_admin")).toBe(false);
     expect(canManageAssignments("volunteer")).toBe(false);
-  });
-
-  it("prevents self-assignment attempts", () => {
-    expect(isSelfAssignment("user-1", "user-1")).toBe(true);
-    expect(isSelfAssignment("user-1", "user-2")).toBe(false);
   });
 
   it("allows only volunteers/event admins to be assignment targets", () => {

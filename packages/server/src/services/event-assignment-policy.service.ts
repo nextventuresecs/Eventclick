@@ -10,6 +10,3 @@ export const canAccessRoomByAssignment = (
   assignedRoomIds: readonly string[],
   roomId: string,
 ): boolean => role !== "event_admin" || assignedRoomIds.includes(roomId);
-
-export const isSelfAssignment = (actorUserId: string, targetUserId: string): boolean =>
-  actorUserId === targetUserId;

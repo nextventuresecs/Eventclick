@@ -12,7 +12,6 @@ import { ApiError } from "../utils/errors";
 import {
   canAccessRoomByAssignment,
   canBeAssignedToEvent,
-  isSelfAssignment,
 } from "./event-assignment-policy.service";
 
 interface UserPrincipal {
@@ -153,10 +152,6 @@ export const assignEventAdminToRoom = async ({
   userId,
   roomId,
 }: AssignmentMutation): Promise<EventAdminAssignment> => {
-  if (isSelfAssignment(assignedBy, userId)) {
-    throw ApiError.forbidden("Self-assignment is not allowed");
-  }
-
   await requireRoomInOrg(roomId, orgId);
   const user = await requireOrgUser(userId, orgId);
 
