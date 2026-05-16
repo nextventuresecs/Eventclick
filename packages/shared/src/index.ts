@@ -204,6 +204,15 @@ export const UpdateEventAdminAssignmentSchema = z.object({
 });
 export type UpdateEventAdminAssignmentInput = z.infer<typeof UpdateEventAdminAssignmentSchema>;
 
+// ── Admin user management ──────────────────────────────────────────────────
+export const CreateOrgUserSchema = z.object({
+  email: z.string().email(),
+  fullName: z.string().min(1).max(120),
+  password: z.string().min(8).max(128),
+  role: z.enum(["event_admin", "volunteer"]).optional(),
+});
+export type CreateOrgUserInput = z.infer<typeof CreateOrgUserSchema>;
+
 // Public view for unauth attendees joining via share token
 export interface SharedRoom {
   id: string;

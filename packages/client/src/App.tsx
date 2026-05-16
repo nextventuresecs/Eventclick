@@ -14,6 +14,7 @@ import { AttendanceRecords } from "./pages/AttendanceRecords";
 import { RoomLive } from "./pages/RoomLive";
 import { RoomWatch } from "./pages/RoomWatch";
 import { AdminUsers } from "./pages/AdminUsers";
+import { EventAssignments } from "./pages/EventAssignments";
 
 const ConnectionError = () => {
   const { retryAuth } = useAuth();
@@ -172,7 +173,10 @@ const router = createBrowserRouter([
           },
           {
             element: <RoleRoute role="ngo_admin" />,
-            children: [{ path: "admin/users", element: <AdminUsers /> }],
+            children: [
+              { path: "admin/users", element: <AdminUsers /> },
+              { path: "admin/event-assignments", element: <EventAssignments /> },
+            ],
           },
         ],
       },

@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
-import { Link, ArrowLeft } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Users, Link as LinkIcon } from "lucide-react";
+import { hasRolePermission, type OrgUserSummary, type CreateOrgUserInput } from "@application/shared";
+import { adminApi, ApiClientError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { Button } from "@/components/ui/button";
@@ -7,56 +10,42 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-interface OrgUser {
-  id: string;
-  email: string;
-  fullName: string;
-  role: string;
-  isActive: boolean;
-  createdAt: string;
-}
-
 export const AdminUsers = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [users, setUsers] = useState<OrgUser[]>([]);
+  const navigate = useNavigate();
+  const [users, setUsers] = useState<OrgUserSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Fetch users
-  useEffect(() => {
-    if (user?.role !== "ngo_admin") {
-      setError("Unauthorized");
+  const canManageUsers = user ? hasRolePermission(user.role, "manage_users") : false;
+
+  const load = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await adminApi.listUsers();
+      setUsers(res.items);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Failed to load users");
+    } finally {
       setLoading(false);
-      return;
     }
+  }, []);
 
-    const fetchUsers = async () => {
-      try {
-        const res = await fetch("/api/v1/admin/users", {
-          credentials: "include",
-        });
-        if (!res.ok) throw new Error("Failed to fetch users");
-        const data = await res.json();
-        setUsers(data.items);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
-      } finally {
-        setLoading(false);
-      }
-    };
+  useEffect(() => {
+    if (!canManageUsers) return;
+    void load();
+  }, [canManageUsers, load]);
 
-    fetchUsers();
-  }, [user, refreshKey]);
-
-  if (user?.role !== "ngo_admin") {
+  if (!canManageUsers) {
     return (
-      <div className="text-center py-12">
-        <p className="text-destructive">Access denied. Only NGO Admins can manage users.</p>
-      </div>
+      <Card>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          Access denied. Only NGO Admins can manage users.
+        </CardContent>
+      </Card>
     );
   }
 
@@ -75,9 +64,16 @@ export const AdminUsers = () => {
           <h2 className="text-3xl font-bold tracking-tight">Users</h2>
           <p className="text-muted-foreground mt-1">Manage organization users and event assignments</p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
-          Create User
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate("/admin/event-assignments")}>
+            <LinkIcon className="w-4 h-4 mr-1" />
+            Event Assignments
+          </Button>
+          <Button onClick={() => setShowCreateModal(true)}>
+            <Users className="w-4 h-4 mr-1" />
+            Create User
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -124,8 +120,12 @@ export const AdminUsers = () => {
                     </div>
                   </div>
                   {u.role === "event_admin" && (
-                    <Button variant="outline" size="sm" disabled>
-                      <Link className="w-4 h-4 mr-1" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate("/admin/event-assignments")}
+                    >
+                      <LinkIcon className="w-4 h-4 mr-1" />
                       Assign Events
                     </Button>
                   )}
@@ -141,8 +141,8 @@ export const AdminUsers = () => {
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false);
-            setRefreshKey((k) => k + 1);
             toast("User created successfully", "success");
+            void load();
           }}
         />
       )}
@@ -170,21 +170,11 @@ const CreateUserModal = ({
     setError(null);
 
     try {
-      const res = await fetch("/api/v1/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ fullName, email, password, role }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to create user");
-      }
-
+      const input: CreateOrgUserInput = { fullName, email, password, role };
+      await adminApi.createUser(input);
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create");
+      setError(err instanceof ApiClientError ? err.message : "Failed to create user");
     } finally {
       setLoading(false);
     }
@@ -232,6 +222,7 @@ const CreateUserModal = ({
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                minLength={8}
                 disabled={loading}
               />
             </div>

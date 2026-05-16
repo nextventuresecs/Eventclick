@@ -4,6 +4,7 @@ import { roomRouter } from "./room.routes";
 import { shareRouter } from "./share.routes";
 import { logRouter } from "./log.routes";
 import { adminRouter } from "./admin.routes";
+import { eventAssignmentRouter } from "./event-assignment.routes";
 
 export const apiRouter = Router();
 
@@ -20,3 +21,4 @@ apiRouter.use("/share", shareRouter);
 apiRouter.use("/rooms", roomRouter);
 apiRouter.use("/logs", logRouter);
 apiRouter.use("/admin", adminRouter);
+apiRouter.use("/event-assignments", eventAssignmentRouter);

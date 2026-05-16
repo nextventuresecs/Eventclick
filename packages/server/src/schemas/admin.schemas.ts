@@ -1,15 +1,7 @@
-import { z } from "zod";
+// Admin schemas are defined in @application/shared for cross-package type safety.
+// Re-export them here for use in admin.routes.ts validation middleware.
+export { CreateOrgUserSchema } from "@application/shared";
+export type { CreateOrgUserInput } from "@application/shared";
 
-export const CreateUserSchema = z.object({
-  email: z.string().email(),
-  fullName: z.string().min(1).max(120),
-  password: z.string().min(8).max(128),
-  role: z.enum(["event_admin", "volunteer"]).optional(),
-});
-export type CreateUserInput = z.infer<typeof CreateUserSchema>;
-
-export const AssignUserToEventSchema = z.object({
-  userId: z.string().uuid(),
-  role: z.enum(["event_admin", "volunteer"]).optional(),
-});
-export type AssignUserToEventInput = z.infer<typeof AssignUserToEventSchema>;
+// Alias for route-level usage
+export { CreateOrgUserSchema as CreateUserSchema } from "@application/shared";
