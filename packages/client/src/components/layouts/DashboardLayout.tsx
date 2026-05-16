@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { ROLE_LABELS, hasRolePermission } from "@application/shared";
-import { LogOut, Home, PlusCircle } from "lucide-react";
+import { LogOut, Home, PlusCircle, UserCog } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 
@@ -12,6 +12,9 @@ export const DashboardLayout = () => {
     { name: "Dashboard", path: "/dashboard", icon: Home },
     ...(user && hasRolePermission(user.role, "manage_rooms")
       ? [{ name: "Create Room", path: "/rooms/create", icon: PlusCircle }]
+      : []),
+    ...(user && hasRolePermission(user.role, "manage_users")
+      ? [{ name: "Event Assignments", path: "/admin/event-assignments", icon: UserCog }]
       : []),
   ];
 

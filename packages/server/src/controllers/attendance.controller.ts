@@ -15,6 +15,7 @@ import {
   buildPublicUrl,
   createPresignedPut,
 } from "../services/storage.service";
+import { assertRoomAccessForUser } from "../services/event-assignment.service";
 
 const requireOrgId = (organizationId: string | null): string => {
   if (!organizationId) throw ApiError.badRequest("User has no organization");
@@ -29,6 +30,7 @@ export const presignAttendancePhoto: RequestHandler = async (req, res, next) => 
 
     // Verify the user's org owns the room before issuing a presigned URL
     await assertRoomInOrg(roomId, orgId);
+    await assertRoomAccessForUser(req.user!, orgId, roomId);
 
     const key = buildPhotoKey(roomId, contentType);
     const { uploadUrl, expiresIn } = await createPresignedPut(key, contentType);
@@ -51,6 +53,7 @@ export const postAttendance: RequestHandler = async (req, res, next) => {
       roomId,
       orgId,
       submittedBy: req.user!.id,
+      user: req.user!,
       input,
       ipAddress: req.ip,
       userAgent: req.get("user-agent") ?? undefined,
@@ -70,7 +73,7 @@ export const listRoomAttendance: RequestHandler = async (req, res, next) => {
     const liveOnly =
       req.query.liveOnly === "true" || req.query.liveOnly === "1";
 
-    const items = await listAttendance(roomId, orgId, { limit, offset, liveOnly });
+    const items = await listAttendance(roomId, orgId, req.user!, { limit, offset, liveOnly });
     res.json({ items });
   } catch (err) {
     next(err);

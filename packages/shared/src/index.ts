@@ -171,6 +171,39 @@ export interface EventRoom {
   updatedAt: string;
 }
 
+export interface OrgUserSummary {
+  id: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  isActive: boolean;
+}
+
+export interface EventAdminAssignment {
+  id: string;
+  organizationId: string;
+  userId: string;
+  roomId: string;
+  assignedRole: UserRole;
+  assignedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  revokedAt: string | null;
+  user: OrgUserSummary;
+  room: Pick<EventRoom, "id" | "title" | "scheduledStart" | "scheduledEnd" | "status">;
+}
+
+export const AssignEventAdminSchema = z.object({
+  userId: z.uuid(),
+  roomId: z.uuid(),
+});
+export type AssignEventAdminInput = z.infer<typeof AssignEventAdminSchema>;
+
+export const UpdateEventAdminAssignmentSchema = z.object({
+  roomId: z.uuid(),
+});
+export type UpdateEventAdminAssignmentInput = z.infer<typeof UpdateEventAdminAssignmentSchema>;
+
 // Public view for unauth attendees joining via share token
 export interface SharedRoom {
   id: string;

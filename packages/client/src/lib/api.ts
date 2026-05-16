@@ -124,17 +124,21 @@ export const authApi = {
 };
 
 import type {
+  AssignEventAdminInput,
   AttendanceEntry,
+  EventAdminAssignment,
   CreateRoomInput,
   EventRoom,
   FormDefinition,
   FormDefinitionInput,
   LiveTokenResponse,
+  OrgUserSummary,
   PhotoUploadRequestInput,
   PhotoUploadResponse,
   PresenceSnapshot,
   SharedRoom,
   SubmitAttendanceInput,
+  UpdateEventAdminAssignmentInput,
   UpdateRoomInput,
 } from "@application/shared";
 
@@ -187,6 +191,16 @@ export const attendanceApi = {
     api.post<AttendanceEntry>(`/rooms/${roomId}/attendance`, body),
   presignPhoto: (roomId: string, body: PhotoUploadRequestInput) =>
     api.post<PhotoUploadResponse>(`/rooms/${roomId}/attendance/photo-upload`, body),
+};
+
+export const eventAssignmentsApi = {
+  listUsers: () => api.get<{ items: OrgUserSummary[] }>("/event-assignments/users"),
+  listAssignments: () => api.get<{ items: EventAdminAssignment[] }>("/event-assignments"),
+  create: (body: AssignEventAdminInput) =>
+    api.post<EventAdminAssignment>("/event-assignments", body),
+  update: (id: string, body: UpdateEventAdminAssignmentInput) =>
+    api.patch<EventAdminAssignment>(`/event-assignments/${id}`, body),
+  revoke: (id: string) => api.delete<void>(`/event-assignments/${id}`),
 };
 
 export const uploadToPresignedUrl = async (
