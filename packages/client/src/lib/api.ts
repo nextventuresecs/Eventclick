@@ -126,6 +126,7 @@ export const authApi = {
 import type {
   AssignEventAdminInput,
   AttendanceEntry,
+  CreateOrgUserInput,
   EventAdminAssignment,
   CreateRoomInput,
   EventRoom,
@@ -201,6 +202,12 @@ export const eventAssignmentsApi = {
   update: (id: string, body: UpdateEventAdminAssignmentInput) =>
     api.patch<EventAdminAssignment>(`/event-assignments/${id}`, body),
   revoke: (id: string) => api.delete<void>(`/event-assignments/${id}`),
+};
+
+export const adminApi = {
+  listUsers: () => api.get<{ items: OrgUserSummary[] }>("/admin/users"),
+  createUser: (body: CreateOrgUserInput) =>
+    api.post<OrgUserSummary>("/admin/users", body),
 };
 
 export const uploadToPresignedUrl = async (
