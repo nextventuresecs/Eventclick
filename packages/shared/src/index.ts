@@ -193,6 +193,14 @@ export interface EventAdminAssignment {
   room: Pick<EventRoom, "id" | "title" | "scheduledStart" | "scheduledEnd" | "status">;
 }
 
+export const CreateEventAdminUserSchema = z.object({
+  email: z.email().toLowerCase(),
+  password: z.string().min(8).max(128),
+  fullName: z.string().min(1).max(120),
+  roomId: z.uuid().optional(),
+});
+export type CreateEventAdminUserInput = z.infer<typeof CreateEventAdminUserSchema>;
+
 export const AssignEventAdminSchema = z.object({
   userId: z.uuid(),
   roomId: z.uuid(),

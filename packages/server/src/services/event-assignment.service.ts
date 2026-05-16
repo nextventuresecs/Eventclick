@@ -13,6 +13,7 @@ import {
   canAccessRoomByAssignment,
   canBeAssignedToEvent,
 } from "./event-assignment-policy.service";
+import { hashPassword } from "./password.service";
 
 interface UserPrincipal {
   id: string;
@@ -103,6 +104,77 @@ export const listOrgUsers = async (orgId: string): Promise<OrgUserSummary[]> => 
     .where(and(eq(users.organizationId, orgId), isNull(users.deletedAt)))
     .orderBy(users.fullName);
   return rows.map(toOrgUser);
+};
+
+export const createEventAdminUser = async ({
+  orgId,
+  createdBy,
+  email,
+  password,
+  fullName,
+  roomId,
+}: {
+  orgId: string;
+  createdBy: string;
+  email: string;
+  password: string;
+  fullName: string;
+  roomId?: string;
+}): Promise<{ user: OrgUserSummary; assignment: EventAdminAssignment | null }> => {
+  if (roomId) {
+    await requireRoomInOrg(roomId, orgId);
+  }
+
+  const normalizedEmail = email.toLowerCase();
+  const [existing] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, normalizedEmail))
+    .limit(1);
+  if (existing) {
+    throw ApiError.conflict("An account with this email already exists");
+  }
+
+  const passwordHash = await hashPassword(password);
+  const createdUser = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(users)
+      .values({
+        email: normalizedEmail,
+        passwordHash,
+        fullName,
+        role: "event_admin",
+        organizationId: orgId,
+      })
+      .returning();
+
+    if (!user) throw ApiError.internal("Failed to create event admin user");
+
+    await tx.insert(orgMembers).values({
+      userId: user.id,
+      organizationId: orgId,
+      role: "event_admin",
+      invitedBy: createdBy,
+    });
+
+    return user;
+  });
+
+  if (!createdUser) throw ApiError.internal("Failed to create event admin user");
+
+  const assignment = roomId
+    ? await assignEventAdminToRoom({
+        orgId,
+        assignedBy: createdBy,
+        userId: createdUser.id,
+        roomId,
+      })
+    : null;
+
+  return {
+    user: toOrgUser(createdUser),
+    assignment,
+  };
 };
 
 export const listEventAssignments = async (orgId: string): Promise<EventAdminAssignment[]> => {
