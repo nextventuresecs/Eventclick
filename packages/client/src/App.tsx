@@ -13,19 +13,18 @@ import { Attendance } from "./pages/Attendance";
 import { AttendanceRecords } from "./pages/AttendanceRecords";
 import { RoomLive } from "./pages/RoomLive";
 import { RoomWatch } from "./pages/RoomWatch";
-import { EventAssignments } from "./pages/EventAssignments";
-// import { RoomDetails } from "./pages/RoomDetails"; // Next steps
+import { AdminUsers } from "./pages/AdminUsers";
 
 const ConnectionError = () => {
   const { retryAuth } = useAuth();
   return (
     <div className="flex min-h-screen items-center justify-center p-8">
       <div className="text-center">
-        <h2 className="text-xl font-semibold">Unable to connect</h2>
-        <p className="mt-2 text-muted-foreground">The server may be down. Please try again.</p>
+        <h2 className="text-2xl font-bold mb-4">Connection Lost</h2>
+        <p className="text-muted-foreground mb-6">Unable to verify your session.</p>
         <button
           onClick={retryAuth}
-          className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="inline-block px-6 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90"
         >
           Retry
         </button>
@@ -83,6 +82,28 @@ const PermissionRoute = ({ permission }: { permission: RolePermission }) => {
 
   if (!user || !hasRolePermission(user.role, permission)) {
     return <AccessDenied permission={permission} />;
+  }
+
+  return <Outlet />;
+};
+
+const RoleRoute = ({ role }: { role: string }) => {
+  const { status, user } = useAuth();
+
+  if (status === "loading") {
+    return <div className="p-8 text-center text-muted-foreground">Loading session...</div>;
+  }
+
+  if (status === "error") {
+    return <ConnectionError />;
+  }
+
+  if (status === "unauthenticated") {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!user || user.role !== role) {
+    return <AccessDenied permission={"manage_users" as RolePermission} />;
   }
 
   return <Outlet />;
@@ -150,30 +171,15 @@ const router = createBrowserRouter([
             children: [{ path: "rooms/:id/live", element: <RoomLive /> }],
           },
           {
-            element: <PermissionRoute permission="manage_users" />,
-            children: [{ path: "admin/event-assignments", element: <EventAssignments /> }],
+            element: <RoleRoute role="ngo_admin" />,
+            children: [{ path: "admin/users", element: <AdminUsers /> }],
           },
-          // { path: "rooms/:id", element: <RoomDetails /> },
         ],
       },
     ],
   },
-  {
-    path: "*",
-    element: (
-      <div className="flex min-h-screen items-center justify-center p-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold">404</h1>
-          <p className="mt-2 text-muted-foreground">Page not found</p>
-          <a href="/" className="mt-4 inline-block text-primary hover:underline">
-            Go home
-          </a>
-        </div>
-      </div>
-    ),
-  },
 ]);
 
-export const App = () => {
+export function App() {
   return <RouterProvider router={router} />;
-};
+}
