@@ -16,6 +16,7 @@ import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
 import { issueLiveToken } from "../services/livekit.service";
 import { getRoomPresence } from "../services/presence.service";
+import { validateActivityQuotas } from "../services/activity.service";
 import {
   attendanceCountForRoom,
   buildAttendanceCountMap,
@@ -44,6 +45,7 @@ const toEventRoom = (row: EventRoomRow): EventRoom => ({
   youtubeEmbedUrl: row.youtubeEmbedUrl,
   attendanceWindowBefore: row.attendanceWindowBefore,
   attendanceWindowAfter: row.attendanceWindowAfter,
+  activityDefinitions: row.activityDefinitions,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
 });
@@ -135,6 +137,7 @@ export const createRoom: RequestHandler = async (req, res, next) => {
         shareToken: nanoid(32),
         attendanceWindowBefore: input.attendanceWindowBefore !== undefined ? input.attendanceWindowBefore : undefined,
         attendanceWindowAfter: input.attendanceWindowAfter !== undefined ? input.attendanceWindowAfter : undefined,
+        activityDefinitions: input.activityDefinitions !== undefined ? input.activityDefinitions : undefined,
       })
       .returning();
 
@@ -208,7 +211,11 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
     if (input.maxParticipants !== undefined) patch.maxParticipants = input.maxParticipants;
     if (input.attendanceWindowBefore !== undefined) patch.attendanceWindowBefore = input.attendanceWindowBefore;
     if (input.attendanceWindowAfter !== undefined) patch.attendanceWindowAfter = input.attendanceWindowAfter;
+    if (input.activityDefinitions !== undefined) patch.activityDefinitions = input.activityDefinitions;
     if (input.status !== undefined) {
+      if (input.status === "ended") {
+        await validateActivityQuotas(id, orgId);
+      }
       patch.status = input.status;
       if (input.status === "live") patch.actualStart = new Date();
       if (input.status === "ended" || input.status === "cancelled") patch.actualEnd = new Date();
@@ -384,6 +391,8 @@ export const stopLive: RequestHandler = async (req, res, next) => {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
     await assertRoomAccessForUser(req.user!, orgId, id);
+
+    await validateActivityQuotas(id, orgId);
 
     const [row] = await db
       .update(eventRooms)

@@ -130,6 +130,43 @@ export const extractYouTubeVideoId = (url: string): string | null => {
   return match?.[1] ?? null;
 };
 
+// ─── Activity Definitions & Tracking ─────────────────
+export const ActivityDefinitionSchema = z.object({
+  id: z.string().min(1).max(64),
+  title: z.string().min(1).max(200),
+  description: z.string().max(1000).optional(),
+  min_photos: z.number().int().nonnegative(),
+});
+export type ActivityDefinition = z.infer<typeof ActivityDefinitionSchema>;
+
+export const SubmitActivityPhotoSchema = z.object({
+  activityId: z.string().min(1),
+  photoKey: z.string().min(1).max(256),
+});
+export type SubmitActivityPhotoInput = z.infer<typeof SubmitActivityPhotoSchema>;
+
+export const ActivityPhotoUploadRequestSchema = z.object({
+  activityId: z.string().min(1),
+  contentType: z.string().regex(/^image\/(jpeg|png|webp)$/, "Must be image/jpeg, png, or webp"),
+  sizeBytes: z.number().int().positive().max(5 * 1024 * 1024),
+});
+export type ActivityPhotoUploadRequestInput = z.infer<typeof ActivityPhotoUploadRequestSchema>;
+
+export interface ActivitySubmissionPhoto {
+  url: string;
+  key: string;
+  uploadedAt: string;
+}
+
+export interface ActivitySubmission {
+  id: string;
+  roomId: string;
+  activityId: string;
+  photos: ActivitySubmissionPhoto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── Event Room DTOs ────────────────────────────────
 export const CreateRoomSchema = z.object({
   title: z.string().min(1).max(200),
@@ -139,6 +176,7 @@ export const CreateRoomSchema = z.object({
   maxParticipants: z.number().int().positive().max(10000).optional(),
   attendanceWindowBefore: z.number().int().nonnegative().optional(),
   attendanceWindowAfter: z.number().int().nonnegative().optional(),
+  activityDefinitions: z.array(ActivityDefinitionSchema).optional(),
 });
 export type CreateRoomInput = z.infer<typeof CreateRoomSchema>;
 
@@ -172,6 +210,7 @@ export interface EventRoom {
   attendanceWindowBefore: number;
   attendanceWindowAfter: number;
   attendanceCount?: number;
+  activityDefinitions: ActivityDefinition[];
   createdAt: string;
   updatedAt: string;
 }
