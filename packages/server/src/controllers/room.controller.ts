@@ -93,7 +93,14 @@ export const listRooms: RequestHandler = async (req, res, next) => {
               count: sql<number>`cast(count(*) as int)`,
             })
             .from(attendanceEntries)
-            .where(inArray(attendanceEntries.roomId, roomIds))
+            .where(
+              and(
+                inArray(attendanceEntries.roomId, roomIds),
+                ...(user.role === "volunteer"
+                  ? [eq(attendanceEntries.submittedBy, user.id)]
+                  : []),
+              ),
+            )
             .groupBy(attendanceEntries.roomId);
 
     const countsByRoomId = buildAttendanceCountMap(attendanceCounts);
