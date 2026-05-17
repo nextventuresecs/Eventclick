@@ -12,6 +12,7 @@ import { ApiError } from "../utils/errors";
 import {
   canAccessRoomByAssignment,
   canBeAssignedToEvent,
+  requiresRoomAssignment,
 } from "./event-assignment-policy.service";
 
 interface UserPrincipal {
@@ -161,31 +162,20 @@ export const assignEventAdminToRoom = async ({
   }
 
   await db.transaction(async (tx) => {
-    if (user.role !== "event_admin") {
-      const [existingMember] = await tx
-        .select({ id: orgMembers.id })
-        .from(orgMembers)
-        .where(and(eq(orgMembers.userId, user.id), eq(orgMembers.organizationId, orgId)))
-        .limit(1);
+    // Ensure orgMember record exists (idempotent)
+    const [existingMember] = await tx
+      .select({ id: orgMembers.id })
+      .from(orgMembers)
+      .where(and(eq(orgMembers.userId, user.id), eq(orgMembers.organizationId, orgId)))
+      .limit(1);
 
-      await tx
-        .update(users)
-        .set({ role: "event_admin", updatedAt: new Date() })
-        .where(eq(users.id, user.id));
-
-      if (!existingMember) {
-        await tx.insert(orgMembers).values({
-          userId: user.id,
-          organizationId: orgId,
-          role: "event_admin",
-          invitedBy: assignedBy,
-        });
-      } else {
-        await tx
-          .update(orgMembers)
-          .set({ role: "event_admin", updatedAt: new Date() })
-          .where(eq(orgMembers.id, existingMember.id));
-      }
+    if (!existingMember) {
+      await tx.insert(orgMembers).values({
+        userId: user.id,
+        organizationId: orgId,
+        role: user.role,
+        invitedBy: assignedBy,
+      });
     }
 
     await tx
@@ -194,14 +184,14 @@ export const assignEventAdminToRoom = async ({
         organizationId: orgId,
         userId,
         roomId,
-        assignedRole: "event_admin",
+        assignedRole: user.role,
         assignedBy,
       })
       .onConflictDoUpdate({
         target: [eventAdminAssignments.userId, eventAdminAssignments.roomId],
         set: {
           revokedAt: null,
-          assignedRole: "event_admin",
+          assignedRole: user.role,
           assignedBy,
           updatedAt: new Date(),
         },
@@ -303,7 +293,7 @@ export const revokeEventAssignment = async (
   if (!updated) throw ApiError.notFound("Assignment not found");
 };
 
-export const listAssignedRoomIdsForEventAdmin = async (
+export const listAssignedRoomIdsForUser = async (
   orgId: string,
   userId: string,
 ): Promise<string[]> => {
@@ -323,13 +313,16 @@ export const listAssignedRoomIdsForEventAdmin = async (
   return rows.map((row) => row.roomId);
 };
 
+/** @deprecated use listAssignedRoomIdsForUser */
+export const listAssignedRoomIdsForEventAdmin = listAssignedRoomIdsForUser;
+
 export const assertRoomAccessForUser = async (
   user: UserPrincipal,
   orgId: string,
   roomId: string,
 ): Promise<void> => {
   await requireRoomInOrg(roomId, orgId);
-  if (user.role !== "event_admin") return;
+  if (!requiresRoomAssignment(user.role)) return;
 
   const [row] = await db
     .select({ id: eventAdminAssignments.id })
@@ -345,6 +338,6 @@ export const assertRoomAccessForUser = async (
     .limit(1);
 
   if (!canAccessRoomByAssignment(user.role, Boolean(row))) {
-    throw ApiError.forbidden("Room is not assigned to this Event Admin");
+    throw ApiError.forbidden("You are not assigned to this room");
   }
 };

@@ -24,9 +24,9 @@ export const DashboardLayout = () => {
   return (
     <div className="flex min-h-screen bg-muted/30">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border bg-card flex flex-col hidden md:flex">
+      <aside className="w-64 border-r border-border bg-card hidden md:flex flex-col">
         <div className="p-6">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-linear-to-r from-primary to-purple-400 bg-clip-text text-transparent">
             Evently
           </h1>
         </div>
@@ -58,9 +58,15 @@ export const DashboardLayout = () => {
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="text-sm font-medium truncate">{user?.fullName}</p>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate font-semibold">
                 {user ? ROLE_LABELS[user.role] : "Unknown role"}
               </p>
+              {user?.organizationName && (
+                <p className="text-[10px] text-muted-foreground/80 truncate mt-0.5 flex items-center gap-1">
+                  <span className="w-1 h-1 rounded-full bg-primary/40" />
+                  {user.organizationName}
+                </p>
+              )}
             </div>
           </div>
           

@@ -84,7 +84,9 @@ export const CreateRoom = () => {
         </Link>
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Create New Room</h2>
-          <p className="text-muted-foreground text-sm">Set up a new event or webinar room.</p>
+          <p className="text-muted-foreground text-sm">
+            Set up a new event or webinar room for {user?.organizationName || "your organization"}.
+          </p>
         </div>
       </div>
 

@@ -29,23 +29,46 @@ const slugify = (name: string): string =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "org";
 
-const toAuthUser = (u: User): AuthUser => ({
+const toAuthUser = (u: User, orgName?: string | null): AuthUser => ({
   id: u.id,
   email: u.email,
   fullName: u.fullName,
   role: u.role,
   organizationId: u.organizationId,
+  organizationName: orgName,
   emailVerified: u.emailVerifiedAt !== null,
 });
 
-const findUserByEmail = async (email: string): Promise<User | null> => {
-  const [row] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  return row ?? null;
+type UserWithOrg = User & { organizationName?: string | null };
+
+const findUserByEmail = async (email: string): Promise<UserWithOrg | null> => {
+  const [row] = await db
+    .select({
+      user: users,
+      orgName: organizations.name,
+    })
+    .from(users)
+    .leftJoin(organizations, eq(users.organizationId, organizations.id))
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (!row) return null;
+  return { ...row.user, organizationName: row.orgName };
 };
 
-const findUserById = async (id: string): Promise<User | null> => {
-  const [row] = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  return row ?? null;
+const findUserById = async (id: string): Promise<UserWithOrg | null> => {
+  const [row] = await db
+    .select({
+      user: users,
+      orgName: organizations.name,
+    })
+    .from(users)
+    .leftJoin(organizations, eq(users.organizationId, organizations.id))
+    .where(eq(users.id, id))
+    .limit(1);
+
+  if (!row) return null;
+  return { ...row.user, organizationName: row.orgName };
 };
 
 export interface AuthResult {
@@ -54,7 +77,7 @@ export interface AuthResult {
   refreshToken: string;
 }
 
-const issueTokensFor = async (user: User, meta: SessionMeta): Promise<AuthResult> => {
+const issueTokensFor = async (user: UserWithOrg, meta: SessionMeta): Promise<AuthResult> => {
   const accessToken = signAccessToken({
     sub: user.id,
     role: user.role,
@@ -62,7 +85,7 @@ const issueTokensFor = async (user: User, meta: SessionMeta): Promise<AuthResult
   });
   const refresh = await issueRefreshToken(user.id, meta);
   await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
-  return { user: toAuthUser(user), accessToken, refreshToken: refresh.raw };
+  return { user: toAuthUser(user, user.organizationName), accessToken, refreshToken: refresh.raw };
 };
 
 export const registerUser = async (input: RegisterInput, meta: SessionMeta): Promise<AuthResult> => {
@@ -117,7 +140,12 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
     { userId: created.id, orgId: created.organizationId, role: created.role, event: "user.registered" },
     "user registered",
   );
-  return issueTokensFor(created, meta);
+  
+  // Need to fetch again or manually add org name for the first registration response
+  const userWithOrg = await findUserById(created.id);
+  if (!userWithOrg) throw ApiError.internal("Failed to retrieve created user");
+
+  return issueTokensFor(userWithOrg, meta);
 };
 
 export const loginUser = async (input: LoginInput, meta: SessionMeta): Promise<AuthResult> => {
@@ -213,7 +241,7 @@ export const refreshSession = async (
     role: user.role,
     orgId: user.organizationId,
   });
-  return { user: toAuthUser(user), accessToken, refreshToken: next.raw };
+  return { user: toAuthUser(user, user.organizationName), accessToken, refreshToken: next.raw };
 };
 
 export const logoutSession = async (refreshToken: string | undefined): Promise<void> => {
@@ -228,5 +256,5 @@ export const logoutSession = async (refreshToken: string | undefined): Promise<v
 export const getCurrentUser = async (userId: string): Promise<AuthUser> => {
   const user = await findUserById(userId);
   if (!user || !user.isActive) throw ApiError.unauthorized("Account no longer active");
-  return toAuthUser(user);
+  return toAuthUser(user, user.organizationName);
 };

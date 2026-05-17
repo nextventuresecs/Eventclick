@@ -140,8 +140,8 @@ export const Dashboard = () => {
           </h2>
           <p className="text-muted-foreground mt-1">
             {canManageRooms
-              ? "Manage live sessions, forms, and attendance for your NGO events."
-              : "Join the live session, share the link, and record attendance for village attendees."}
+              ? `Manage live sessions, forms, and attendance for ${user?.organizationName || "your NGO"} events.`
+              : `Access event rooms and record attendance for ${user?.organizationName || "your NGO"}.`}
           </p>
         </div>
         {canManageRooms && (
@@ -204,7 +204,7 @@ export const Dashboard = () => {
                     >
                       <Users className="w-4 h-4 group-hover/rec:scale-110 transition-transform" />
                       <span>View Records</span>
-                      <span className="ml-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary/20 px-1.5 text-[10px] group-hover/rec:bg-primary-foreground group-hover/rec:text-primary transition-colors">
+                      <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1.5 text-[10px] group-hover/rec:bg-primary-foreground group-hover/rec:text-primary transition-colors">
                         {room.attendanceCount ?? 0}
                       </span>
                     </Link>

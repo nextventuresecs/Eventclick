@@ -107,9 +107,9 @@ export const EventAssignments = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Assign Event Admins</CardTitle>
+          <CardTitle>Assign Users to Rooms</CardTitle>
           <CardDescription>
-            Select a volunteer or event admin in your NGO and assign them to one event room.
+            Select a user in {user?.organizationName || "your organization"} and assign them to an event room. Users only see rooms they are assigned to.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
