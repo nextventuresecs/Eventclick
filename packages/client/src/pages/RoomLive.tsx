@@ -491,7 +491,7 @@ export const ActivityTrackerPanel: React.FC<ActivityTrackerPanelProps> = ({
   const totalRequired = activities.length;
   const completedCount = activities.filter((act) => {
     const sub = submissions.find((s) => s.activityId === act.id);
-    return (sub?.photos.length ?? 0) >= act.minPhotos;
+    return (sub?.photos.length ?? 0) >= act.min_photos;
   }).length;
 
   const completionPercent = totalRequired > 0 ? Math.round((completedCount / totalRequired) * 100) : 0;
@@ -531,7 +531,7 @@ export const ActivityTrackerPanel: React.FC<ActivityTrackerPanelProps> = ({
             {activities.map((act) => {
               const sub = submissions.find((s) => s.activityId === act.id);
               const uploaded = sub?.photos.length ?? 0;
-              const isCompleted = uploaded >= act.minPhotos;
+              const isCompleted = uploaded >= act.min_photos;
               const isSelected = selectedActivityId === act.id;
 
               return (
@@ -575,7 +575,7 @@ export const ActivityTrackerPanel: React.FC<ActivityTrackerPanelProps> = ({
 
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs font-semibold tabular-nums text-muted-foreground">
-                        {uploaded}/{act.minPhotos}
+                        {uploaded}/{act.min_photos}
                       </span>
                       <ChevronRight
                         className={`w-4 h-4 text-muted-foreground transition-transform ${
