@@ -18,10 +18,11 @@ describe("event assignment policy", () => {
     expect(canBeAssignedToEvent("ngo_admin")).toBe(false);
   });
 
-  it("enforces room scoping for event admins only", () => {
+  it("enforces room scoping for event admins and volunteers, but not NGO admins", () => {
     expect(canAccessRoomByAssignment("event_admin", true)).toBe(true);
     expect(canAccessRoomByAssignment("event_admin", false)).toBe(false);
+    expect(canAccessRoomByAssignment("volunteer", true)).toBe(true);
+    expect(canAccessRoomByAssignment("volunteer", false)).toBe(false);
     expect(canAccessRoomByAssignment("ngo_admin", false)).toBe(true);
-    expect(canAccessRoomByAssignment("volunteer", false)).toBe(true);
   });
 });

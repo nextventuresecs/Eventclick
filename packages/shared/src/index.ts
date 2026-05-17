@@ -93,6 +93,7 @@ export interface AuthUser {
   fullName: string;
   role: UserRole;
   organizationId: string | null;
+  organizationName?: string | null;
   emailVerified: boolean;
 }
 

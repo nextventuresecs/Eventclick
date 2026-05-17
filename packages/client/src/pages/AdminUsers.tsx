@@ -62,7 +62,9 @@ export const AdminUsers = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Users</h2>
-          <p className="text-muted-foreground mt-1">Manage organization users and event assignments</p>
+          <p className="text-muted-foreground mt-1">
+            Manage users for {user?.organizationName || "your organization"}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate("/admin/event-assignments")}>
@@ -87,7 +89,11 @@ export const AdminUsers = () => {
       <Card>
         <CardHeader>
           <CardTitle>Organization Users</CardTitle>
-          <CardDescription>{users.length} users</CardDescription>
+          <CardDescription>
+            {user?.organizationName && <span className="font-semibold text-primary/80">{user.organizationName}</span>}
+            {user?.organizationName && " • "}
+            {users.length} users
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {users.length === 0 ? (

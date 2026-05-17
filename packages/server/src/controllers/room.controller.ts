@@ -22,7 +22,7 @@ import {
 } from "../services/attendance-counts.service";
 import {
   assertRoomAccessForUser,
-  listAssignedRoomIdsForEventAdmin,
+  listAssignedRoomIdsForUser,
 } from "../services/event-assignment.service";
 
 const toEventRoom = (row: EventRoomRow): EventRoom => ({
@@ -58,10 +58,11 @@ export const listRooms: RequestHandler = async (req, res, next) => {
     const offset = Math.max(Number(req.query.offset) || 0, 0);
     const user = req.user!;
 
-    const assignedRoomIds =
-      user.role === "event_admin"
-        ? await listAssignedRoomIdsForEventAdmin(orgId, user.id)
-        : null;
+    // Default-deny: only ngo_admin sees all rooms; others see assigned only
+    const needsAssignmentFilter = !hasRolePermission(user.role, "manage_users");
+    const assignedRoomIds = needsAssignmentFilter
+      ? await listAssignedRoomIdsForUser(orgId, user.id)
+      : null;
 
     if (assignedRoomIds && assignedRoomIds.length === 0) {
       res.json({ items: [], limit, offset });
@@ -128,21 +129,22 @@ export const createRoom: RequestHandler = async (req, res, next) => {
 
     if (!row) throw ApiError.internal("Failed to create room");
 
-    if (req.user!.role === "event_admin") {
+    // Auto-assign the creator to the room if they need assignment-based access
+    if (req.user!.role !== "ngo_admin") {
       await db
         .insert(eventAdminAssignments)
         .values({
           organizationId: orgId,
           userId: req.user!.id,
           roomId: row.id,
-          assignedRole: "event_admin",
+          assignedRole: req.user!.role,
           assignedBy: req.user!.id,
         })
         .onConflictDoUpdate({
           target: [eventAdminAssignments.userId, eventAdminAssignments.roomId],
           set: {
             revokedAt: null,
-            assignedRole: "event_admin",
+            assignedRole: req.user!.role,
             assignedBy: req.user!.id,
             updatedAt: new Date(),
           },
