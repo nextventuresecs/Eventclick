@@ -91,6 +91,96 @@ export const Attendance = () => {
     [form],
   );
 
+  const windowCheck = useMemo(() => {
+    if (!room) return null;
+
+    const scheduledStart = new Date(room.scheduledStart);
+    const scheduledEnd = new Date(room.scheduledEnd);
+    const actualStart = room.actualStart ? new Date(room.actualStart) : null;
+    const actualEnd = room.actualEnd ? new Date(room.actualEnd) : null;
+    const status = room.status;
+
+    const beforeMinutes = room.attendanceWindowBefore ?? 15;
+    const afterMinutes = room.attendanceWindowAfter ?? 30;
+
+    if (status === "cancelled") {
+      return {
+        isAllowed: false,
+        status: "cancelled" as const,
+        message: "This event session has been cancelled. Attendance cannot be recorded.",
+      };
+    }
+
+    if (status === "live") {
+      if (actualEnd) {
+        const endLimit = new Date(actualEnd.getTime() + afterMinutes * 60 * 1000);
+        const isAllowed = currentTime <= endLimit;
+        return {
+          isAllowed,
+          status: "live_ended" as const,
+          message: isAllowed
+            ? `The session ended, but the attendance window remains open until ${endLimit.toLocaleTimeString()} (${Math.max(0, Math.round((endLimit.getTime() - currentTime.getTime()) / 60000))} mins left).`
+            : `The session ended and the late submission buffer closed at ${endLimit.toLocaleTimeString()}.`,
+        };
+      }
+      return {
+        isAllowed: true,
+        status: "live" as const,
+        message: "The event is currently live! You can record attendance.",
+      };
+    }
+
+    if (status === "ended") {
+      if (!actualEnd) {
+        return {
+          isAllowed: false,
+          status: "ended_no_limit" as const,
+          message: "This event has ended. Attendance is closed.",
+        };
+      }
+      const endLimit = new Date(actualEnd.getTime() + afterMinutes * 60 * 1000);
+      const isAllowed = currentTime <= endLimit;
+      return {
+        isAllowed,
+        status: "ended" as const,
+        message: isAllowed
+          ? `The event has ended. The late buffer remains open until ${endLimit.toLocaleTimeString()} (${Math.max(0, Math.round((endLimit.getTime() - currentTime.getTime()) / 60000))} mins left).`
+          : `The event ended. The late submission buffer closed at ${endLimit.toLocaleTimeString()}.`,
+      };
+    }
+
+    if (status === "scheduled") {
+      const startLimit = new Date(scheduledStart.getTime() - beforeMinutes * 60 * 1000);
+      if (currentTime < startLimit) {
+        const minsToWait = Math.round((startLimit.getTime() - currentTime.getTime()) / 60000);
+        return {
+          isAllowed: false,
+          status: "scheduled_too_early" as const,
+          message: `This event is scheduled for ${scheduledStart.toLocaleTimeString()}. Early attendance submissions open at ${startLimit.toLocaleTimeString()} (in ${minsToWait} mins).`,
+        };
+      }
+      if (currentTime > scheduledEnd) {
+        return {
+          isAllowed: false,
+          status: "scheduled_passed" as const,
+          message: `This event was scheduled to end at ${scheduledEnd.toLocaleTimeString()}. Attendance is closed since it was not started.`,
+        };
+      }
+      return {
+        isAllowed: true,
+        status: "scheduled_open" as const,
+        message: `Attendance is open for this scheduled event until ${scheduledEnd.toLocaleTimeString()}!`,
+      };
+    }
+
+    return {
+      isAllowed: false,
+      status: "unknown" as const,
+      message: "Attendance window closed.",
+    };
+  }, [room, currentTime]);
+
+
   const stopCamera = () => {
     const video = videoRef.current;
     if (video) {
@@ -309,95 +399,6 @@ export const Attendance = () => {
       </div>
     );
   }
-
-  const windowCheck = useMemo(() => {
-    if (!room) return null;
-
-    const scheduledStart = new Date(room.scheduledStart);
-    const scheduledEnd = new Date(room.scheduledEnd);
-    const actualStart = room.actualStart ? new Date(room.actualStart) : null;
-    const actualEnd = room.actualEnd ? new Date(room.actualEnd) : null;
-    const status = room.status;
-
-    const beforeMinutes = room.attendanceWindowBefore ?? 15;
-    const afterMinutes = room.attendanceWindowAfter ?? 30;
-
-    if (status === "cancelled") {
-      return {
-        isAllowed: false,
-        status: "cancelled" as const,
-        message: "This event session has been cancelled. Attendance cannot be recorded.",
-      };
-    }
-
-    if (status === "live") {
-      if (actualEnd) {
-        const endLimit = new Date(actualEnd.getTime() + afterMinutes * 60 * 1000);
-        const isAllowed = currentTime <= endLimit;
-        return {
-          isAllowed,
-          status: "live_ended" as const,
-          message: isAllowed
-            ? `The session ended, but the attendance window remains open until ${endLimit.toLocaleTimeString()} (${Math.max(0, Math.round((endLimit.getTime() - currentTime.getTime()) / 60000))} mins left).`
-            : `The session ended and the late submission buffer closed at ${endLimit.toLocaleTimeString()}.`,
-        };
-      }
-      return {
-        isAllowed: true,
-        status: "live" as const,
-        message: "The event is currently live! You can record attendance.",
-      };
-    }
-
-    if (status === "ended") {
-      if (!actualEnd) {
-        return {
-          isAllowed: false,
-          status: "ended_no_limit" as const,
-          message: "This event has ended. Attendance is closed.",
-        };
-      }
-      const endLimit = new Date(actualEnd.getTime() + afterMinutes * 60 * 1000);
-      const isAllowed = currentTime <= endLimit;
-      return {
-        isAllowed,
-        status: "ended" as const,
-        message: isAllowed
-          ? `The event has ended. The late buffer remains open until ${endLimit.toLocaleTimeString()} (${Math.max(0, Math.round((endLimit.getTime() - currentTime.getTime()) / 60000))} mins left).`
-          : `The event ended. The late submission buffer closed at ${endLimit.toLocaleTimeString()}.`,
-      };
-    }
-
-    if (status === "scheduled") {
-      const startLimit = new Date(scheduledStart.getTime() - beforeMinutes * 60 * 1000);
-      if (currentTime < startLimit) {
-        const minsToWait = Math.round((startLimit.getTime() - currentTime.getTime()) / 60000);
-        return {
-          isAllowed: false,
-          status: "scheduled_too_early" as const,
-          message: `This event is scheduled for ${scheduledStart.toLocaleTimeString()}. Early attendance submissions open at ${startLimit.toLocaleTimeString()} (in ${minsToWait} mins).`,
-        };
-      }
-      if (currentTime > scheduledEnd) {
-        return {
-          isAllowed: false,
-          status: "scheduled_passed" as const,
-          message: `This event was scheduled to end at ${scheduledEnd.toLocaleTimeString()}. Attendance is closed since it was not started.`,
-        };
-      }
-      return {
-        isAllowed: true,
-        status: "scheduled_open" as const,
-        message: `Attendance is open for this scheduled event until ${scheduledEnd.toLocaleTimeString()}!`,
-      };
-    }
-
-    return {
-      isAllowed: false,
-      status: "unknown" as const,
-      message: "Attendance window closed.",
-    };
-  }, [room, currentTime]);
 
   return (
     <div className="max-w-md mx-auto p-3 sm:p-6 space-y-4" data-form-key={fieldsLabel}>
