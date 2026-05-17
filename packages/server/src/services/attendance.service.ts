@@ -99,10 +99,15 @@ const fieldSchema = (field: FormField): z.ZodTypeAny => {
       return z.enum(field.options && field.options.length > 0 ? field.options as [string, ...string[]] : ["__empty__"]);
     case "checkbox":
       return z.boolean();
+    case "date": {
+      let s: z.ZodString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "invalid date");
+      if (field.required) s = s.min(1, "required");
+      return s;
+    }
   }
 };
 
-const validateAndCoerceData = (
+export const validateAndCoerceData = (
   fields: FormField[],
   raw: Record<string, unknown>,
 ): Record<string, string | number | boolean | null> => {
@@ -194,6 +199,10 @@ export const listAttendance = async (
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
   const offset = Math.max(opts.offset ?? 0, 0);
   const whereClauses = [eq(attendanceEntries.roomId, roomId)];
+
+  if (user.role === "volunteer") {
+    whereClauses.push(eq(attendanceEntries.submittedBy, user.id));
+  }
 
   if (opts.liveOnly) {
     const liveWindow = buildLiveAttendanceWindow(room.actualStart, room.actualEnd);

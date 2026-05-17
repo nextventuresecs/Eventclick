@@ -21,6 +21,9 @@ export const Dashboard = () => {
     ? hasRolePermission(user.role, "create_attendance_form")
     : false;
   const canViewReports = user ? hasRolePermission(user.role, "view_reports") : false;
+  const canViewRecords = user
+    ? hasRolePermission(user.role, "view_reports") || hasRolePermission(user.role, "take_attendance")
+    : false;
   const canViewLiveSession = user ? hasRolePermission(user.role, "view_live_session") : false;
   const canShareLiveLink = user ? hasRolePermission(user.role, "share_live_link") : false;
   const canTakeAttendance = user ? hasRolePermission(user.role, "take_attendance") : false;
@@ -197,7 +200,7 @@ export const Dashboard = () => {
               </CardHeader>
               <CardContent className="pb-4 flex-1">
                 <div className="space-y-3 text-sm text-muted-foreground">
-                  {canViewReports && (
+                  {canViewRecords && (
                     <Link
                       to={`/rooms/${room.id}/attendance/records`}
                       className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 py-3 text-sm font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm group/rec"
