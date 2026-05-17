@@ -42,6 +42,8 @@ const toEventRoom = (row: EventRoomRow): EventRoom => ({
   streamProvider: row.streamProvider,
   youtubeWatchUrl: row.youtubeWatchUrl,
   youtubeEmbedUrl: row.youtubeEmbedUrl,
+  attendanceWindowBefore: row.attendanceWindowBefore,
+  attendanceWindowAfter: row.attendanceWindowAfter,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
 });
@@ -131,6 +133,8 @@ export const createRoom: RequestHandler = async (req, res, next) => {
         scheduledEnd: new Date(input.scheduledEnd),
         maxParticipants: input.maxParticipants,
         shareToken: nanoid(32),
+        attendanceWindowBefore: input.attendanceWindowBefore !== undefined ? input.attendanceWindowBefore : undefined,
+        attendanceWindowAfter: input.attendanceWindowAfter !== undefined ? input.attendanceWindowAfter : undefined,
       })
       .returning();
 
@@ -202,6 +206,8 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
     if (input.scheduledStart !== undefined) patch.scheduledStart = new Date(input.scheduledStart);
     if (input.scheduledEnd !== undefined) patch.scheduledEnd = new Date(input.scheduledEnd);
     if (input.maxParticipants !== undefined) patch.maxParticipants = input.maxParticipants;
+    if (input.attendanceWindowBefore !== undefined) patch.attendanceWindowBefore = input.attendanceWindowBefore;
+    if (input.attendanceWindowAfter !== undefined) patch.attendanceWindowAfter = input.attendanceWindowAfter;
     if (input.status !== undefined) {
       patch.status = input.status;
       if (input.status === "live") patch.actualStart = new Date();

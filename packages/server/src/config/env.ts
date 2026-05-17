@@ -20,6 +20,9 @@ const EnvSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
 
+  ATTENDANCE_WINDOW_BEFORE_MINUTES: z.coerce.number().int().nonnegative().default(15),
+  ATTENDANCE_WINDOW_AFTER_MINUTES: z.coerce.number().int().nonnegative().default(30),
+
   APP_URL: z.url().default("http://localhost:3000"),
   COOKIE_DOMAIN: z.string().optional(),
 

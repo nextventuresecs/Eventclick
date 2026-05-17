@@ -23,6 +23,8 @@ export const eventRooms = pgTable(
     streamProvider: streamProviderEnum("stream_provider").notNull().default("livekit"),
     youtubeWatchUrl: text("youtube_watch_url"),
     youtubeEmbedUrl: text("youtube_embed_url"),
+    attendanceWindowBefore: integer("attendance_window_before").notNull().default(15),
+    attendanceWindowAfter: integer("attendance_window_after").notNull().default(30),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

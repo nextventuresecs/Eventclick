@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Camera, Check, Loader2, RefreshCw, X } from "lucide-react";
-import { ROLE_LABELS, type FormField, type FormDefinition } from "@application/shared";
+import { AlertTriangle, ArrowLeft, Camera, Check, Clock, Loader2, RefreshCw, X } from "lucide-react";
+import { ROLE_LABELS, type FormField, type FormDefinition, type EventRoom } from "@application/shared";
 import {
   ApiClientError,
   attendanceApi,
   formsApi,
+  roomsApi,
   uploadToPresignedUrl,
 } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +33,8 @@ export const Attendance = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const [form, setForm] = useState<FormDefinition | null>(null);
+  const [room, setRoom] = useState<EventRoom | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,19 +51,30 @@ export const Attendance = () => {
 
   useEffect(() => {
     if (!id) return;
-    formsApi
-      .get(id)
-      .then((f) => {
+    setLoading(true);
+    setError(null);
+    Promise.all([formsApi.get(id), roomsApi.get(id)])
+      .then(([f, r]) => {
         if (f) {
           setForm(f);
           setData(buildInitialData(f.fields));
         }
+        if (r) {
+          setRoom(r);
+        }
       })
       .catch((err) =>
-        setError(err instanceof ApiClientError ? err.message : "Failed to load form"),
+        setError(err instanceof ApiClientError ? err.message : "Failed to load details"),
       )
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!photoFile) {
@@ -296,6 +310,95 @@ export const Attendance = () => {
     );
   }
 
+  const windowCheck = useMemo(() => {
+    if (!room) return null;
+
+    const scheduledStart = new Date(room.scheduledStart);
+    const scheduledEnd = new Date(room.scheduledEnd);
+    const actualStart = room.actualStart ? new Date(room.actualStart) : null;
+    const actualEnd = room.actualEnd ? new Date(room.actualEnd) : null;
+    const status = room.status;
+
+    const beforeMinutes = room.attendanceWindowBefore ?? 15;
+    const afterMinutes = room.attendanceWindowAfter ?? 30;
+
+    if (status === "cancelled") {
+      return {
+        isAllowed: false,
+        status: "cancelled" as const,
+        message: "This event session has been cancelled. Attendance cannot be recorded.",
+      };
+    }
+
+    if (status === "live") {
+      if (actualEnd) {
+        const endLimit = new Date(actualEnd.getTime() + afterMinutes * 60 * 1000);
+        const isAllowed = currentTime <= endLimit;
+        return {
+          isAllowed,
+          status: "live_ended" as const,
+          message: isAllowed
+            ? `The session ended, but the attendance window remains open until ${endLimit.toLocaleTimeString()} (${Math.max(0, Math.round((endLimit.getTime() - currentTime.getTime()) / 60000))} mins left).`
+            : `The session ended and the late submission buffer closed at ${endLimit.toLocaleTimeString()}.`,
+        };
+      }
+      return {
+        isAllowed: true,
+        status: "live" as const,
+        message: "The event is currently live! You can record attendance.",
+      };
+    }
+
+    if (status === "ended") {
+      if (!actualEnd) {
+        return {
+          isAllowed: false,
+          status: "ended_no_limit" as const,
+          message: "This event has ended. Attendance is closed.",
+        };
+      }
+      const endLimit = new Date(actualEnd.getTime() + afterMinutes * 60 * 1000);
+      const isAllowed = currentTime <= endLimit;
+      return {
+        isAllowed,
+        status: "ended" as const,
+        message: isAllowed
+          ? `The event has ended. The late buffer remains open until ${endLimit.toLocaleTimeString()} (${Math.max(0, Math.round((endLimit.getTime() - currentTime.getTime()) / 60000))} mins left).`
+          : `The event ended. The late submission buffer closed at ${endLimit.toLocaleTimeString()}.`,
+      };
+    }
+
+    if (status === "scheduled") {
+      const startLimit = new Date(scheduledStart.getTime() - beforeMinutes * 60 * 1000);
+      if (currentTime < startLimit) {
+        const minsToWait = Math.round((startLimit.getTime() - currentTime.getTime()) / 60000);
+        return {
+          isAllowed: false,
+          status: "scheduled_too_early" as const,
+          message: `This event is scheduled for ${scheduledStart.toLocaleTimeString()}. Early attendance submissions open at ${startLimit.toLocaleTimeString()} (in ${minsToWait} mins).`,
+        };
+      }
+      if (currentTime > scheduledEnd) {
+        return {
+          isAllowed: false,
+          status: "scheduled_passed" as const,
+          message: `This event was scheduled to end at ${scheduledEnd.toLocaleTimeString()}. Attendance is closed since it was not started.`,
+        };
+      }
+      return {
+        isAllowed: true,
+        status: "scheduled_open" as const,
+        message: `Attendance is open for this scheduled event until ${scheduledEnd.toLocaleTimeString()}!`,
+      };
+    }
+
+    return {
+      isAllowed: false,
+      status: "unknown" as const,
+      message: "Attendance window closed.",
+    };
+  }, [room, currentTime]);
+
   return (
     <div className="max-w-md mx-auto p-3 sm:p-6 space-y-4" data-form-key={fieldsLabel}>
       <div className="flex items-center gap-2">
@@ -318,6 +421,34 @@ export const Attendance = () => {
         capture a supporting photo before submitting the attendance record.
       </div>
 
+      {windowCheck && (
+        <div
+          className={`rounded-lg border p-4 text-sm flex items-start gap-3 transition-all ${
+            windowCheck.isAllowed
+              ? windowCheck.status === "live"
+                ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                : "bg-amber-500/10 text-amber-700 border-amber-500/20"
+              : "bg-destructive/10 text-destructive border-destructive/20"
+          }`}
+        >
+          {windowCheck.isAllowed ? (
+            <Clock className="w-5 h-5 mt-0.5 shrink-0 animate-pulse" />
+          ) : (
+            <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
+          )}
+          <div className="space-y-1">
+            <span className="font-bold block">
+              {windowCheck.isAllowed
+                ? windowCheck.status === "live"
+                  ? "Attendance Window Active"
+                  : "Attendance Window Closing Soon"
+                : "Attendance Window Closed"}
+            </span>
+            <p className="text-xs opacity-90 leading-relaxed">{windowCheck.message}</p>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={onSubmit} className="space-y-4">
         {form.fields.map((f) => (
           <div key={f.id} className="space-y-1.5">
@@ -335,6 +466,7 @@ export const Attendance = () => {
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
                 placeholder={f.placeholder || `Enter ${f.label.toLowerCase()}…`}
                 required={f.required}
+                disabled={submitting || !windowCheck?.isAllowed}
               />
             )}
             {f.type === "email" && (
@@ -346,6 +478,7 @@ export const Attendance = () => {
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
                 placeholder={f.placeholder || "example@domain.com"}
                 required={f.required}
+                disabled={submitting || !windowCheck?.isAllowed}
               />
             )}
             {f.type === "phone" && (
@@ -357,6 +490,7 @@ export const Attendance = () => {
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
                 placeholder={f.placeholder || "+1 (555) 000-0000"}
                 required={f.required}
+                disabled={submitting || !windowCheck?.isAllowed}
               />
             )}
             {f.type === "number" && (
@@ -368,6 +502,7 @@ export const Attendance = () => {
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
                 placeholder={f.placeholder || "0"}
                 required={f.required}
+                disabled={submitting || !windowCheck?.isAllowed}
               />
             )}
             {f.type === "date" && (
@@ -378,6 +513,7 @@ export const Attendance = () => {
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
                 placeholder={f.placeholder}
                 required={f.required}
+                disabled={submitting || !windowCheck?.isAllowed}
               />
             )}
             {f.type === "select" && (
@@ -386,7 +522,8 @@ export const Attendance = () => {
                 value={(data[f.id] as string) ?? ""}
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
                 required={f.required}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                disabled={submitting || !windowCheck?.isAllowed}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">Select option…</option>
                 {(f.options ?? []).map((opt) => (
@@ -397,13 +534,14 @@ export const Attendance = () => {
               </select>
             )}
             {f.type === "checkbox" && (
-              <label className="flex items-start gap-2.5 text-sm cursor-pointer select-none py-1">
+              <label className={`flex items-start gap-2.5 text-sm select-none py-1 ${submitting || !windowCheck?.isAllowed ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
                 <input
                   id={f.id}
                   type="checkbox"
                   checked={(data[f.id] as boolean) ?? false}
                   onChange={(e) => setFieldValue(f.id, e.target.checked)}
-                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-primary focus:ring-primary"
+                  disabled={submitting || !windowCheck?.isAllowed}
+                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-primary focus:ring-primary disabled:cursor-not-allowed"
                 />
                 <div className="space-y-0.5">
                   <span className="font-semibold text-foreground">
@@ -491,6 +629,7 @@ export const Attendance = () => {
               size="md"
               onClick={openCamera}
               className="w-full"
+              disabled={submitting || !windowCheck?.isAllowed}
             >
               <Camera className="w-4 h-4" />
               Open camera
@@ -514,7 +653,7 @@ export const Attendance = () => {
           </div>
         )}
 
-        <Button type="submit" disabled={submitting} className="w-full" size="lg">
+        <Button type="submit" disabled={submitting || !windowCheck?.isAllowed} className="w-full" size="lg">
           {submitting ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />

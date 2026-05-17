@@ -134,9 +134,11 @@ export const extractYouTubeVideoId = (url: string): string | null => {
 export const CreateRoomSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
-  scheduledStart: z.iso.datetime(),
-  scheduledEnd: z.iso.datetime(),
+  scheduledStart: z.string().datetime(),
+  scheduledEnd: z.string().datetime(),
   maxParticipants: z.number().int().positive().max(10000).optional(),
+  attendanceWindowBefore: z.number().int().nonnegative().optional(),
+  attendanceWindowAfter: z.number().int().nonnegative().optional(),
 });
 export type CreateRoomInput = z.infer<typeof CreateRoomSchema>;
 
@@ -167,6 +169,8 @@ export interface EventRoom {
   streamProvider: StreamProvider;
   youtubeWatchUrl: string | null;
   youtubeEmbedUrl: string | null;
+  attendanceWindowBefore: number;
+  attendanceWindowAfter: number;
   attendanceCount?: number;
   createdAt: string;
   updatedAt: string;
@@ -226,6 +230,8 @@ export interface SharedRoom {
   actualEnd: string | null;
   streamProvider: StreamProvider;
   youtubeEmbedUrl: string | null;
+  attendanceWindowBefore: number;
+  attendanceWindowAfter: number;
 }
 
 // ─── Generic Responses ──────────────────────────────

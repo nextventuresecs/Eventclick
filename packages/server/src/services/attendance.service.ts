@@ -5,6 +5,7 @@ import type {
   FormField,
   SubmitAttendanceInput,
   UserRole,
+  RoomStatus,
 } from "@application/shared";
 import { db } from "../db";
 import {
@@ -15,9 +16,10 @@ import {
   type FormDefinitionRow,
 } from "../db/schema";
 import { ApiError } from "../utils/errors";
-import { buildLiveAttendanceWindow } from "./attendance-live-window.service";
+import { buildLiveAttendanceWindow, isWithinAttendanceWindow } from "./attendance-live-window.service";
 import { buildPublicUrl } from "./storage.service";
 import { assertRoomAccessForUser } from "./event-assignment.service";
+import { env } from "../config/env";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[0-9\s\-()]{7,20}$/;
@@ -36,14 +38,24 @@ const getRoomInOrg = async (
   orgId: string,
 ): Promise<{
   id: string;
+  status: RoomStatus;
+  scheduledStart: Date;
+  scheduledEnd: Date;
   actualStart: Date | null;
   actualEnd: Date | null;
+  attendanceWindowBefore: number;
+  attendanceWindowAfter: number;
 }> => {
   const [room] = await db
     .select({
       id: eventRooms.id,
+      status: eventRooms.status,
+      scheduledStart: eventRooms.scheduledStart,
+      scheduledEnd: eventRooms.scheduledEnd,
       actualStart: eventRooms.actualStart,
       actualEnd: eventRooms.actualEnd,
+      attendanceWindowBefore: eventRooms.attendanceWindowBefore,
+      attendanceWindowAfter: eventRooms.attendanceWindowAfter,
     })
     .from(eventRooms)
     .where(
@@ -71,9 +83,19 @@ const assertRoomAccess = async (
   roomId: string,
   orgId: string,
   user: RoomAccessPrincipal,
-): Promise<void> => {
-  await assertRoomInOrg(roomId, orgId);
+): Promise<{
+  id: string;
+  status: RoomStatus;
+  scheduledStart: Date;
+  scheduledEnd: Date;
+  actualStart: Date | null;
+  actualEnd: Date | null;
+  attendanceWindowBefore: number;
+  attendanceWindowAfter: number;
+}> => {
+  const room = await getRoomInOrg(roomId, orgId);
   await assertRoomAccessForUser({ ...user, organizationId: orgId }, orgId, roomId);
+  return room;
 };
 
 const fieldSchema = (field: FormField): z.ZodTypeAny => {
@@ -154,7 +176,18 @@ interface SubmitContext {
 export const submitAttendance = async (
   ctx: SubmitContext,
 ): Promise<AttendanceEntry> => {
-  await assertRoomAccess(ctx.roomId, ctx.orgId, ctx.user);
+  const room = await assertRoomAccess(ctx.roomId, ctx.orgId, ctx.user);
+
+  const now = new Date();
+  const isAllowed = isWithinAttendanceWindow(
+    room,
+    now,
+    room.attendanceWindowBefore ?? env.ATTENDANCE_WINDOW_BEFORE_MINUTES,
+    room.attendanceWindowAfter ?? env.ATTENDANCE_WINDOW_AFTER_MINUTES,
+  );
+  if (!isAllowed) {
+    throw ApiError.badRequest("Attendance can only be submitted during the active window");
+  }
 
   const [formDef] = await db
     .select()
@@ -193,8 +226,7 @@ export const listAttendance = async (
   user: RoomAccessPrincipal,
   opts: { limit?: number; offset?: number; liveOnly?: boolean } = {},
 ): Promise<AttendanceEntry[]> => {
-  await assertRoomAccess(roomId, orgId, user);
-  const room = await getRoomInOrg(roomId, orgId);
+  const room = await assertRoomAccess(roomId, orgId, user);
 
   const limit = Math.min(Math.max(opts.limit ?? 50, 1), 200);
   const offset = Math.max(opts.offset ?? 0, 0);

@@ -21,6 +21,8 @@ export const CreateRoom = () => {
   const [scheduledStart, setScheduledStart] = useState("");
   const [scheduledEnd, setScheduledEnd] = useState("");
   const [maxParticipants, setMaxParticipants] = useState("");
+  const [attendanceWindowBefore, setAttendanceWindowBefore] = useState("15");
+  const [attendanceWindowAfter, setAttendanceWindowAfter] = useState("30");
 
   // Defensive programming: Verify permission even though routing layer already checks
   const canCreateRooms = user ? hasRolePermission(user.role, "manage_rooms") : false;
@@ -55,6 +57,8 @@ export const CreateRoom = () => {
       scheduledStart: scheduledStart ? new Date(scheduledStart).toISOString() : "",
       scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : "",
       maxParticipants: maxParticipants ? parseInt(maxParticipants, 10) : undefined,
+      attendanceWindowBefore: attendanceWindowBefore ? parseInt(attendanceWindowBefore, 10) : undefined,
+      attendanceWindowAfter: attendanceWindowAfter ? parseInt(attendanceWindowAfter, 10) : undefined,
     });
 
     if (!parsed.success) {
@@ -158,6 +162,39 @@ export const CreateRoom = () => {
                 onChange={(e) => setMaxParticipants(e.target.value)}
                 disabled={submitting}
               />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="attendanceWindowBefore">Early Submission Buffer (Minutes)</Label>
+                <Input
+                  id="attendanceWindowBefore"
+                  type="number"
+                  min="0"
+                  placeholder="15"
+                  value={attendanceWindowBefore}
+                  onChange={(e) => setAttendanceWindowBefore(e.target.value)}
+                  disabled={submitting}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Minutes before start time that attendance can be taken (default 15).
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="attendanceWindowAfter">Late Submission Buffer (Minutes)</Label>
+                <Input
+                  id="attendanceWindowAfter"
+                  type="number"
+                  min="0"
+                  placeholder="30"
+                  value={attendanceWindowAfter}
+                  onChange={(e) => setAttendanceWindowAfter(e.target.value)}
+                  disabled={submitting}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Minutes after event ends that attendance can still be taken (default 30).
+                </p>
+              </div>
             </div>
 
             {error && (

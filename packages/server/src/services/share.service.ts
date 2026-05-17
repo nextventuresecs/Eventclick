@@ -16,6 +16,8 @@ const toSharedRoom = (row: EventRoomRow): SharedRoom => ({
   actualEnd: row.actualEnd?.toISOString() ?? null,
   streamProvider: row.streamProvider,
   youtubeEmbedUrl: row.youtubeEmbedUrl,
+  attendanceWindowBefore: row.attendanceWindowBefore,
+  attendanceWindowAfter: row.attendanceWindowAfter,
 });
 
 const findRoomByShareToken = async (token: string): Promise<EventRoomRow> => {
