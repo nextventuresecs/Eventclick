@@ -6,10 +6,12 @@ import {
   SetYouTubeFallbackSchema,
   SubmitAttendanceSchema,
   UpdateRoomSchema,
+  hasRolePermission,
 } from "@application/shared";
 import { requireAuth } from "../middleware/requireAuth";
 import { requirePermission } from "../middleware/requirePermission";
 import { validate } from "../middleware/validate";
+import { ApiError } from "../utils/errors";
 import {
   listRooms,
   createRoom,
@@ -40,6 +42,17 @@ const canCreateAttendanceForm = requirePermission("create_attendance_form");
 const canTakeAttendance = requirePermission("take_attendance");
 const canViewReports = requirePermission("view_reports");
 const canViewLiveSession = requirePermission("view_live_session");
+
+const canViewAttendance = (req: any, res: any, next: any) => {
+  if (!req.user) return next(ApiError.unauthorized());
+  if (
+    hasRolePermission(req.user.role, "view_reports") ||
+    hasRolePermission(req.user.role, "take_attendance")
+  ) {
+    return next();
+  }
+  return next(ApiError.forbidden("Insufficient permissions"));
+};
 
 roomRouter.get("/", listRooms);
 roomRouter.post("/", canManageRooms, validate(CreateRoomSchema), createRoom);
@@ -80,4 +93,4 @@ roomRouter.post(
   validate(SubmitAttendanceSchema),
   postAttendance,
 );
-roomRouter.get("/:id/attendance", canViewReports, listRoomAttendance);
+roomRouter.get("/:id/attendance", canViewAttendance, listRoomAttendance);

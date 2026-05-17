@@ -66,7 +66,7 @@ const AccessDenied = ({ permission }: { permission: RolePermission }) => (
   </div>
 );
 
-const PermissionRoute = ({ permission }: { permission: RolePermission }) => {
+const PermissionRoute = ({ permission }: { permission: RolePermission | RolePermission[] }) => {
   const { status, user } = useAuth();
 
   if (status === "loading") {
@@ -81,8 +81,11 @@ const PermissionRoute = ({ permission }: { permission: RolePermission }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!user || !hasRolePermission(user.role, permission)) {
-    return <AccessDenied permission={permission} />;
+  const permissions = Array.isArray(permission) ? permission : [permission];
+  const hasPermission = user && permissions.some(p => hasRolePermission(user.role, p));
+
+  if (!user || !hasPermission) {
+    return <AccessDenied permission={permissions[0]!} />;
   }
 
   return <Outlet />;
@@ -164,7 +167,7 @@ const router = createBrowserRouter([
             children: [{ path: "rooms/:id/attendance", element: <Attendance /> }],
           },
           {
-            element: <PermissionRoute permission="view_reports" />,
+            element: <PermissionRoute permission={["view_reports", "take_attendance"]} />,
             children: [{ path: "rooms/:id/attendance/records", element: <AttendanceRecords /> }],
           },
           {

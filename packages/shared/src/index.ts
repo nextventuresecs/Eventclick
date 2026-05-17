@@ -256,6 +256,7 @@ export const FIELD_TYPES = [
   "number",
   "select",
   "checkbox",
+  "date",
 ] as const;
 export const FieldTypeSchema = z.enum(FIELD_TYPES);
 export type FieldType = z.infer<typeof FieldTypeSchema>;

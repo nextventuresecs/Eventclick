@@ -59,47 +59,85 @@ const FieldRow = ({ field, onChange, onRemove }: FieldRowProps) => {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex gap-3 rounded-md border border-border bg-card p-3"
+      className="flex gap-3 rounded-md border border-border bg-card p-4 shadow-sm"
     >
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="flex items-start pt-2 text-muted-foreground hover:text-foreground cursor-grab"
+        className="flex items-start pt-2 text-muted-foreground hover:text-foreground cursor-grab shrink-0"
         aria-label="Drag to reorder"
       >
         <GripVertical className="w-5 h-5" />
       </button>
 
-      <div className="flex-1 space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px] gap-2">
-          <Input
-            value={field.label}
-            onChange={(e) => onChange({ label: e.target.value })}
-            placeholder="Label"
-          />
-          <select
-            value={field.type}
-            onChange={(e) => {
-              const type = e.target.value as FieldType;
-              onChange({
-                type,
-                options: type === "select" ? field.options ?? ["Option 1"] : undefined,
-              });
-            }}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            {FIELD_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+      <div className="flex-1 space-y-4">
+        {/* Row 1: Label and Type Selection */}
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_160px] gap-3">
+          <div className="space-y-1">
+            <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Field Label</Label>
+            <Input
+              value={field.label}
+              onChange={(e) => onChange({ label: e.target.value })}
+              placeholder="Field Label (e.g., Participant Name, Gender, Consent)"
+              className="font-medium"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Field Type</Label>
+            <select
+              value={field.type}
+              onChange={(e) => {
+                const type = e.target.value as FieldType;
+                onChange({
+                  type,
+                  options: type === "select" ? field.options ?? ["Option 1"] : undefined,
+                });
+              }}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {FIELD_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
+        {/* Dynamic type-specific helper guidance */}
         {field.type === "select" && (
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Options (comma-separated)</Label>
+          <div className="rounded-md bg-primary/5 border border-primary/10 p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-semibold text-primary/80 flex items-center gap-1">💡 Dropdown (Select) Guidance</p>
+            <p>
+              Volunteers will see a select menu dropdown. Input options below separated by commas.
+              Empty inputs or trailing/leading spaces will be automatically cleaned up.
+            </p>
+          </div>
+        )}
+
+        {field.type === "checkbox" && (
+          <div className="rounded-md bg-primary/5 border border-primary/10 p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-semibold text-primary/80 flex items-center gap-1">💡 Checkbox (Toggle) Guidance</p>
+            <p>
+              Volunteers will see a binary Yes/No checkbox. Use the <strong>Description / Helper Text</strong> field below to specify what checking this box means (e.g. <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono">Checked means yes, unchecked means no</code>).
+            </p>
+          </div>
+        )}
+
+        {field.type === "date" && (
+          <div className="rounded-md bg-primary/5 border border-primary/10 p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-semibold text-primary/80 flex items-center gap-1">💡 Date Picker Guidance</p>
+            <p>
+              Volunteers will select dates from a native calendar popup. Dates are stored/submitted in standard <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono">YYYY-MM-DD</code> format.
+            </p>
+          </div>
+        )}
+
+        {/* Options list for select dropdowns */}
+        {field.type === "select" && (
+          <div className="space-y-1">
+            <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Options (comma-separated)</Label>
             <Input
               value={(field.options ?? []).join(", ")}
               onChange={(e) =>
@@ -110,28 +148,60 @@ const FieldRow = ({ field, onChange, onRemove }: FieldRowProps) => {
                     .filter(Boolean),
                 })
               }
-              placeholder="male, female, other"
+              placeholder="e.g. Male, Female, Prefer not to say"
             />
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm">
+        {/* Row 3: Customization (Placeholder & HelpText) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {["text", "number", "email", "phone"].includes(field.type) ? (
+            <div className="space-y-1">
+              <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Placeholder Text</Label>
+              <Input
+                value={field.placeholder ?? ""}
+                onChange={(e) => onChange({ placeholder: e.target.value || undefined })}
+                placeholder={`e.g. Enter ${field.label.toLowerCase()}…`}
+                className="h-9 text-sm"
+              />
+            </div>
+          ) : (
+            <div className="hidden md:block" />
+          )}
+
+          <div className="space-y-1">
+            <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Description / Help Text</Label>
+            <Input
+              value={field.helpText ?? ""}
+              onChange={(e) => onChange({ helpText: e.target.value || undefined })}
+              placeholder={
+                field.type === "checkbox"
+                  ? "e.g. Participant consented to rules"
+                  : "e.g. Provide helpful context or instructions"
+              }
+              className="h-9 text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Row 4: Controls & Status */}
+        <div className="flex items-center justify-between pt-1 border-t border-border/50">
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
             <input
               type="checkbox"
               checked={field.required}
               onChange={(e) => onChange({ required: e.target.checked })}
-              className="w-4 h-4"
+              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
-            Required
+            Mark as Required
           </label>
           <button
             type="button"
             onClick={onRemove}
-            className="inline-flex items-center gap-1 text-sm text-destructive hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive hover:underline"
           >
             <Trash2 className="w-4 h-4" />
-            Remove
+            Remove Field
           </button>
         </div>
       </div>

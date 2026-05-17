@@ -321,16 +321,19 @@ export const Attendance = () => {
       <form onSubmit={onSubmit} className="space-y-4">
         {form.fields.map((f) => (
           <div key={f.id} className="space-y-1.5">
-            <Label htmlFor={f.id} className="text-sm">
-              {f.label}
-              {f.required && <span className="text-destructive"> *</span>}
-            </Label>
+            {f.type !== "checkbox" && (
+              <Label htmlFor={f.id} className="text-sm font-semibold">
+                {f.label}
+                {f.required && <span className="text-destructive"> *</span>}
+              </Label>
+            )}
 
             {f.type === "text" && (
               <Input
                 id={f.id}
                 value={(data[f.id] as string) ?? ""}
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
+                placeholder={f.placeholder || `Enter ${f.label.toLowerCase()}…`}
                 required={f.required}
               />
             )}
@@ -341,6 +344,7 @@ export const Attendance = () => {
                 inputMode="email"
                 value={(data[f.id] as string) ?? ""}
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
+                placeholder={f.placeholder || "example@domain.com"}
                 required={f.required}
               />
             )}
@@ -351,6 +355,7 @@ export const Attendance = () => {
                 inputMode="tel"
                 value={(data[f.id] as string) ?? ""}
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
+                placeholder={f.placeholder || "+1 (555) 000-0000"}
                 required={f.required}
               />
             )}
@@ -361,6 +366,17 @@ export const Attendance = () => {
                 inputMode="numeric"
                 value={(data[f.id] as string) ?? ""}
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
+                placeholder={f.placeholder || "0"}
+                required={f.required}
+              />
+            )}
+            {f.type === "date" && (
+              <Input
+                id={f.id}
+                type="date"
+                value={(data[f.id] as string) ?? ""}
+                onChange={(e) => setFieldValue(f.id, e.target.value)}
+                placeholder={f.placeholder}
                 required={f.required}
               />
             )}
@@ -370,9 +386,9 @@ export const Attendance = () => {
                 value={(data[f.id] as string) ?? ""}
                 onChange={(e) => setFieldValue(f.id, e.target.value)}
                 required={f.required}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="">Select…</option>
+                <option value="">Select option…</option>
                 {(f.options ?? []).map((opt) => (
                   <option key={opt} value={opt}>
                     {opt}
@@ -381,16 +397,28 @@ export const Attendance = () => {
               </select>
             )}
             {f.type === "checkbox" && (
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-start gap-2.5 text-sm cursor-pointer select-none py-1">
                 <input
                   id={f.id}
                   type="checkbox"
                   checked={(data[f.id] as boolean) ?? false}
                   onChange={(e) => setFieldValue(f.id, e.target.checked)}
-                  className="w-4 h-4"
+                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-primary focus:ring-primary"
                 />
-                {f.helpText ?? f.label}
+                <div className="space-y-0.5">
+                  <span className="font-semibold text-foreground">
+                    {f.label}
+                    {f.required && <span className="text-destructive"> *</span>}
+                  </span>
+                  {f.helpText && (
+                    <p className="text-xs text-muted-foreground">{f.helpText}</p>
+                  )}
+                </div>
               </label>
+            )}
+
+            {f.helpText && f.type !== "checkbox" && (
+              <p className="text-xs text-muted-foreground/80 pl-0.5">{f.helpText}</p>
             )}
           </div>
         ))}
