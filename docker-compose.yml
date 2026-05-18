@@ -116,6 +116,7 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_FORCE_PATH_STYLE: "true"
+      GOTENBERG_URL: http://gotenberg:8080
     volumes:
       - ./packages/server/src:/app/packages/server/src
       - ./packages/shared/src:/app/packages/shared/src
@@ -146,6 +147,14 @@ services:
       - ./packages/shared/src:/app/packages/shared/src
     depends_on:
       - server
+
+  # ─── Gotenberg (HTML to PDF) ──────────────────────
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: evently_gotenberg
+    restart: unless-stopped
+    ports:
+      - "8686:8080"
 
 volumes:
   pg_data:

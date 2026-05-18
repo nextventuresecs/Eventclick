@@ -53,6 +53,7 @@ const EnvSchema = z.object({
     .string()
     .default("true")
     .transform((v) => v === "true"),
+  GOTENBERG_URL: z.string().url().default("http://localhost:8686"),
 });
 
 const parsed = EnvSchema.safeParse(process.env);
