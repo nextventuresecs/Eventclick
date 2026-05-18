@@ -7,6 +7,8 @@ import {
   SubmitAttendanceSchema,
   UpdateRoomSchema,
   hasRolePermission,
+  ActivityPhotoUploadRequestSchema,
+  SubmitActivityPhotoSchema,
 } from "@application/shared";
 import { requireAuth } from "../middleware/requireAuth";
 import { requirePermission } from "../middleware/requirePermission";
@@ -31,6 +33,11 @@ import {
   postAttendance,
   presignAttendancePhoto,
 } from "../controllers/attendance.controller";
+import {
+  getActivitiesAndSubmissions,
+  presignActivityPhotoUrl,
+  postActivityPhotoSubmission,
+} from "../controllers/activity.controller";
 
 export const roomRouter = Router();
 
@@ -94,3 +101,17 @@ roomRouter.post(
   postAttendance,
 );
 roomRouter.get("/:id/attendance", canViewAttendance, listRoomAttendance);
+
+roomRouter.get("/:id/activities", canTakeAttendance, getActivitiesAndSubmissions);
+roomRouter.post(
+  "/:id/activities/photo-upload",
+  canTakeAttendance,
+  validate(ActivityPhotoUploadRequestSchema),
+  presignActivityPhotoUrl,
+);
+roomRouter.post(
+  "/:id/activities/submission",
+  canTakeAttendance,
+  validate(SubmitActivityPhotoSchema),
+  postActivityPhotoSubmission,
+);

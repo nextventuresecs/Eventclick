@@ -1,8 +1,9 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, integer, index, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { roomStatusEnum, streamProviderEnum } from "./enums";
 import { users } from "./users";
 import { organizations } from "./organizations";
+import type { ActivityDefinition } from "@application/shared";
 
 export const eventRooms = pgTable(
   "event_rooms",
@@ -25,6 +26,7 @@ export const eventRooms = pgTable(
     youtubeEmbedUrl: text("youtube_embed_url"),
     attendanceWindowBefore: integer("attendance_window_before").notNull().default(15),
     attendanceWindowAfter: integer("attendance_window_after").notNull().default(30),
+    activityDefinitions: jsonb("activity_definitions").$type<ActivityDefinition[]>().notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

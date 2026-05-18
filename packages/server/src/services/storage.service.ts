@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { nanoid } from "nanoid";
+import crypto from "crypto";
 import { env } from "../config/env";
 
 const credentials = {
@@ -44,6 +45,11 @@ const EXT_BY_MIME: Record<string, string> = {
 export const buildPhotoKey = (roomId: string, contentType: string): string => {
   const ext = EXT_BY_MIME[contentType] ?? "bin";
   return `attendance/${roomId}/${nanoid(24)}.${ext}`;
+};
+
+export const buildActivityPhotoKey = (roomId: string, activityId: string): string => {
+  const timestampUuid = `${Date.now()}_${crypto.randomUUID()}`;
+  return `rooms/${roomId}/activities/${activityId}_${timestampUuid}.jpg`;
 };
 
 export const createPresignedPut = async (

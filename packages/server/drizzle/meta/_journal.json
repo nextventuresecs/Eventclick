@@ -43,6 +43,13 @@
       "when": 1779026455903,
       "tag": "0005_busy_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779039819476,
+      "tag": "0006_mighty_rawhide_kid",
+      "breakpoints": true
     }
   ]
 }

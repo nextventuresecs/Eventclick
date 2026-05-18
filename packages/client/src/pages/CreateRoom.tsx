@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, Sparkles, ClipboardList } from "lucide-react";
 import { roomsApi, ApiClientError } from "@/lib/api";
 import { CreateRoomSchema, hasRolePermission } from "@application/shared";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +24,9 @@ export const CreateRoom = () => {
   const [attendanceWindowBefore, setAttendanceWindowBefore] = useState("15");
   const [attendanceWindowAfter, setAttendanceWindowAfter] = useState("30");
 
+  // Activities State
+  const [activityDefinitions, setActivityDefinitions] = useState<{ id: string; title: string; description?: string; min_photos: number }[]>([]);
+
   // Defensive programming: Verify permission even though routing layer already checks
   const canCreateRooms = user ? hasRolePermission(user.role, "manage_rooms") : false;
 
@@ -46,6 +49,34 @@ export const CreateRoom = () => {
     );
   }
 
+  const addActivity = () => {
+    setActivityDefinitions(prev => [
+      ...prev,
+      {
+        id: `act_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        title: "",
+        description: "",
+        min_photos: 1,
+      }
+    ]);
+  };
+
+  const updateActivity = (id: string, field: "title" | "description" | "min_photos", value: any) => {
+    setActivityDefinitions(prev => prev.map(act => {
+      if (act.id === id) {
+        return {
+          ...act,
+          [field]: field === "min_photos" ? (value === "" ? 0 : parseInt(value, 10)) : value
+        };
+      }
+      return act;
+    }));
+  };
+
+  const deleteActivity = (id: string) => {
+    setActivityDefinitions(prev => prev.filter(act => act.id !== id));
+  };
+
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -59,6 +90,12 @@ export const CreateRoom = () => {
       maxParticipants: maxParticipants ? parseInt(maxParticipants, 10) : undefined,
       attendanceWindowBefore: attendanceWindowBefore ? parseInt(attendanceWindowBefore, 10) : undefined,
       attendanceWindowAfter: attendanceWindowAfter ? parseInt(attendanceWindowAfter, 10) : undefined,
+      activityDefinitions: activityDefinitions.length > 0 ? activityDefinitions.map(a => ({
+        id: a.id,
+        title: a.title,
+        description: a.description || undefined,
+        min_photos: a.min_photos,
+      })) : undefined,
     });
 
     if (!parsed.success) {
@@ -195,6 +232,162 @@ export const CreateRoom = () => {
                   Minutes after event ends that attendance can still be taken (default 30).
                 </p>
               </div>
+            </div>
+
+            {/* Activity Quality Checklist */}
+            <div className="space-y-4 border-t border-border pt-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-semibold">Activity Quality Checklist</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Define activities that volunteers must complete and prove with photo uploads before this event is finalized.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addActivity}
+                  className="inline-flex items-center gap-1.5 self-start h-8 text-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Activity
+                </Button>
+              </div>
+
+              {activityDefinitions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-6 rounded-lg border border-dashed border-muted-foreground/20 bg-muted/5 text-center space-y-4">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <ClipboardList className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1 max-w-sm">
+                    <h4 className="font-semibold text-xs text-foreground">No Mandatory Activities</h4>
+                    <p className="text-[11px] text-muted-foreground leading-normal">
+                      We highly recommend adding at least one activity to track field success. Use our templates to get started quickly:
+                    </p>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 justify-center pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setActivityDefinitions([
+                        {
+                          id: `act_${Date.now()}_1`,
+                          title: "Group photo with event banner",
+                          description: "Take a wide shot showing the volunteer banner and multiple participants in the room.",
+                          min_photos: 1,
+                        }
+                      ])}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-background border border-border hover:bg-muted/50 rounded-full transition-colors"
+                    >
+                      <Sparkles className="w-3 h-3 text-yellow-500" />
+                      📸 Banner & Group Photo (1 proof)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivityDefinitions([
+                        {
+                          id: `act_${Date.now()}_1`,
+                          title: "Physical registration logs",
+                          description: "Clear close-up photograph of the paper attendee signup sheet containing signatures.",
+                          min_photos: 2,
+                        }
+                      ])}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-background border border-border hover:bg-muted/50 rounded-full transition-colors"
+                    >
+                      <Sparkles className="w-3 h-3 text-yellow-500" />
+                      📝 Attendee Logs (2 proofs)
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {activityDefinitions.map((act, index) => (
+                    <div
+                      key={act.id}
+                      className="group relative flex flex-col md:flex-row gap-4 p-4 rounded-lg border border-border bg-card hover:border-primary/20 transition-all duration-200 shadow-sm"
+                    >
+                      {/* Badge indicator/number */}
+                      <div className="absolute top-4 right-4 flex items-center gap-2 md:relative md:top-auto md:right-auto md:self-start">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold md:mt-1">
+                          {index + 1}
+                        </span>
+                      </div>
+
+                      {/* Inputs */}
+                      <div className="flex-1 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="sm:col-span-2 space-y-1.5">
+                            <Label htmlFor={`act-title-${act.id}`} className="text-xs font-semibold">Activity Title <span className="text-destructive">*</span></Label>
+                            <Input
+                              id={`act-title-${act.id}`}
+                              placeholder="e.g. Photo with distribution materials"
+                              value={act.title}
+                              onChange={(e) => updateActivity(act.id, "title", e.target.value)}
+                              disabled={submitting}
+                              required
+                              className="h-9 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`act-min-photos-${act.id}`} className="text-xs font-semibold">Min Photo Proofs <span className="text-destructive">*</span></Label>
+                            <Input
+                              id={`act-min-photos-${act.id}`}
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={act.min_photos}
+                              onChange={(e) => updateActivity(act.id, "min_photos", e.target.value)}
+                              disabled={submitting}
+                              required
+                              className="h-9 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`act-desc-${act.id}`} className="text-xs font-semibold">Instructions / Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                          <textarea
+                            id={`act-desc-${act.id}`}
+                            placeholder="Add guidelines for volunteers uploading proofs..."
+                            className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            value={act.description || ""}
+                            onChange={(e) => updateActivity(act.id, "description", e.target.value)}
+                            disabled={submitting}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="self-end md:self-center md:pt-4">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteActivity(act.id)}
+                          className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          title="Delete Activity"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="flex justify-start">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addActivity}
+                      className="inline-flex items-center gap-1.5 text-xs h-8"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Another Activity
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {error && (

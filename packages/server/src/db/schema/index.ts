@@ -8,3 +8,4 @@ export * from "./formDefinitions";
 export * from "./attendanceEntries";
 export * from "./roomRecordings";
 export * from "./eventAdminAssignments";
+export * from "./activitySubmissions";

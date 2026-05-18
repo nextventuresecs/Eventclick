@@ -134,6 +134,10 @@ import type {
   FormDefinitionInput,
   LiveTokenResponse,
   OrgUserSummary,
+  ActivityDefinition,
+  ActivityPhotoUploadRequestInput,
+  SubmitActivityPhotoInput,
+  ActivitySubmission,
   PhotoUploadRequestInput,
   PhotoUploadResponse,
   PresenceSnapshot,
@@ -192,6 +196,15 @@ export const attendanceApi = {
     api.post<AttendanceEntry>(`/rooms/${roomId}/attendance`, body),
   presignPhoto: (roomId: string, body: PhotoUploadRequestInput) =>
     api.post<PhotoUploadResponse>(`/rooms/${roomId}/attendance/photo-upload`, body),
+};
+
+export const activitiesApi = {
+  list: (roomId: string) =>
+    api.get<{ activityDefinitions: ActivityDefinition[]; submissions: ActivitySubmission[] }>(`/rooms/${roomId}/activities`),
+  presignPhoto: (roomId: string, body: ActivityPhotoUploadRequestInput) =>
+    api.post<PhotoUploadResponse>(`/rooms/${roomId}/activities/photo-upload`, body),
+  submitPhoto: (roomId: string, body: SubmitActivityPhotoInput) =>
+    api.post<ActivitySubmission>(`/rooms/${roomId}/activities/submission`, body),
 };
 
 export const eventAssignmentsApi = {
