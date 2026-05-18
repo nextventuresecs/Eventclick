@@ -57,6 +57,13 @@
       "when": 1779098137853,
       "tag": "0007_amazing_sally_floyd",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779104141449,
+      "tag": "0008_pink_sleeper",
+      "breakpoints": true
     }
   ]
 }
