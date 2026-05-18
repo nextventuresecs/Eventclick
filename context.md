@@ -15,12 +15,14 @@ Veridian (Evently) is a real-time NGO transparency and verification platform. It
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`)
 - **Routing**: `react-router-dom` v7 (web app framework)
 - **Networking**: Custom fetch wrapper (`src/lib/api.ts`) with automated token refresh and deduplicated request queuing.
+- **Media & Capture**: Browser MediaDevices API (`getUserMedia` / Canvas) with aspect-correct frame snapping, real-time client-side JPEG compression, and drag-and-drop uploads.
 
 ### Backend (`packages/server`)
 - **Server**: Express 5 + TypeScript
 - **Database ORM**: Drizzle ORM
 - **Database Driver**: `pg` (PostgreSQL)
 - **In-Memory Store**: Redis (rate limiting, presence, locking)
+- **Storage Integrations**: AWS S3/S3-compatible storage with time-bound secure signed PUT / GET URL generation.
 - **Validation**: Zod (process config environment validation on startup)
 - **Logging**: Pino / `pino-http`
 
@@ -40,21 +42,21 @@ Veridian (Evently) is a real-time NGO transparency and verification platform. It
 │   │   ├── src/
 │   │   │   ├── components/   # Reusable UI component blocks & layouts
 │   │   │   ├── hooks/        # React Hooks (auth context, presence, etc.)
-│   │   │   ├── lib/          # api.ts (fetch client)
-│   │   │   └── pages/        # Dashboard, Live, Watch, Auth, Form Builder, etc.
+│   │   │   ├── lib/          # api.ts (fetch client & activitiesApi)
+│   │   │   └── pages/        # Dashboard, Live (w/ Activity Panel), Watch, Auth, Create Room, etc.
 │   │   └── package.json
 │   ├── server/          # Express 5 Backend
 │   │   ├── src/
 │   │   │   ├── config/       # Env validation and configs
-│   │   │   ├── controllers/  # Request parsing and service orchestration
-│   │   │   ├── db/           # Drizzle instance and schema definitions
+│   │   │   ├── controllers/  # controllers (room, activity, user, etc.)
+│   │   │   ├── db/           # Drizzle schema definitions (schema/activitySubmissions.ts)
 │   │   │   ├── middleware/   # Validation, Auth guards, Error handling
-│   │   │   ├── routes/       # Express route mapping and controller delegates
-│   │   │   └── services/     # Business logic & Database transactions
+│   │   │   ├── routes/       # routes (room.routes.ts w/ activity routes)
+│   │   │   └── services/     # services (activity.service.ts, storage.service.ts)
 │   │   └── package.json
 │   └── shared/          # Shared validators, types, and constants
 │       ├── src/
-│       │   └── index.ts      # Main shared index file
+│       │   └── index.ts      # Shared Zod validation contracts (ActivityDefinitionSchema, etc.)
 │       └── package.json
 ├── package.json
 ├── turbo.json
@@ -78,6 +80,7 @@ erDiagram
     eventRooms ||--o{ attendanceEntries : "has"
     eventRooms ||--o{ roomRecordings : "records"
     eventRooms ||--o{ eventAdminAssignments : "has"
+    eventRooms ||--o{ activitySubmissions : "has"
     formDefinitions ||--o{ attendanceEntries : "verifies"
 ```
 
@@ -96,8 +99,8 @@ erDiagram
    - Keys: `id` (UUID PK), `organizationId` (FK), `userId` (FK), `role`, `isActive`, `joinedAt`, `createdAt`, `updatedAt`.
 
 4. **`eventRooms`**
-   - Individual streaming / attendance rooms.
-   - Keys: `id` (UUID PK), `organizationId` (FK), `createdBy` (FK -> `users.id`), `title`, `description`, `status` (`scheduled`, `live`, `ended`, `cancelled`), `scheduledStart`, `scheduledEnd`, `actualStart`, `actualEnd`, `maxParticipants`, `shareToken`, `shareUrl`, `streamProvider` (`livekit`, `youtube`), `youtubeWatchUrl`, `youtubeEmbedUrl`, `attendanceWindowBefore` (mins), `attendanceWindowAfter` (mins), `createdAt`, `updatedAt`, `deletedAt`.
+   - Individual streaming / attendance rooms. Contains **Quality-Control activity definitions** as flat templates.
+   - Keys: `id` (UUID PK), `organizationId` (FK), `createdBy` (FK -> `users.id`), `title`, `description`, `status` (`scheduled`, `live`, `ended`, `cancelled`), `scheduledStart`, `scheduledEnd`, `actualStart`, `actualEnd`, `maxParticipants`, `shareToken`, `shareUrl`, `streamProvider` (`livekit`, `youtube`), `youtubeWatchUrl`, `youtubeEmbedUrl`, `attendanceWindowBefore` (mins), `attendanceWindowAfter` (mins), `activityDefinitions` (JSONB array containing tasks & proof targets), `createdAt`, `updatedAt`, `deletedAt`.
 
 5. **`sessions`**
    - Opaque refresh token sessions supporting rotation.
@@ -118,6 +121,10 @@ erDiagram
 9. **`eventAdminAssignments`**
    - Delegation map granting specific coordinators or volunteers administrative access over rooms.
    - Keys: `id` (UUID PK), `organizationId` (FK), `userId` (FK), `roomId` (FK), `assignedRole`, `assignedBy`, `createdAt`, `updatedAt`, `revokedAt`.
+
+10. **`activitySubmissions`**
+    - Stores verification progress and S3 photo proof references for room QC tasks.
+    - Keys: `id` (UUID PK), `roomId` (FK -> `eventRooms.id`), `activityId` (VARCHAR PK-join), `photos` (JSONB array containing photo key details and signed viewer URLs), `createdAt`, `updatedAt`.
 
 ---
 
@@ -147,6 +154,14 @@ Shared role system mapped in `@application/shared`:
 - **Storage**: Schema definitions stored as JSONB array configurations inside `formDefinitions`.
 - **Validation**: Submissions are strictly verified against the matching JSONB schema.
 - **Photo Capture**: Incorporates visual verification. Presigned S3/S3-compatible URLs are requested via `/api/v1/rooms/:id/attendance/upload-url`, uploaded directly via client, and the key is submitted with dynamic form values.
+
+### 5. Quality-Control (QC) Activity Tracking
+- **Checklist Definitions**: NGO Admins set a mandatory checklist of activities per room during creation. Mapped inside `event_rooms.activity_definitions` as a flat JSONB schema array (`title`, `description`, `min_photos`).
+- **Submission Normalization**: Activity submissions are relationally stored in `activity_submissions` mapping to `roomId` and `activityId`, featuring a fast index on room lookup.
+- **Incremental S3 Uploading & Keys**: Volunteers request dynamic, collision-free S3 upload PUT tickets matching the pattern `rooms/${roomId}/activities/${activityId}/${uuid()}-${contentType}`. Photo proofs are uploaded sequentially to isolate assets.
+- **Secure Image Display**: Database-registered S3 keys are kept private. S3 retrieval URLs are dynamically signed using AWS SDK for Node.js (`storageService.getSignedUrl`) on payload fetch with a 15-minute expiration window.
+- **Webcam Snapping & Fallbacks**: Live stream view contains an `ActivityTrackerPanel` utilizing the HTML5 browser MediaDevices API. Includes client-side compression (`compressImage` utility for JPEG sizing) and local file input fallback options.
+- **Room Finalization Gate**: Express `completeRoom` transactional controller queries room checklist definitions and active submissions. Transitioning a room to `COMPLETED` is strictly blocked if any required activity lacks its `min_photos` quota, responding with an explicit listing of incomplete tasks.
 
 ---
 
