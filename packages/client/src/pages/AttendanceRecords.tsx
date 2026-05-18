@@ -18,6 +18,7 @@ import { attendanceApi, roomsApi, formsApi, ApiClientError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 
 const ITEMS_PER_PAGE = 15;
 
@@ -39,6 +40,7 @@ const formatColumnName = (key: string): string => {
 
 export const AttendanceRecords = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [room, setRoom] = useState<EventRoom | null>(null);
   const [form, setForm] = useState<FormDefinition | null>(null);
@@ -335,20 +337,23 @@ export const AttendanceRecords = () => {
             <Download className="w-3.5 h-3.5" />
             Export CSV
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadPDF}
-            disabled={pdfLoading || sortedEntries.length === 0}
-            className="bg-primary/10 border-primary/20 text-primary hover:bg-primary/20 hover:text-primary transition-all backdrop-blur-md shadow-sm gap-1.5"
-          >
-            {pdfLoading ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <FileText className="w-3.5 h-3.5" />
-            )}
-            {pdfLoading ? "Generating..." : "Download PDF Report"}
-          </Button>
+          {user?.role === "ngo_admin" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPDF}
+              disabled={pdfLoading || sortedEntries.length === 0 || room?.status !== "ended"}
+              className="bg-primary/10 border-primary/20 text-primary hover:bg-primary/20 hover:text-primary transition-all backdrop-blur-md shadow-sm gap-1.5"
+              title={room?.status !== "ended" ? "PDF Report is only available after the live session has ended" : undefined}
+            >
+              {pdfLoading ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <FileText className="w-3.5 h-3.5" />
+              )}
+              {pdfLoading ? "Generating..." : "Download PDF Report"}
+            </Button>
+          )}
         </div>
       </div>
 

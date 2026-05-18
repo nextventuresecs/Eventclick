@@ -12,6 +12,7 @@ import {
 } from "@application/shared";
 import { requireAuth } from "../middleware/requireAuth";
 import { requirePermission } from "../middleware/requirePermission";
+import { requireRole } from "../middleware/requireRole";
 import { validate } from "../middleware/validate";
 import { ApiError } from "../utils/errors";
 import {
@@ -108,7 +109,7 @@ roomRouter.post(
   postAttendance,
 );
 roomRouter.get("/:id/attendance", canViewAttendance, listRoomAttendance);
-roomRouter.get("/:id/report/pdf", canViewReports, downloadRoomReportPdf);
+roomRouter.get("/:id/report/pdf", requireRole("ngo_admin"), downloadRoomReportPdf);
 
 roomRouter.get("/:id/activities", canTakeAttendance, getActivitiesAndSubmissions);
 roomRouter.post(
