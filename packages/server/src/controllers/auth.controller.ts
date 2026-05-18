@@ -8,6 +8,9 @@ import {
   logoutSession,
   refreshSession,
   registerUser,
+  forgotPassword,
+  resetPassword,
+  completeOnboarding,
   type AuthResult,
 } from "../services/auth.service";
 import { refreshTtlMs } from "../services/session.service";
@@ -97,6 +100,34 @@ export const me: RequestHandler = async (req, res, next) => {
     if (!req.user) throw ApiError.unauthorized();
     const user = await getCurrentUser(req.user.id);
     res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const forgot: RequestHandler = async (req, res, next) => {
+  try {
+    await forgotPassword(req.body.email);
+    res.status(200).json({ message: "Password reset link sent successfully" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const reset: RequestHandler = async (req, res, next) => {
+  try {
+    await resetPassword(req.body.token, req.body.password);
+    res.status(200).json({ message: "Password has been reset successfully" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const onboard: RequestHandler = async (req, res, next) => {
+  try {
+    if (!req.user) throw ApiError.unauthorized("Authentication required");
+    const result = await completeOnboarding(req.user.id, req.body, extractMeta(req));
+    sendAuthResult(res, result);
   } catch (err) {
     next(err);
   }

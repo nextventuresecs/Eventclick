@@ -87,6 +87,23 @@ export const GoogleLoginSchema = z.object({
 });
 export type GoogleLoginInput = z.infer<typeof GoogleLoginSchema>;
 
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email().toLowerCase(),
+});
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+
+export const ResetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8).max(128),
+});
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+
+export const OnboardingSchema = z.object({
+  organizationName: z.string().min(1).max(160).optional(),
+  role: z.enum(["ngo_admin", "volunteer"]),
+});
+export type OnboardingInput = z.infer<typeof OnboardingSchema>;
+
 export interface AuthUser {
   id: string;
   email: string;

@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
-import { GoogleLoginSchema, LoginSchema, RegisterSchema } from "@application/shared";
+import {
+  GoogleLoginSchema,
+  LoginSchema,
+  RegisterSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
+  OnboardingSchema,
+} from "@application/shared";
 import { validate } from "../middleware/validate";
 import { requireAuth } from "../middleware/requireAuth";
 import * as authController from "../controllers/auth.controller";
@@ -21,3 +28,7 @@ authRouter.post("/google", authLimiter, validate(GoogleLoginSchema), authControl
 authRouter.post("/refresh", authController.refresh);
 authRouter.post("/logout", authController.logout);
 authRouter.get("/me", requireAuth, authController.me);
+
+authRouter.post("/forgot-password", authLimiter, validate(ForgotPasswordSchema), authController.forgot);
+authRouter.post("/reset-password", authLimiter, validate(ResetPasswordSchema), authController.reset);
+authRouter.post("/onboarding", requireAuth, validate(OnboardingSchema), authController.onboard);

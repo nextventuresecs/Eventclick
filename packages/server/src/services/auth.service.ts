@@ -1,17 +1,20 @@
-import { eq } from "drizzle-orm";
+import { eq, and, gt, isNull } from "drizzle-orm";
+import crypto from "crypto";
 import { nanoid } from "nanoid";
 import type {
   AuthUser,
   LoginInput,
   RegisterInput,
   GoogleLoginInput,
+  OnboardingInput,
 } from "@application/shared";
 import { db } from "../db";
-import { users, organizations, orgMembers, type User } from "../db/schema";
+import { users, organizations, orgMembers, passwordResets, type User } from "../db/schema";
 import { ApiError } from "../utils/errors";
 import { logger } from "../utils/logger";
 import { hashPassword, verifyPassword } from "./password.service";
 import { signAccessToken } from "./jwt.service";
+import { sendPasswordResetEmail } from "./email.service";
 import {
   findActiveSessionByToken,
   issueRefreshToken,
@@ -257,4 +260,118 @@ export const getCurrentUser = async (userId: string): Promise<AuthUser> => {
   const user = await findUserById(userId);
   if (!user || !user.isActive) throw ApiError.unauthorized("Account no longer active");
   return toAuthUser(user, user.organizationName);
+};
+
+export const forgotPassword = async (email: string): Promise<void> => {
+  const user = await findUserByEmail(email);
+  if (!user) {
+    logger.warn({ email, event: "password_reset.request_failed" }, "reset request for non-existent email");
+    throw ApiError.notFound("No account found with this email address");
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  await db.insert(passwordResets).values({
+    userId: user.id,
+    token,
+    expiresAt,
+  });
+
+  await sendPasswordResetEmail(email, token);
+  logger.info({ userId: user.id, email, event: "password_reset.requested" }, "password reset token generated and email queued");
+};
+
+export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+  const [resetReq] = await db
+    .select()
+    .from(passwordResets)
+    .where(
+      and(
+        eq(passwordResets.token, token),
+        isNull(passwordResets.usedAt),
+        gt(passwordResets.expiresAt, new Date())
+      )
+    )
+    .limit(1);
+
+  if (!resetReq) {
+    logger.warn({ token, event: "password_reset.failed" }, "invalid or expired password reset token used");
+    throw ApiError.badRequest("Invalid or expired reset token");
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+
+  await db.transaction(async (tx) => {
+    // Mark token as used
+    await tx
+      .update(passwordResets)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResets.id, resetReq.id));
+
+    // Update user password
+    await tx
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, resetReq.userId));
+  });
+
+  logger.info({ userId: resetReq.userId, event: "password_reset.success" }, "password reset successfully");
+};
+
+export const completeOnboarding = async (
+  userId: string,
+  input: OnboardingInput,
+  meta: SessionMeta
+): Promise<AuthResult> => {
+  const user = await findUserById(userId);
+  if (!user) throw ApiError.notFound("User not found");
+  if (!user.isActive) throw ApiError.forbidden("This account is disabled");
+
+  await db.transaction(async (tx) => {
+    let orgId: string | null = null;
+
+    if (input.role === "ngo_admin") {
+      if (!input.organizationName) {
+        throw ApiError.badRequest("Organization name is required to become an NGO Admin");
+      }
+      const slug = `${slugify(input.organizationName)}-${nanoid(6).toLowerCase()}`;
+      const [org] = await tx
+        .insert(organizations)
+        .values({ name: input.organizationName, slug, contactEmail: user.email })
+        .returning({ id: organizations.id });
+      
+      if (!org) throw ApiError.internal("Failed to create organization");
+      orgId = org.id;
+
+      // Update user details
+      await tx
+        .update(users)
+        .set({ role: "ngo_admin", organizationId: orgId, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+
+      // Add to orgMembers
+      await tx.insert(orgMembers).values({
+        userId,
+        organizationId: orgId,
+        role: "ngo_admin",
+      });
+      
+      logger.info({ userId, orgId, slug, event: "onboarding.ngo_admin" }, "user onboarded as NGO Admin");
+    } else {
+      // Just keep/ensure they are standard volunteer
+      await tx
+        .update(users)
+        .set({ role: "volunteer", organizationId: null, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+      
+      logger.info({ userId, event: "onboarding.volunteer" }, "user onboarded as volunteer");
+    }
+  });
+
+  // Fetch updated user to generate new JWT & refresh token representing the new role & organization
+  const updatedUser = await findUserById(userId);
+  if (!updatedUser) throw ApiError.internal("Failed to retrieve onboarded user");
+
+  return issueTokensFor(updatedUser, meta);
 };
