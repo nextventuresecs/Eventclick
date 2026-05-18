@@ -14,7 +14,7 @@ import { db } from "../db";
 import { attendanceEntries, eventAdminAssignments, eventRooms, users, type EventRoomRow } from "../db/schema";
 import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
-import { issueLiveToken } from "../services/livekit.service";
+import { issueLiveToken, startRecording as livekitStartRecording, stopRecording as livekitStopRecording } from "../services/livekit.service";
 import { getRoomPresence } from "../services/presence.service";
 import { validateActivityQuotas } from "../services/activity.service";
 import {
@@ -408,6 +408,35 @@ export const stopLive: RequestHandler = async (req, res, next) => {
 
     if (!row) throw ApiError.notFound("Room not found");
     res.json(toEventRoom(row));
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const startRoomRecording: RequestHandler = async (req, res, next) => {
+  try {
+    const orgId = requireOrgId(req.user!.organizationId);
+    const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
+
+    const recording = await livekitStartRecording(id);
+    res.json(recording);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const stopRoomRecording: RequestHandler = async (req, res, next) => {
+  try {
+    const orgId = requireOrgId(req.user!.organizationId);
+    const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
+
+    const { egressId } = req.body;
+    if (!egressId) throw ApiError.badRequest("egressId is required to stop recording");
+
+    const recording = await livekitStopRecording(egressId);
+    res.json(recording);
   } catch (err) {
     next(err);
   }
