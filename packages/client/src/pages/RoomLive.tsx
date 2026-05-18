@@ -38,9 +38,11 @@ export const RoomLive = () => {
   const { user } = useAuth();
   const [room, setRoom] = useState<EventRoom | null>(null);
   const [live, setLive] = useState<LiveTokenResponse | null>(null);
+  const [activeRecording, setActiveRecording] = useState<{ egressId: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState<"start" | "stop" | null>(null);
+  const [recordBusy, setRecordBusy] = useState<"start" | "stop" | null>(null);
   const [connect, setConnect] = useState(false);
   const [presence, setPresence] = useState<PresenceSnapshot | null>(null);
   const [activities, setActivities] = useState<ActivityDefinition[]>([]);
@@ -81,6 +83,13 @@ export const RoomLive = () => {
         if (r.streamProvider === "livekit") {
           const token = await liveApi.getToken(id);
           if (!cancelled) setLive(token);
+          
+          try {
+            const recording = await liveApi.getActiveRecording(id);
+            if (!cancelled) setActiveRecording(recording);
+          } catch (err) {
+            console.error("Failed to fetch recording status:", err);
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -144,6 +153,34 @@ export const RoomLive = () => {
     }
   };
 
+  const handleStartRecording = async () => {
+    if (!id) return;
+    setRecordBusy("start");
+    setError(null);
+    try {
+      const rec = await liveApi.startRecording(id);
+      setActiveRecording(rec);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Start recording failed");
+    } finally {
+      setRecordBusy(null);
+    }
+  };
+
+  const handleStopRecording = async () => {
+    if (!id || !activeRecording) return;
+    setRecordBusy("stop");
+    setError(null);
+    try {
+      await liveApi.stopRecording(id, activeRecording.egressId);
+      setActiveRecording(null);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Stop recording failed");
+    } finally {
+      setRecordBusy(null);
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-muted-foreground">Loading…</div>;
   }
@@ -191,6 +228,26 @@ export const RoomLive = () => {
 
         {canPublish && room.streamProvider === "livekit" && (
           <div className="flex gap-2">
+            {room.status === "live" && !activeRecording && (
+              <Button onClick={handleStartRecording} disabled={recordBusy === "start"} variant="outline" className="border-red-500/20 text-red-500 hover:bg-red-500/10">
+                {recordBusy === "start" ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 mr-2" />
+                )}
+                Record
+              </Button>
+            )}
+            {room.status === "live" && activeRecording && (
+              <Button onClick={handleStopRecording} disabled={recordBusy === "stop"} variant="outline" className="border-red-500/50 bg-red-500/10 text-red-500 hover:bg-red-500/20">
+                {recordBusy === "stop" ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <div className="w-2.5 h-2.5 rounded-sm bg-red-500 mr-2" />
+                )}
+                Stop Recording
+              </Button>
+            )}
             {room.status !== "live" ? (
               <Button onClick={handleStart} disabled={actionBusy === "start"}>
                 {actionBusy === "start" ? (

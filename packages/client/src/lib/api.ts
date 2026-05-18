@@ -217,6 +217,9 @@ export const liveApi = {
     api.post<LiveTokenResponse>(`/rooms/${roomId}/live-token`),
   start: (roomId: string) => api.post<EventRoom>(`/rooms/${roomId}/start`),
   stop: (roomId: string) => api.post<EventRoom>(`/rooms/${roomId}/stop`),
+  startRecording: (roomId: string) => api.post<{ egressId: string }>(`/rooms/${roomId}/recording/start`),
+  stopRecording: (roomId: string, egressId: string) => api.post<{ egressId: string }>(`/rooms/${roomId}/recording/stop`, { egressId }),
+  getActiveRecording: (roomId: string) => api.get<{ egressId: string } | null>(`/rooms/${roomId}/recording/active`),
 };
 
 export const attendanceApi = {
