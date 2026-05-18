@@ -89,6 +89,14 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_BUCKET: ${S3_BUCKET}
 
+  # ─── Gotenberg (HTML to PDF engine) ───────────────
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: evently_gotenberg
+    restart: unless-stopped
+    ports:
+      - "${GOTENBERG_PORT:-8631}:3000"
+
   # ─── Backend API (Node/Express) ───────────────────
   server:
     build:
@@ -116,6 +124,7 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_FORCE_PATH_STYLE: "true"
+      GOTENBERG_URL: http://gotenberg:3000
     volumes:
       - ./packages/server/src:/app/packages/server/src
       - ./packages/shared/src:/app/packages/shared/src
@@ -127,6 +136,8 @@ services:
       livekit:
         condition: service_started
       minio:
+        condition: service_started
+      gotenberg:
         condition: service_started
 
   # ─── Frontend (React + Vite) ──────────────────────

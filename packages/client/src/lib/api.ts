@@ -150,6 +150,7 @@ import type {
   UpdateRoomInput,
   ResetPasswordInput,
   OnboardingInput,
+  RoomReport,
 } from "@application/shared";
 
 export const roomsApi = {
@@ -210,6 +211,13 @@ export const activitiesApi = {
     api.post<PhotoUploadResponse>(`/rooms/${roomId}/activities/photo-upload`, body),
   submitPhoto: (roomId: string, body: SubmitActivityPhotoInput) =>
     api.post<ActivitySubmission>(`/rooms/${roomId}/activities/submission`, body),
+};
+
+export const reportsApi = {
+  list: (roomId: string) =>
+    api.get<{ items: RoomReport[] }>(`/rooms/${roomId}/reports`),
+  generate: (roomId: string) =>
+    api.post<RoomReport>(`/rooms/${roomId}/reports/generate`),
 };
 
 export const eventAssignmentsApi = {

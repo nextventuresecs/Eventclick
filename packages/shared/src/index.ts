@@ -456,3 +456,15 @@ export const ClientLogSchema = z.object({
   timestamp: z.iso.datetime().optional(),
 });
 export type ClientLogInput = z.infer<typeof ClientLogSchema>;
+
+// ─── Room Report ────────────────────────────────────
+export interface RoomReport {
+  id: string;
+  roomId: string;
+  s3Key: string;
+  fileName: string;
+  fileSize: number;
+  generatedBy: string;
+  createdAt: string;
+  downloadUrl: string;
+}

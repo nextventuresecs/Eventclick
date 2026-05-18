@@ -40,6 +40,8 @@ import {
   presignActivityPhotoUrl,
   postActivityPhotoSubmission,
 } from "../controllers/activity.controller";
+import { requireRole } from "../middleware/requireRole";
+import { generateReport, listReports } from "../controllers/report.controller";
 
 export const roomRouter = Router();
 
@@ -119,3 +121,7 @@ roomRouter.post(
   validate(SubmitActivityPhotoSchema),
   postActivityPhotoSubmission,
 );
+
+// Room reports (NGO Admin only)
+roomRouter.post("/:id/reports/generate", requireRole("ngo_admin"), generateReport);
+roomRouter.get("/:id/reports", requireRole("ngo_admin"), listReports);

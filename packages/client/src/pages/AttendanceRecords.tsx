@@ -11,12 +11,19 @@ import {
   ChevronRight,
   RefreshCw,
   Calendar,
+  FileText,
+  Plus,
+  AlertCircle,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import type { AttendanceEntry, EventRoom, FormDefinition, FormField } from "@application/shared";
-import { attendanceApi, roomsApi, formsApi, ApiClientError } from "@/lib/api";
+import type { AttendanceEntry, EventRoom, FormDefinition, FormField, RoomReport } from "@application/shared";
+import { attendanceApi, roomsApi, formsApi, ApiClientError, reportsApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 
 const ITEMS_PER_PAGE = 15;
 
@@ -36,8 +43,17 @@ const formatColumnName = (key: string): string => {
     .join(" ");
 };
 
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
 export const AttendanceRecords = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [entries, setEntries] = useState<AttendanceEntry[]>([]);
   const [room, setRoom] = useState<EventRoom | null>(null);
   const [form, setForm] = useState<FormDefinition | null>(null);
@@ -47,6 +63,49 @@ export const AttendanceRecords = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortKey, setSortKey] = useState<string>("submittedAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const [reports, setReports] = useState<RoomReport[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [isReportsPanelOpen, setIsReportsPanelOpen] = useState(false);
+
+  const fetchReports = async () => {
+    if (!id || user?.role !== "ngo_admin") return;
+    setLoadingReports(true);
+    setReportsError(null);
+    try {
+      const data = await reportsApi.list(id);
+      setReports(data.items);
+    } catch (err) {
+      console.error("Failed to load reports:", err);
+      setReportsError(err instanceof ApiClientError ? err.message : "Failed to load PDF reports");
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (!id) return;
+    setGeneratingReport(true);
+    setReportsError(null);
+    try {
+      await reportsApi.generate(id);
+      await fetchReports();
+      setIsReportsPanelOpen(true);
+    } catch (err) {
+      console.error("Failed to generate report:", err);
+      setReportsError(err instanceof ApiClientError ? err.message : "Failed to generate PDF report");
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id && user?.role === "ngo_admin") {
+      fetchReports();
+    }
+  }, [id, user]);
 
   const fetchEntries = async () => {
     if (!id) return;
@@ -371,6 +430,132 @@ export const AttendanceRecords = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* PDF Reports Panel (NGO Admin Only) */}
+      {user?.role === "ngo_admin" && (
+        <Card className="overflow-hidden border border-primary/20 bg-gradient-to-br from-card/85 to-primary/5 shadow-md backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:border-primary/30">
+          <div className="p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center text-primary mt-0.5 shadow-inner">
+                  <FileText className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                    Event PDF Reports
+                    {reports.length > 0 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                        {reports.length}
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Generate and access high-fidelity PDF summaries containing attendee statistics, event durations, and activity proofs.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsReportsPanelOpen(!isReportsPanelOpen)}
+                  className="gap-1.5 transition-all duration-200"
+                >
+                  {isReportsPanelOpen ? (
+                    <>
+                      <ChevronUp className="w-4 h-4" />
+                      Hide Reports
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-4 h-4" />
+                      View Reports
+                    </>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleGenerateReport}
+                  disabled={generatingReport}
+                  className="relative gap-1.5 bg-primary hover:bg-primary/95 text-primary-foreground shadow-md transition-all duration-300 active:scale-[0.97] hover:shadow-lg hover:shadow-primary/20 font-medium"
+                >
+                  {generatingReport ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Rendering PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Generate PDF</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {reportsError && (
+              <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{reportsError}</span>
+              </div>
+            )}
+
+            {isReportsPanelOpen && (
+              <div className="mt-5 border-t border-border/60 pt-4 animate-in fade-in slide-in-from-top-3 duration-200">
+                {loadingReports ? (
+                  <div className="py-8 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">Loading generated reports...</p>
+                  </div>
+                ) : reports.length === 0 ? (
+                  <div className="py-8 text-center border-2 border-dashed border-border rounded-lg">
+                    <FileText className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-muted-foreground">No reports generated yet</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1 max-w-[280px] mx-auto">
+                      Generate your first professional event summary document using the generate button.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 max-h-[320px] overflow-y-auto pr-1">
+                    {reports.map((report) => (
+                      <div
+                        key={report.id}
+                        className="group flex items-center justify-between p-3.5 rounded-lg border border-border bg-card/50 hover:bg-muted/60 hover:border-primary/30 shadow-sm hover:shadow transition-all duration-300"
+                      >
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="w-9 h-9 rounded bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold truncate text-foreground group-hover:text-primary transition-colors">
+                              {report.fileName}
+                            </p>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                              <span className="tabular-nums">{formatFileSize(report.fileSize)}</span>
+                              <span className="text-muted-foreground/30">•</span>
+                              <span>{format(new Date(report.createdAt), "MMM d, yyyy h:mm a")}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <a
+                           href={report.downloadUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-border bg-background hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 active:scale-95 shadow-sm"
+                          title="Download Report"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Search & Filter Bar */}
       <div className="flex flex-col sm:flex-row gap-3">

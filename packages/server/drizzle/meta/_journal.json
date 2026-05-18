@@ -64,6 +64,13 @@
       "when": 1779104141449,
       "tag": "0008_pink_sleeper",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779116736418,
+      "tag": "0009_ancient_secret_warriors",
+      "breakpoints": true
     }
   ]
 }

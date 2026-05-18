@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Official Event Report: <%= event.title %></title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+      --primary: hsl(256, 75%, 42%);
+      --primary-light: hsl(256, 75%, 96%);
+      --primary-dark: hsl(256, 75%, 20%);
+      --accent: hsl(160, 84%, 39%);
+      --accent-light: hsl(160, 84%, 96%);
+      --accent-dark: hsl(160, 84%, 20%);
+      --text-dark: hsl(224, 60%, 12%);
+      --text-medium: hsl(220, 15%, 35%);
+      --text-light: hsl(220, 10%, 50%);
+      --bg-white: #ffffff;
+      --bg-light: hsl(220, 20%, 98%);
+      --border-color: hsl(220, 15%, 90%);
+      --border-gradient: linear-gradient(90deg, hsl(256, 75%, 42%), hsl(160, 84%, 39%));
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.01);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    /* Print settings */
+    @page {
+      size: A4;
+      margin: 18mm;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--text-dark);
+      background-color: var(--bg-white);
+      line-height: 1.5;
+      font-size: 14px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    /* Header Design */
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid transparent;
+      border-image: var(--border-gradient) 1;
+      padding-bottom: 1.5rem;
+      margin-bottom: 2.25rem;
+    }
+
+    .org-branding {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .org-logo {
+      height: 48px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .org-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.35rem;
+      color: var(--primary-dark);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .report-badge {
+      background: linear-gradient(135deg, var(--primary-light), hsl(256, 75%, 92%));
+      color: var(--primary);
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.45rem 1rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border: 1px solid hsl(256, 75%, 85%);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Event Overview */
+    .event-header {
+      margin-bottom: 2.5rem;
+    }
+
+    .event-title {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: var(--primary-dark);
+      margin-bottom: 0.75rem;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+
+    .event-description {
+      font-size: 1.05rem;
+      color: var(--text-medium);
+      line-height: 1.6;
+      max-width: 95%;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Stat Cards Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .stat-card {
+      background-color: var(--bg-white);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(to bottom, var(--primary), var(--accent));
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--primary-dark);
+    }
+
+    .stat-subtext {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      margin-top: 0.25rem;
+    }
+
+    /* Sections styling */
+    .section-title {
+      font-size: 1.35rem;
+      color: var(--primary-dark);
+      border-bottom: 2px solid var(--bg-light);
+      padding-bottom: 0.5rem;
+      margin-top: 2.25rem;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-title::after {
+      content: '';
+      flex-grow: 1;
+      height: 1px;
+      background-color: var(--border-color);
+      margin-left: 1rem;
+    }
+
+    /* Verification Badge */
+    .verification-seal {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: var(--accent-light);
+      color: var(--accent-dark);
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border: 1px solid hsl(160, 84%, 85%);
+      box-shadow: var(--shadow-sm);
+      margin-top: 1.5rem;
+    }
+
+    /* Activity Cards */
+    .activity-card {
+      background-color: var(--bg-white);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--primary);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 2.25rem;
+      box-shadow: var(--shadow-sm);
+      page-break-inside: avoid;
+    }
+
+    .activity-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--bg-light);
+      padding-bottom: 0.75rem;
+    }
+
+    .activity-meta {
+      flex-grow: 1;
+      padding-right: 1.5rem;
+    }
+
+    .activity-title {
+      font-size: 1.35rem;
+      color: var(--primary-dark);
+      margin-bottom: 0.35rem;
+      font-weight: 700;
+    }
+
+    .activity-desc {
+      font-size: 0.95rem;
+      color: var(--text-medium);
+      line-height: 1.5;
+    }
+
+    .activity-badge {
+      background-color: var(--accent-light);
+      color: var(--accent-dark);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid hsl(172, 70%, 90%);
+      white-space: nowrap;
+    }
+
+    /* Photo Grid inside Activities */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+      margin-top: 1rem;
+    }
+
+    .photo-card {
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      overflow: hidden;
+      background-color: var(--bg-light);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .photo-img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+      border-bottom: 1px solid var(--border-color);
+      background-color: #f1f5f9;
+    }
+
+    .photo-meta {
+      padding: 0.75rem 1rem;
+      background-color: var(--bg-white);
+    }
+
+    .photo-date {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 500;
+    }
+
+    .photo-date svg {
+      opacity: 0.7;
+    }
+
+    /* Page break helpers */
+    .page-break {
+      page-break-before: always;
+    }
+
+    .no-photos {
+      color: var(--text-light);
+      font-style: italic;
+      font-size: 0.9rem;
+      padding: 1.5rem;
+      background-color: var(--bg-light);
+      border-radius: 8px;
+      border: 1px dashed var(--border-color);
+      text-align: center;
+    }
+
+    /* Signature Section */
+    .signature-section {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4rem;
+      margin-top: 3.5rem;
+      margin-bottom: 1.5rem;
+      page-break-inside: avoid;
+    }
+
+    .signature-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .signature-line {
+      width: 100%;
+      border-top: 1px solid var(--border-color);
+      margin-bottom: 0.75rem;
+    }
+
+    .signature-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .signature-sub {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      margin-top: 0.15rem;
+    }
+
+    /* Footer styling */
+    .footer {
+      margin-top: 3rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-light);
+      page-break-inside: avoid;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+
+    .footer-dot {
+      width: 4px;
+      height: 4px;
+      background-color: var(--border-color);
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE 1: COVER & OVERVIEW -->
+  <div class="header-container">
+    <div class="org-branding">
+      <% if (organization.logoUrl) { %>
+        <img class="org-logo" src="<%= organization.logoUrl %>" alt="<%= organization.name %> Logo">
+      <% } %>
+      <span class="org-name"><%= organization.name %></span>
+    </div>
+    <span class="report-badge">Official Event Report</span>
+  </div>
+
+  <div class="event-header">
+    <h1 class="event-title"><%= event.title %></h1>
+    <% if (event.description) { %>
+      <p class="event-description"><%= event.description %></p>
+    <% } else { %>
+      <p class="event-description">No description provided for this event.</p>
+    <% } %>
+    
+    <div class="verification-seal">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 11 2 2 4-4"></path></svg>
+      <span>Verified Proof of Work Document</span>
+    </div>
+  </div>
+
+  <h2 class="section-title">Event Performance Metrics</h2>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="stat-label">Duration held</span>
+      <span class="stat-value"><%= durationText %></span>
+      <span class="stat-subtext">Actual time spent</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Beneficiaries</span>
+      <span class="stat-value"><%= beneficiaryCount %></span>
+      <span class="stat-subtext">Total verified attendees</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Activities Logged</span>
+      <span class="stat-value"><%= activities.length %></span>
+      <span class="stat-subtext">Performed scheduled items</span>
+    </div>
+  </div>
+
+  <h2 class="section-title">Facilitation Schedule</h2>
+  <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 2rem;">
+    <div class="stat-card">
+      <span class="stat-label">Actual Start</span>
+      <span class="stat-value" style="font-size: 1.25rem; font-family: 'Inter', sans-serif; font-weight: 600;"><%= actualStartText %></span>
+      <span class="stat-subtext">Session check-in initialized</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Actual End</span>
+      <span class="stat-value" style="font-size: 1.25rem; font-family: 'Inter', sans-serif; font-weight: 600;"><%= actualEndText %></span>
+      <span class="stat-subtext">Session finalized & saved</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-left">
+      <span><%= organization.name %></span>
+      <span class="footer-dot"></span>
+      <span><%= event.title %></span>
+    </div>
+    <span>Page 1 of <%= 1 + Math.ceil(activities.length / 2) %></span>
+  </div>
+
+  <!-- ACTIVITIES & PROOF SECTION -->
+  <% if (activities.length > 0) { %>
+    <% activities.forEach((activity, index) => { %>
+      <!-- Page Break: place 2 activities per page in standard layout to avoid excessive heights -->
+      <% if (index > 0 && index % 2 === 0) { %>
+        <div class="page-break"></div>
+      <% } else if (index === 0) { %>
+        <div class="page-break"></div>
+      <% } %>
+
+      <div class="activity-card">
+        <div class="activity-header">
+          <div class="activity-meta">
+            <h3 class="activity-title"><%= activity.title %></h3>
+            <% if (activity.description) { %>
+              <p class="activity-desc"><%= activity.description %></p>
+            <% } %>
+          </div>
+          <span class="activity-badge"><%= activity.photos.length %> <%= activity.photos.length === 1 ? 'photo' : 'photos' %> submitted</span>
+        </div>
+
+        <% if (activity.photos.length > 0) { %>
+          <div class="photo-grid">
+            <% activity.photos.forEach(photo => { %>
+              <div class="photo-card">
+                <img class="photo-img" src="<%= photo.url %>" alt="Activity Proof Photo">
+                <div class="photo-meta">
+                  <div class="photo-date">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span>Uploaded at <%= new Date(photo.uploadedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) %></span>
+                  </div>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } else { %>
+          <div class="no-photos">
+            No proof photos submitted for this activity.
+          </div>
+        <% } %>
+      </div>
+
+      <!-- If this is the absolute end of all activities, append the signature blocks -->
+      <% if (index === activities.length - 1) { %>
+        <div class="signature-section">
+          <div class="signature-card">
+            <div class="signature-line"></div>
+            <span class="signature-title">NGO Administrator</span>
+            <span class="signature-sub"><%= organization.name %></span>
+          </div>
+          <div class="signature-card">
+            <div class="signature-line"></div>
+            <span class="signature-title">Lead Facilitator</span>
+            <span class="signature-sub">Evently System Verified</span>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Add page footer on every page except cover, only if it's the last element of the page or document -->
+      <% if (index === activities.length - 1 || (index + 1) % 2 === 0) { %>
+        <div class="footer">
+          <div class="footer-left">
+            <span><%= organization.name %></span>
+            <span class="footer-dot"></span>
+            <span><%= event.title %></span>
+          </div>
+          <span>Page <%= 2 + Math.floor(index / 2) %> of <%= 1 + Math.ceil(activities.length / 2) %></span>
+        </div>
+      <% } %>
+    <% }) %>
+  <% } else { %>
+    <div class="page-break"></div>
+    <h2 class="section-title">Activities Performed</h2>
+    <p style="color: var(--text-medium); font-style: italic; margin-bottom: 2rem;">No activities were scheduled or recorded for this event room.</p>
+    
+    <div class="signature-section">
+      <div class="signature-card">
+        <div class="signature-line"></div>
+        <span class="signature-title">NGO Administrator</span>
+        <span class="signature-sub"><%= organization.name %></span>
+      </div>
+      <div class="signature-card">
+        <div class="signature-line"></div>
+        <span class="signature-title">Lead Facilitator</span>
+        <span class="signature-sub">Evently System Verified</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-left">
+        <span><%= organization.name %></span>
+        <span class="footer-dot"></span>
+        <span><%= event.title %></span>
+      </div>
+      <span>Page 2 of 2</span>
+    </div>
+  <% } %>
+
+</body>
+</html>
