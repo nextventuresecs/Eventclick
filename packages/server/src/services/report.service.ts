@@ -63,6 +63,10 @@ export const generateVerificationReportPdf = async (
     throw ApiError.notFound("Room not found");
   }
 
+  if (room.status !== "ended") {
+    throw ApiError.badRequest("Report can only be generated after the live session has ended");
+  }
+
   // 2. Assert User has permission to access the room
   await assertRoomAccessForUser(user, orgId, roomId);
 
