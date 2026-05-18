@@ -71,6 +71,13 @@ export const revokeSessionFamily = async (familyId: string): Promise<void> => {
     .where(and(eq(sessions.familyId, familyId), isNull(sessions.revokedAt)));
 };
 
+export const revokeAllUserSessions = async (userId: string): Promise<void> => {
+  await db
+    .update(sessions)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
+};
+
 export const rotateSession = async (
   current: Session,
   meta: SessionMeta,

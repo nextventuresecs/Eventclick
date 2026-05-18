@@ -30,6 +30,10 @@ const EnvSchema = z.object({
 
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
+  // ─── Email ────────────────────────────────────────
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().default("noreply@evently.com"),
+
   // ─── LiveKit ──────────────────────────────────────
   LIVEKIT_URL: z.string().min(1, "LIVEKIT_URL is required"),
   LIVEKIT_PUBLIC_URL: z.string().min(1, "LIVEKIT_PUBLIC_URL is required"),

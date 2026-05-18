@@ -108,7 +108,7 @@ export const me: RequestHandler = async (req, res, next) => {
 export const forgot: RequestHandler = async (req, res, next) => {
   try {
     await forgotPassword(req.body.email);
-    res.status(200).json({ message: "Password reset link sent successfully" });
+    res.status(200).json({ message: "If the email exists, you will receive a password reset link shortly." });
   } catch (err) {
     next(err);
   }

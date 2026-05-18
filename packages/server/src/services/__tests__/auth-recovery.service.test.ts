@@ -18,6 +18,16 @@ vi.mock("../password.service", () => ({
   verifyPassword: vi.fn().mockResolvedValue(true),
 }));
 
+// Mock session service
+vi.mock("../session.service", () => ({
+  revokeAllUserSessions: vi.fn().mockResolvedValue(undefined),
+  issueRefreshToken: vi.fn(),
+  findActiveSessionByToken: vi.fn(),
+  revokeSession: vi.fn(),
+  rotateSession: vi.fn(),
+  refreshTtlMs: 1000 * 60 * 60 * 24 * 7,
+}));
+
 // Mock db
 vi.mock("../../db", () => {
   const mockDbChain = {
@@ -73,12 +83,11 @@ describe("auth.service - Password Recovery Flow", () => {
   });
 
   describe("forgotPassword", () => {
-    it("throws a notFound error if no user with the given email exists", async () => {
+    it("resolves successfully without sending an email if no user exists (anti-enumeration)", async () => {
       mockUserResult = [];
 
-      await expect(forgotPassword("nonexistent@example.com")).rejects.toThrowError(
-        ApiError.notFound("No account found with this email address")
-      );
+      await expect(forgotPassword("nonexistent@example.com")).resolves.toBeUndefined();
+      expect(mockSendPasswordResetEmail).not.toHaveBeenCalled();
     });
 
     it("successfully creates a password reset token and calls sendPasswordResetEmail", async () => {

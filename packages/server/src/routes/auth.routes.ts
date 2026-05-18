@@ -20,6 +20,14 @@ const authLimiter = rateLimit({
   message: { error: "RATE_LIMITED", message: "Too many auth attempts — try again later" },
 });
 
+const recoveryLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 5, // 5 requests per window
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "RATE_LIMITED", message: "Too many password recovery attempts — try again later" },
+});
+
 export const authRouter = Router();
 
 authRouter.post("/register", authLimiter, validate(RegisterSchema), authController.register);
@@ -29,6 +37,6 @@ authRouter.post("/refresh", authController.refresh);
 authRouter.post("/logout", authController.logout);
 authRouter.get("/me", requireAuth, authController.me);
 
-authRouter.post("/forgot-password", authLimiter, validate(ForgotPasswordSchema), authController.forgot);
-authRouter.post("/reset-password", authLimiter, validate(ResetPasswordSchema), authController.reset);
+authRouter.post("/forgot-password", recoveryLimiter, validate(ForgotPasswordSchema), authController.forgot);
+authRouter.post("/reset-password", recoveryLimiter, validate(ResetPasswordSchema), authController.reset);
 authRouter.post("/onboarding", requireAuth, validate(OnboardingSchema), authController.onboard);

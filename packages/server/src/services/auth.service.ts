@@ -20,6 +20,7 @@ import {
   issueRefreshToken,
   revokeSession,
   rotateSession,
+  revokeAllUserSessions,
   type SessionMeta,
 } from "./session.service";
 import { verifyGoogleIdToken } from "./google.service";
@@ -265,16 +266,17 @@ export const getCurrentUser = async (userId: string): Promise<AuthUser> => {
 export const forgotPassword = async (email: string): Promise<void> => {
   const user = await findUserByEmail(email);
   if (!user) {
-    logger.warn({ email, event: "password_reset.request_failed" }, "reset request for non-existent email");
-    throw ApiError.notFound("No account found with this email address");
+    logger.warn({ email, event: "password_reset.request_failed" }, "reset request for non-existent email (ignored to prevent enumeration)");
+    return;
   }
 
   const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
   await db.insert(passwordResets).values({
     userId: user.id,
-    token,
+    tokenHash,
     expiresAt,
   });
 
@@ -283,12 +285,14 @@ export const forgotPassword = async (email: string): Promise<void> => {
 };
 
 export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
   const [resetReq] = await db
     .select()
     .from(passwordResets)
     .where(
       and(
-        eq(passwordResets.token, token),
+        eq(passwordResets.tokenHash, tokenHash),
         isNull(passwordResets.usedAt),
         gt(passwordResets.expiresAt, new Date())
       )
@@ -296,7 +300,7 @@ export const resetPassword = async (token: string, newPassword: string): Promise
     .limit(1);
 
   if (!resetReq) {
-    logger.warn({ token, event: "password_reset.failed" }, "invalid or expired password reset token used");
+    logger.warn({ event: "password_reset.failed" }, "invalid or expired password reset token used");
     throw ApiError.badRequest("Invalid or expired reset token");
   }
 
@@ -315,6 +319,9 @@ export const resetPassword = async (token: string, newPassword: string): Promise
       .set({ passwordHash, updatedAt: new Date() })
       .where(eq(users.id, resetReq.userId));
   });
+
+  // Revoke all existing sessions to force re-login on all devices
+  await revokeAllUserSessions(resetReq.userId);
 
   logger.info({ userId: resetReq.userId, event: "password_reset.success" }, "password reset successfully");
 };
