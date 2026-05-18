@@ -121,6 +121,9 @@ export const authApi = {
   logout: () => api.post<void>("/auth/logout"),
   me: () => api.get<{ user: AuthUser }>("/auth/me"),
   refresh: () => refreshOnce(),
+  forgotPassword: (email: string) => api.post<void>("/auth/forgot-password", { email }),
+  resetPassword: (body: ResetPasswordInput) => api.post<void>("/auth/reset-password", body),
+  completeOnboarding: (body: OnboardingInput) => api.post<AuthSuccess>("/auth/onboarding", body),
 };
 
 import type {
@@ -145,6 +148,8 @@ import type {
   SubmitAttendanceInput,
   UpdateEventAdminAssignmentInput,
   UpdateRoomInput,
+  ResetPasswordInput,
+  OnboardingInput,
 } from "@application/shared";
 
 export const roomsApi = {

@@ -1,10 +1,13 @@
-import { createBrowserRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate, Outlet, useLocation } from "react-router-dom";
 import { hasRolePermission, type RolePermission } from "@application/shared";
 import { useAuth } from "./hooks/useAuth";
 
 // Pages
 import { LoginPage } from "./pages/Login";
 import { RegisterPage } from "./pages/Register";
+import { ForgotPasswordPage } from "./pages/ForgotPassword";
+import { ResetPasswordPage } from "./pages/ResetPassword";
+import { OnboardingPage } from "./pages/Onboarding";
 import { DashboardLayout } from "./components/layouts/DashboardLayout";
 import { Dashboard } from "./pages/Dashboard";
 import { CreateRoom } from "./pages/CreateRoom";
@@ -35,7 +38,8 @@ const ConnectionError = () => {
 };
 
 const ProtectedRoute = () => {
-  const { status } = useAuth();
+  const { status, user } = useAuth();
+  const location = useLocation();
   
   if (status === "loading") {
     return <div className="p-8 text-center text-muted-foreground">Loading session...</div>;
@@ -47,6 +51,16 @@ const ProtectedRoute = () => {
   
   if (status === "unauthenticated") {
     return <Navigate to="/login" replace />;
+  }
+
+  if (
+    user &&
+    user.role === "volunteer" &&
+    !user.organizationId &&
+    localStorage.getItem("evently_onboarding_completed_or_skipped") !== "true" &&
+    location.pathname !== "/onboarding"
+  ) {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return <Outlet />;
@@ -145,11 +159,14 @@ const router = createBrowserRouter([
     children: [
       { path: "login", element: <LoginPage /> },
       { path: "register", element: <RegisterPage /> },
+      { path: "forgot-password", element: <ForgotPasswordPage /> },
+      { path: "reset-password", element: <ResetPasswordPage /> },
     ],
   },
   {
     element: <ProtectedRoute />,
     children: [
+      { path: "onboarding", element: <OnboardingPage /> },
       {
         element: <DashboardLayout />,
         children: [

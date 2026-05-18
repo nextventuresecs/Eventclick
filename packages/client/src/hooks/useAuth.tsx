@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { AuthUser } from "@application/shared";
+import type { AuthUser, ResetPasswordInput, OnboardingInput } from "@application/shared";
 import { authApi, setAccessToken, setOnUnauthorized } from "@/lib/api";
 
 interface AuthContextValue {
@@ -10,6 +10,9 @@ interface AuthContextValue {
   loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   retryAuth: () => void;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (body: ResetPasswordInput) => Promise<void>;
+  completeOnboarding: (body: OnboardingInput) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -88,6 +91,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       },
       retryAuth,
+      forgotPassword: async (email) => {
+        await authApi.forgotPassword(email);
+      },
+      resetPassword: async (body) => {
+        await authApi.resetPassword(body);
+      },
+      completeOnboarding: async (body) => {
+        const result = await authApi.completeOnboarding(body);
+        applyAuth(result);
+      },
     }),
     [user, status, handleUnauthorized, retryAuth],
   );

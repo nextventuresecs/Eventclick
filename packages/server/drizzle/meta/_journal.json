@@ -50,6 +50,13 @@
       "when": 1779039819476,
       "tag": "0006_mighty_rawhide_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779098137853,
+      "tag": "0007_amazing_sally_floyd",
+      "breakpoints": true
     }
   ]
 }
