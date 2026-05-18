@@ -28,6 +28,7 @@ import {
   getPresence,
   startRoomRecording,
   stopRoomRecording,
+  getActiveRecording,
 } from "../controllers/room.controller";
 import { getRoomForm, saveRoomForm } from "../controllers/form.controller";
 import {
@@ -83,6 +84,7 @@ roomRouter.post("/:id/start", canManageLiveSession, startLive);
 roomRouter.post("/:id/stop", canManageLiveSession, stopLive);
 roomRouter.post("/:id/recording/start", canManageLiveSession, startRoomRecording);
 roomRouter.post("/:id/recording/stop", canManageLiveSession, stopRoomRecording);
+roomRouter.get("/:id/recording/active", canManageLiveSession, getActiveRecording);
 roomRouter.get("/:id/presence", getPresence);
 
 roomRouter.get("/:id/form", getRoomForm);

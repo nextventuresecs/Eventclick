@@ -11,7 +11,7 @@ import type {
 } from "@application/shared";
 import { extractYouTubeVideoId, hasRolePermission } from "@application/shared";
 import { db } from "../db";
-import { attendanceEntries, eventAdminAssignments, eventRooms, users, type EventRoomRow } from "../db/schema";
+import { attendanceEntries, eventAdminAssignments, eventRooms, users, roomRecordings, type EventRoomRow } from "../db/schema";
 import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
 import { issueLiveToken, startRecording as livekitStartRecording, stopRecording as livekitStopRecording } from "../services/livekit.service";
@@ -448,6 +448,32 @@ export const getPresence: RequestHandler = async (req, res, next) => {
     const id = req.params.id as string;
     await assertRoomAccessForUser(req.user!, orgId, id);
     res.json(await getRoomPresence(id, orgId));
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getActiveRecording: RequestHandler = async (req, res, next) => {
+  try {
+    const orgId = requireOrgId(req.user!.organizationId);
+    const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
+
+    const [recording] = await db
+      .select()
+      .from(roomRecordings)
+      .where(
+        eq(roomRecordings.roomId, id)
+      )
+      .orderBy(desc(roomRecordings.startedAt))
+      .limit(1);
+
+    if (!recording || recording.status === "completed") {
+      res.json(null);
+      return;
+    }
+
+    res.json(recording);
   } catch (err) {
     next(err);
   }
