@@ -161,6 +161,36 @@ export const roomsApi = {
   setYouTubeFallback: (id: string, youtubeWatchUrl: string) =>
     api.post<EventRoom>(`/rooms/${id}/fallback/youtube`, { youtubeWatchUrl }),
   clearFallback: (id: string) => api.post<EventRoom>(`/rooms/${id}/fallback/clear`),
+  downloadReportPdf: async (id: string): Promise<Blob> => {
+    const headers: Record<string, string> = {};
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+    let res = await fetch(`${API_URL}/rooms/${id}/report/pdf`, {
+      method: "GET",
+      headers,
+      credentials: "include",
+    });
+
+    if (res.status === 401) {
+      const newToken = await refreshOnce();
+      if (newToken) {
+        headers.Authorization = `Bearer ${newToken}`;
+        res = await fetch(`${API_URL}/rooms/${id}/report/pdf`, {
+          method: "GET",
+          headers,
+          credentials: "include",
+        });
+      } else {
+        onUnauthorized?.();
+      }
+    }
+
+    if (!res.ok) {
+      throw new ApiClientError(res.status, "PDF_DOWNLOAD_FAILED", "Failed to download PDF report");
+    }
+
+    return res.blob();
+  },
 };
 
 export const formsApi = {

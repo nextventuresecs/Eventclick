@@ -38,6 +38,7 @@ import {
   presignActivityPhotoUrl,
   postActivityPhotoSubmission,
 } from "../controllers/activity.controller";
+import { downloadRoomReportPdf } from "../controllers/report.controller";
 
 export const roomRouter = Router();
 
@@ -101,6 +102,7 @@ roomRouter.post(
   postAttendance,
 );
 roomRouter.get("/:id/attendance", canViewAttendance, listRoomAttendance);
+roomRouter.get("/:id/report/pdf", canViewReports, downloadRoomReportPdf);
 
 roomRouter.get("/:id/activities", canTakeAttendance, getActivitiesAndSubmissions);
 roomRouter.post(

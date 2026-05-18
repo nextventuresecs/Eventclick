@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Event Fieldwork Verification Report</title>
+  <style>
+    /* Global Styles & Typography */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
+
+    :root {
+      --primary: hsl(239, 84%, 60%);
+      --primary-dark: hsl(239, 84%, 45%);
+      --slate-50: hsl(210, 40%, 98%);
+      --slate-100: hsl(210, 40%, 96%);
+      --slate-200: hsl(214, 32%, 91%);
+      --slate-300: hsl(212, 27%, 84%);
+      --slate-700: hsl(215, 25%, 27%);
+      --slate-800: hsl(215, 29%, 18%);
+      --slate-900: hsl(220, 39%, 10%);
+      --success: hsl(142, 72%, 29%);
+      --success-bg: hsl(142, 72%, 95%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--slate-800);
+      background-color: #ffffff;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      padding: 40px;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Outfit', sans-serif;
+      color: var(--slate-900);
+      font-weight: 700;
+    }
+
+    /* Print page-breaks and margins */
+    @media print {
+      body {
+        padding: 0;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+      .no-break {
+        page-break-inside: avoid;
+      }
+    }
+
+    /* Top Decorative Bar */
+    .top-bar {
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+      width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    /* Layout Wrapper */
+    .report-container {
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    /* Header */
+    .header {
+      margin-bottom: 30px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid var(--slate-100);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .header-left .doc-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--primary);
+      background-color: hsl(239, 84%, 96%);
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    .header-left h1 {
+      font-size: 28px;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .header-left p {
+      font-size: 14px;
+      color: var(--slate-700);
+      margin-top: 4px;
+    }
+
+    .header-right {
+      text-align: right;
+    }
+
+    .ngo-name {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 18px;
+      color: var(--slate-900);
+    }
+
+    .gen-date {
+      font-size: 12px;
+      color: var(--slate-700);
+      margin-top: 4px;
+    }
+
+    /* Event Metadata Grid */
+    .overview-grid {
+      display: grid;
+      grid-template-columns: 3.5fr 2.5fr;
+      gap: 24px;
+      margin-bottom: 30px;
+    }
+
+    .overview-card {
+      background-color: var(--slate-50);
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .overview-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--slate-700);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .overview-card h2 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .overview-card p.desc {
+      font-size: 13px;
+      color: var(--slate-700);
+      white-space: pre-line;
+    }
+
+    .metadata-list {
+      list-style: none;
+    }
+
+    .metadata-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 13px;
+      border-bottom: 1px dashed var(--slate-200);
+    }
+
+    .metadata-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .metadata-label {
+      color: var(--slate-700);
+      font-weight: 500;
+    }
+
+    .metadata-value {
+      font-weight: 600;
+      color: var(--slate-900);
+    }
+
+    /* Executive Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 35px;
+    }
+
+    .stat-card {
+      background-color: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      padding: 16px 20px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+
+    .stat-card .value {
+      font-family: 'Outfit', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+
+    .stat-card .label {
+      font-size: 12px;
+      color: var(--slate-700);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Section Headers */
+    .section-title {
+      font-size: 18px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 2px solid var(--slate-100);
+      padding-bottom: 8px;
+    }
+
+    .section-title::before {
+      content: "";
+      display: inline-block;
+      width: 4px;
+      height: 18px;
+      background-color: var(--primary);
+      border-radius: 2px;
+    }
+
+    /* Field Activities Proof Section */
+    .activity-container {
+      margin-bottom: 25px;
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      padding: 20px;
+      background-color: #ffffff;
+      page-break-inside: avoid;
+    }
+
+    .activity-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .activity-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--slate-900);
+    }
+
+    .activity-desc {
+      font-size: 13px;
+      color: var(--slate-700);
+      margin-bottom: 16px;
+    }
+
+    .activity-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .badge-success {
+      background-color: var(--success-bg);
+      color: var(--success);
+    }
+
+    .badge-neutral {
+      background-color: var(--slate-100);
+      color: var(--slate-700);
+    }
+
+    /* Activity Photo Proof Grid */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .photo-card {
+      border: 1px solid var(--slate-200);
+      border-radius: 8px;
+      overflow: hidden;
+      background-color: var(--slate-50);
+      display: flex;
+      flex-direction: column;
+      height: 180px;
+    }
+
+    .photo-wrapper {
+      flex: 1;
+      position: relative;
+      background-color: #000;
+      overflow: hidden;
+    }
+
+    .photo-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .photo-meta {
+      padding: 8px 12px;
+      background-color: #ffffff;
+      border-top: 1px solid var(--slate-200);
+    }
+
+    .photo-timestamp {
+      font-size: 10px;
+      color: var(--slate-700);
+      font-weight: 500;
+    }
+
+    .no-photos {
+      padding: 16px;
+      text-align: center;
+      background-color: var(--slate-50);
+      border: 1px dashed var(--slate-200);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--slate-700);
+    }
+
+    /* Attendance Log Table */
+    .attendance-table-container {
+      margin-top: 20px;
+      border: 1px solid var(--slate-200);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .attendance-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .attendance-table th {
+      background-color: var(--slate-50);
+      padding: 12px 16px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--slate-700);
+      border-bottom: 1px solid var(--slate-200);
+      font-weight: 600;
+    }
+
+    .attendance-table td {
+      padding: 12px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid var(--slate-200);
+      color: var(--slate-800);
+      vertical-align: middle;
+    }
+
+    .attendance-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .attendee-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .attendee-img {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid var(--slate-200);
+      background-color: var(--slate-100);
+    }
+
+    .attendee-no-img {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background-color: var(--slate-200);
+      color: var(--slate-700);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      border: 1px dashed var(--slate-300);
+    }
+
+    .attendee-name {
+      font-weight: 600;
+      color: var(--slate-900);
+    }
+
+    .attendee-phone {
+      font-size: 12px;
+      color: var(--slate-700);
+    }
+
+    .submitted-time {
+      font-family: monospace;
+      font-size: 11px;
+      color: var(--slate-700);
+    }
+
+    /* Footer stamp */
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid var(--slate-200);
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--slate-700);
+      page-break-inside: avoid;
+    }
+
+    .verification-seal {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .verification-seal::before {
+      content: "✓";
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      background-color: var(--success);
+      color: #ffffff;
+      border-radius: 50%;
+      font-size: 9px;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar"></div>
+  <div class="report-container">
+    
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <span class="doc-badge">Verification Record</span>
+        <h1>Fieldwork Evidence Report</h1>
+        <p>Verification data logged during operational fieldwork session</p>
+      </div>
+      <div class="header-right">
+        <div class="ngo-name"><%= organization.name %></div>
+        <div class="gen-date">Generated: <%= new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %></div>
+      </div>
+    </header>
+
+    <!-- Overview Grid -->
+    <section class="overview-grid">
+      <div class="overview-card">
+        <div class="overview-title">Session Details</div>
+        <h2><%= room.title %></h2>
+        <% if (room.description) { %>
+          <p class="desc"><%= room.description %></p>
+        <% } else { %>
+          <p class="desc" style="font-style: italic; color: hsl(215, 20%, 60%);">No session description provided.</p>
+        <% } %>
+      </div>
+      <div class="overview-card" style="padding-top: 15px;">
+        <div class="overview-title">Operations Log</div>
+        <ul class="metadata-list">
+          <li class="metadata-item">
+            <span class="metadata-label">Session ID</span>
+            <span class="metadata-value" style="font-family: monospace; font-size: 11px;"><%= room.id.substring(0, 8) %>...</span>
+          </li>
+          <li class="metadata-item">
+            <span class="metadata-label">Current Status</span>
+            <span class="metadata-value" style="text-transform: capitalize;"><%= room.status %></span>
+          </li>
+          <li class="metadata-item">
+            <span class="metadata-label">Actual Start</span>
+            <span class="metadata-value">
+              <%= room.actualStart ? new Date(room.actualStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not started' %>
+            </span>
+          </li>
+          <li class="metadata-item">
+            <span class="metadata-label">Actual End</span>
+            <span class="metadata-value">
+              <%= room.actualEnd ? new Date(room.actualEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : (room.status === 'live' ? 'In Progress' : 'N/A') %>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Executive Stats -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="value"><%= attendanceCount %></div>
+        <div class="label">Beneficiaries Verified</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">
+          <% 
+            let totalDefs = room.activityDefinitions ? room.activityDefinitions.length : 0;
+            let completedCount = 0;
+            if (totalDefs > 0 && activitySubmissions) {
+              room.activityDefinitions.forEach(def => {
+                let sub = activitySubmissions.find(s => s.activityId === def.id);
+                if (sub && sub.photos && sub.photos.length >= def.min_photos) {
+                  completedCount++;
+                }
+              });
+            }
+          %>
+          <%= completedCount %> / <%= totalDefs %>
+        </div>
+        <div class="label">Tasks Completed</div>
+      </div>
+      <div class="stat-card">
+        <div class="value"><%= formattedDuration %></div>
+        <div class="label">Field Run-Time</div>
+      </div>
+    </section>
+
+    <!-- Field Activities Log -->
+    <section class="no-break" style="margin-bottom: 30px;">
+      <h3 class="section-title">Fieldwork Checklist & Task Evidence</h3>
+      <% if (room.activityDefinitions && room.activityDefinitions.length > 0) { %>
+        <% room.activityDefinitions.forEach(def => { 
+          let submission = activitySubmissions ? activitySubmissions.find(s => s.activityId === def.id) : null;
+          let photoList = submission ? submission.photos : [];
+          let isComplete = photoList.length >= def.min_photos;
+        %>
+          <div class="activity-container">
+            <div class="activity-header">
+              <div>
+                <span class="activity-title"><%= def.title %></span>
+                <% if (def.description) { %>
+                  <div class="activity-desc" style="margin-top: 4px; margin-bottom: 0;"><%= def.description %></div>
+                <% } %>
+              </div>
+              <span class="activity-badge <%= isComplete ? 'badge-success' : 'badge-neutral' %>">
+                <%= isComplete ? 'Complete' : 'Pending' %> (<%= photoList.length %>/<%= def.min_photos %> Photos)
+              </span>
+            </div>
+
+            <% if (photoList.length > 0) { %>
+              <div class="photo-grid">
+                <% photoList.forEach(photo => { %>
+                  <div class="photo-card">
+                    <div class="photo-wrapper">
+                      <img src="<%= photo.url %>" alt="Task Proof">
+                    </div>
+                    <div class="photo-meta">
+                      <div class="photo-timestamp">
+                        Uploaded: <%= new Date(photo.uploadedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) %>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
+              </div>
+            <% } else { %>
+              <div class="no-photos">
+                No fieldwork photographic evidence uploaded for this task yet.
+              </div>
+            <% } %>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <div class="no-photos" style="padding: 30px;">
+          No field tasks or activity checklist definitions configured for this session.
+        </div>
+      <% } %>
+    </section>
+
+    <!-- Attendance Log -->
+    <section class="page-break no-break" style="margin-top: 30px;">
+      <h3 class="section-title">Verified Beneficiary Register</h3>
+      <% if (attendanceEntries && attendanceEntries.length > 0) { %>
+        <div class="attendance-table-container">
+          <table class="attendance-table">
+            <thead>
+              <tr>
+                <th>Beneficiary / Details</th>
+                <th>Sign-in Form Fields</th>
+                <th>Verification Photo</th>
+                <th>Time Logged</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% attendanceEntries.forEach(entry => { 
+                // Dynamically find name or identifier fields in custom form data
+                let name = entry.data.fullName || entry.data.name || entry.data.Name || entry.data.FullName || null;
+                let phone = entry.data.phone || entry.data.phoneNumber || entry.data.Phone || entry.data.Mobile || null;
+                
+                // Collect other keys to list
+                let details = [];
+                Object.keys(entry.data).forEach(k => {
+                  if (!['name', 'fullName', 'Name', 'FullName', 'phone', 'phoneNumber', 'Phone', 'Mobile'].includes(k)) {
+                    details.push(`${k}: ${entry.data[k]}`);
+                  }
+                });
+              %>
+                <tr>
+                  <td>
+                    <div class="attendee-name"><%= name || 'Anonymous Beneficiary' %></div>
+                    <% if (phone) { %>
+                      <div class="attendee-phone"><%= phone %></div>
+                    <% } %>
+                  </td>
+                  <td style="font-size: 11px; color: var(--slate-700);">
+                    <% if (details.length > 0) { %>
+                      <ul style="list-style: none; padding-left: 0;">
+                        <% details.forEach(detail => { %>
+                          <li><%= detail %></li>
+                        <% }) %>
+                      </ul>
+                    <% } else { %>
+                      <span style="color: #94a3b8; font-style: italic;">No extra details</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (entry.photoUrl) { %>
+                      <img class="attendee-img" src="<%= entry.photoUrl %>" alt="Attendee photo proof">
+                    <% } else { %>
+                      <div class="attendee-no-img">No Photo</div>
+                    <% } %>
+                  </td>
+                  <td>
+                    <div class="submitted-time">
+                      <%= new Date(entry.submittedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="no-photos" style="padding: 30px;">
+          No beneficiary attendance records logged for this session yet.
+        </div>
+      <% } %>
+    </section>
+
+    <!-- Footer Stamp -->
+    <footer class="footer">
+      <div>
+        <strong>Evently Verification Engine</strong> &bull; Secure Audit Document
+      </div>
+      <div class="verification-seal">
+        Field Verification Certified
+      </div>
+    </footer>
+
+  </div>
+</body>
+</html>

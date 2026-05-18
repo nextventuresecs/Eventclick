@@ -11,6 +11,7 @@ import {
   ChevronRight,
   RefreshCw,
   Calendar,
+  FileText,
 } from "lucide-react";
 import type { AttendanceEntry, EventRoom, FormDefinition, FormField } from "@application/shared";
 import { attendanceApi, roomsApi, formsApi, ApiClientError } from "@/lib/api";
@@ -47,6 +48,7 @@ export const AttendanceRecords = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortKey, setSortKey] = useState<string>("submittedAt");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const fetchEntries = async () => {
     if (!id) return;
@@ -272,6 +274,26 @@ export const AttendanceRecords = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadPDF = async () => {
+    if (!id) return;
+    setPdfLoading(true);
+    setError(null);
+    try {
+      const blob = await roomsApi.downloadReportPdf(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Official-Event-Report-${id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to download PDF report:", err);
+      setError(err instanceof ApiClientError ? err.message : "Failed to generate PDF report. Please ensure Gotenberg is running.");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -292,12 +314,12 @@ export const AttendanceRecords = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => void fetchEntries()}
-            disabled={loading}
+            disabled={loading || pdfLoading}
             className="gap-1.5"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -307,11 +329,25 @@ export const AttendanceRecords = () => {
             variant="outline"
             size="sm"
             onClick={handleExportCSV}
-            disabled={sortedEntries.length === 0}
+            disabled={pdfLoading || sortedEntries.length === 0}
             className="gap-1.5"
           >
             <Download className="w-3.5 h-3.5" />
             Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadPDF}
+            disabled={pdfLoading || sortedEntries.length === 0}
+            className="bg-primary/10 border-primary/20 text-primary hover:bg-primary/20 hover:text-primary transition-all backdrop-blur-md shadow-sm gap-1.5"
+          >
+            {pdfLoading ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileText className="w-3.5 h-3.5" />
+            )}
+            {pdfLoading ? "Generating..." : "Download PDF Report"}
           </Button>
         </div>
       </div>
