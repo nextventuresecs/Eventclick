@@ -116,7 +116,7 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_FORCE_PATH_STYLE: "true"
-      GOTENBERG_URL: http://gotenberg:8080
+      GOTENBERG_URL: http://gotenberg:8686  
     volumes:
       - ./packages/server/src:/app/packages/server/src
       - ./packages/shared/src:/app/packages/shared/src
@@ -154,7 +154,7 @@ services:
     container_name: evently_gotenberg
     restart: unless-stopped
     ports:
-      - "8686:8080"
+      - "8686:3000"
 
 volumes:
   pg_data:
