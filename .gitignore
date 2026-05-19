@@ -12,3 +12,5 @@ CLAUDE.md
 Sprint*.md
 ~$*.md
 ROLE*.md
+*.pdf
+!*.pdf.example
