@@ -116,7 +116,7 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_FORCE_PATH_STYLE: "true"
-      GOTENBERG_URL: http://gotenberg:8686  
+      GOTENBERG_URL: http://gotenberg:3000
     volumes:
       - ./packages/server/src:/app/packages/server/src
       - ./packages/shared/src:/app/packages/shared/src
