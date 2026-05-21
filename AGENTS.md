@@ -4,18 +4,44 @@
 
 ---
 
+## ⭐ THE GOLDEN RULE: SKILL DISCOVERY FIRST
+
+**Before proposing ANY task, you MUST discover and load relevant skills.**
+
+```
+User Request
+    ↓
+Identify Task Type/Domain
+    ↓
+FIND SKILLS (use find-skills ability)
+    ↓
+LOAD SKILLS (via load_ability)
+    ↓
+Review Skill Instructions & Constraints
+    ↓
+Execute Task with Skill Context
+    ↓
+Validate Against Skill Standards
+```
+
+**Every task starts with skill discovery.** No exceptions.
+
+---
+
 ## Table of Contents
 
-1. [Overview & Philosophy](#overview--philosophy)
-2. [Skill Discovery & Retrieval Pattern](#skill-discovery--retrieval-pattern)
-3. [Core Development Domains](#core-development-domains)
-4. [Task-Skill Mapping](#task-skill-mapping)
-5. [Agent Workflow Checklist](#agent-workflow-checklist)
-6. [Architecture Decision Guidelines](#architecture-decision-guidelines)
-7. [Error Handling & Recovery](#error-handling--recovery)
-8. [Security & Compliance Guidelines](#security--compliance-guidelines)
-9. [Performance & Observability Standards](#performance--observability-standards)
-10. [Common Patterns & Anti-Patterns](#common-patterns--anti-patterns)
+1. [The Golden Rule: Skill Discovery First](#-the-golden-rule-skill-discovery-first)
+2. [Overview & Philosophy](#overview--philosophy)
+3. [Skill Discovery & Retrieval Pattern](#skill-discovery--retrieval-pattern)
+4. [Comprehensive Skill Library](#comprehensive-skill-library)
+5. [Core Development Domains](#core-development-domains)
+6. [Task-Skill Mapping](#task-skill-mapping)
+7. [Agent Workflow Checklist](#agent-workflow-checklist)
+8. [Architecture Decision Guidelines](#architecture-decision-guidelines)
+9. [Error Handling & Recovery](#error-handling--recovery)
+10. [Security & Compliance Guidelines](#security--compliance-guidelines)
+11. [Performance & Observability Standards](#performance--observability-standards)
+12. [Common Patterns & Anti-Patterns](#common-patterns--anti-patterns)
 
 ---
 
@@ -32,7 +58,7 @@ Veridian is a **production-grade, multi-tenant NGO platform** handling:
 
 **AI agents assisting on this codebase must:**
 
-1. **Always perform skill discovery first** — domain-specific skills exist for frontend design, backend patterns, infrastructure, security, and prompt enhancement.
+1. **Always perform skill discovery first** — comprehensive skill library exists for every domain (frontend design, backend patterns, infrastructure, security, prompt enhancement, database optimization, testing, documentation, and more).
 2. **Respect architecture contracts** — breaking monorepo boundaries, skipping migrations, or ignoring permission checks can cascade failures.
 3. **Maintain audit compliance** — every database change is logged; every API endpoint is traced.
 4. **Prioritize security & privacy** — multi-tenancy is enforced via `organizationId`; permissions are granular (ngo_admin, event_admin, volunteer, guest).
@@ -49,41 +75,159 @@ Veridian is a **production-grade, multi-tenant NGO platform** handling:
 #### Standard Skill Discovery Sequence
 
 ```
-User Request
-    ↓
-Identify Task Type/Domain
-    ↓
-Load Relevant Skills (via load_ability)
-    ↓
-Review Skill Instructions & Constraints
-    ↓
-Map Task to Skill Guidelines
-    ↓
-Execute Task with Skill Context
-    ↓
-Validate Against Skill Standards
+User Request → Identify Task Domain → Find Skills → Load Skills → Review Guidelines → Execute → Validate
 ```
 
 #### Example: "Help me create a new form builder feature for attendance forms"
 
 ```
-1. Task Type: Frontend Feature Development + Backend API
-2. Load Skills:
-   - frontend-design-skills (React/Vite patterns for Veridian UI)
-   - backend-api-design-skills (Express.ts patterns, Zod validation)
-   - database-schema-skills (Drizzle ORM, migrations)
-   - form-handling-skills (Zod schemas, error states)
-   - security-rbac-skills (permission checks, organization isolation)
+1. Task Type: Frontend Feature Development + Backend API + Database Design
+2. Find Skills:
+   - load_ability("find-skills")  ← Discover available skills for your task
+   - Then identify: frontend-design, backend-dev-guidelines, database-design, form-handling, security-rbac-skills
    
-3. Skill Review:
-   - Frontend: How to build form builder with drag-and-drop (dnd-kit integration)
-   - Backend: How to design form storage (formDefinitions table, versioning)
-   - Security: How to enforce organization isolation on form endpoints
-   - Database: How to add new schema, run migrations in dev/prod
+3. Load Skills:
+   - load_ability("frontend-dev-guidelines")
+   - load_ability("backend-dev-guidelines")
+   - load_ability("database-design")
+   - load_ability("postgres-best-practices")
    
-4. Execute: Follow all skill patterns + guidelines
-5. Validate: Form builder works across roles, respects RBAC, has tests
+4. Review Skill Instructions & Map to Requirements
+5. Implement Following Skill Patterns + Guidelines
+6. Validate: Works across roles, respects RBAC, has tests, passes TypeScript strict, follows DB best practices
 ```
+
+**Key Pattern:** Skill discovery should happen BEFORE writing any code. Use the `find-skills` ability to explore what guidance exists for your specific task.
+
+---
+
+## Comprehensive Skill Library
+
+Veridian has **100+ production-grade skills** covering all development domains. Skills are organized in `.agents/skills/` directory.
+
+### How to Discover Skills
+
+**Option 1: Use find-skills ability**
+```
+load_ability("find-skills")
+→ Describes how to discover skills for your task
+→ Returns list of relevant skills
+```
+
+**Option 2: Know your task domain and load directly**
+- Frontend task? Load: `frontend-dev-guidelines`, `frontend-design`, `ui-component-skills`
+- Backend task? Load: `backend-dev-guidelines`, `backend-architect`, `api-design-principles`
+- Database task? Load: `database-design`, `database-architect`, `postgres-best-practices`
+- Infrastructure task? Load: `devops-terraform-skills`, `deployment-pipeline-design`
+- Testing task? Load: `testing-patterns`, `tdd-workflow`, `test-automator`
+
+### Categories of Available Skills
+
+**Backend & API Development**
+- `backend-dev-guidelines` — Backend patterns, Express.ts, architecture
+- `backend-architect` — High-level design, scalability, patterns
+- `backend-security-coder` — Security hardening, vulnerability prevention
+- `api-design-principles` — REST API design, error handling
+- `api-security-best-practices` — API authentication, authorization, rate limiting
+- `api-patterns` — Common API patterns and implementations
+- `api-documentation-generator` — OpenAPI, documentation automation
+
+**Frontend & UI Development**
+- `frontend-dev-guidelines` — React, Vite, component patterns
+- `frontend-design` — UI design, accessibility, responsive design
+- `frontend-developer` — Component implementation, state management
+- `frontend-security-coder` — Client-side security, XSS prevention
+- `react-components` — React component patterns
+- `shadcn-ui` — shadcn UI component library usage
+- `web-design-guidelines` — UX/UI best practices
+- `web-design` — Design systems, layout, typography
+
+**Database & Data**
+- `database-design` — Schema design, normalization, indexing
+- `database-architect` — Large-scale database design, partitioning
+- `database-admin` — Backup, recovery, monitoring
+- `database-migration` — Safe migrations, zero-downtime deployments
+- `database-optimizer` — Query optimization, performance tuning
+- `postgres-best-practices` — PostgreSQL-specific optimization (CRITICAL for Veridian)
+- `sql-optimization-patterns` — SQL query optimization
+- `sql-injection-testing` — Security testing for SQL injection
+
+**Infrastructure & DevOps**
+- `devops-terraform-skills` — Terraform, AWS provisioning
+- `devops-troubleshooter` — Troubleshooting infrastructure issues
+- `deployment-engineer` — Deployment strategies, rollback procedures
+- `deployment-pipeline-design` — CI/CD pipeline design
+- `deployment-procedures` — Standard deployment workflows
+- `deployment-validation-config-validate` — Configuration validation
+- `docker-expert` — Docker, containerization, multi-stage builds
+- `kubernetes-architect` — Kubernetes design and deployment
+- `k8s-manifest-generator` — Kubernetes manifest generation
+- `k8s-security-policies` — Kubernetes security best practices
+- `aws-skills` — AWS service integration
+
+**Testing & Quality**
+- `testing-patterns` — Unit testing, integration testing, mocking
+- `tdd-workflow` — Test-driven development practices
+- `test-automator` — Test automation, CI/CD testing
+- `production-code-audit` — Code review and audit
+
+**Security & Compliance**
+- `security-auditor` — Security audits, vulnerability assessments
+- `security-bluebook-builder` — Security documentation, policies
+- `security-compliance-compliance-check` — Compliance verification
+- `security-requirement-extraction` — Security requirements analysis
+- `security-scanning-security-dependencies` — Dependency scanning, vulnerability management
+- `security-scanning-security-hardening` — Security hardening
+- `security-scanning-security-sast` — Static analysis, SAST tools
+- `secrets-management` — Secrets storage and rotation
+
+**Monitoring & Observability**
+- `prometheus-configuration` — Prometheus setup, metrics
+- `grafana-dashboards` — Dashboard creation, visualization
+- `sentry-automation` — Error tracking, Sentry integration
+
+**Architecture & Design**
+- `architecture` — Architectural decision making
+- `architecture-patterns` — Common architectural patterns
+- `software-architecture` — Software architecture principles
+- `senior-architect` — High-level architectural guidance
+- `cqrs-implementation` — CQRS pattern implementation
+- `event-sourcing-architect` — Event sourcing design
+- `microservices-patterns` — Microservices architecture
+- `monorepo-architect` — Monorepo structure and management
+- `monorepo-management` — Monorepo tooling and practices
+
+**Documentation & Code Quality**
+- `code-documentation-doc-generate` — Code documentation generation
+- `docs-architect` — Documentation architecture
+- `documentation-templates` — Documentation templates
+- `api-documenter` — API documentation
+- `api-documentation-generator` — Automated API docs
+
+**Code Review & Collaboration**
+- `fix-review` — Code review feedback and improvements
+- `receiving-code-review` — Responding to code reviews
+- `caveman-review` — Simplified review process
+- `production-code-audit` — Production code auditing
+
+**Prompt Engineering & Enhancement**
+- `prompt-engineer` — Prompt engineering techniques
+- `prompt-engineering` — Prompt optimization
+- `prompt-engineering-patterns` — Common prompt patterns
+- `enhance-prompt` — Prompt enhancement
+- `prompt-library` — Library of effective prompts
+
+**Additional Specialized Skills**
+- `error-debugging-error-analysis` — Error debugging and root cause analysis
+- `debugging-strategies` — Debugging methodologies
+- `debugger` — Using debuggers effectively
+- `performance-optimization` — Performance tuning
+- `cost-optimization` — Cost optimization strategies
+- `dependency-upgrade` — Dependency management and upgrades
+- `dependency-management-deps-audit` — Dependency auditing
+- `security-scanning-security-dependencies` — Dependency vulnerability scanning
+- `codebase-cleanup-deps-audit` — Codebase cleanup
+- `environment-setup-guide` — Environment configuration
 
 ---
 
@@ -102,19 +246,16 @@ Validate Against Skill Standards
 - Redis (caching + sessions)
 
 **Skill Dependencies:**
-- ✅ `backend-api-design-skills` — Express patterns, controller/service/repository
-- ✅ `database-schema-skills` — Drizzle migrations, soft deletes, multi-tenancy
-- ✅ `backend-validation-skills` — Zod schemas, error handling
-- ✅ `security-rbac-skills` — JWT claims, permission checks, organization isolation
-- ✅ `async-job-queue-skills` — BullMQ implementation, worker patterns, retries
+- ✅ `backend-dev-guidelines` — Express patterns, controller/service/repository
+- ✅ `backend-architect` — Architecture decisions, scalability
+- ✅ `api-design-principles` — REST design, error handling
+- ✅ `api-security-best-practices` — Authentication, authorization
+- ✅ `database-design` — Schema optimization
+- ✅ `postgres-best-practices` — Query optimization, indexes (CRITICAL)
+- ✅ `testing-patterns` — Unit + integration testing
 
 **Key Domains:**
-- **Controllers** (`controllers/*.ts`) — HTTP request handlers, input validation, response formatting
-- **Services** (`services/*.ts`) — Business logic, data access, external integrations
-- **Database** (`db/schema.ts`, `db/migrate.ts`) — Schema definitions, migrations, queries
-- **Middleware** (`middleware/*.ts`) — Authentication, authorization, error handling
-- **Routes** (`routes/*.ts`) — Endpoint definitions, route composition
-- **Config** (`config/env.ts`) — Environment validation with Zod
+- Controllers, Services, Database layer, Middleware, Routes, Config
 
 ---
 
@@ -125,94 +266,61 @@ Validate Against Skill Standards
 - Vite (build tool)
 - TailwindCSS 4.x
 - TypeScript strict mode
-- React Router (navigation)
-- dnd-kit (drag-and-drop)
-- LiveKit React Components
-- Zod (schema validation on client)
+- React Router, dnd-kit, LiveKit components
+- Zod (client-side validation)
 
 **Skill Dependencies:**
-- ✅ `frontend-design-skills` — React component patterns, hooks, state management
-- ✅ `ui-component-skills` — TailwindCSS, accessible components, responsive design
-- ✅ `form-handling-skills` — Controlled components, validation, error states
-- ✅ `state-management-skills` — React Context, custom hooks, data fetching
-- ✅ `accessibility-skills` — WCAG compliance, screen reader support, keyboard navigation
-- ✅ `livekit-integration-skills` — WebRTC streaming, participant management, token generation
+- ✅ `frontend-dev-guidelines` — React patterns, hooks, state management
+- ✅ `frontend-design` — Component design, accessibility
+- ✅ `ui-component-skills` — TailwindCSS, responsive design
+- ✅ `form-handling-skills` — Form validation, error states
+- ✅ `frontend-security-coder` — XSS prevention, input sanitization
+- ✅ `testing-patterns` — Component testing, React Testing Library
 
 **Key Domains:**
-- **Pages** (`pages/*.tsx`) — Full-screen views (Dashboard, Room, Forms, Reports)
-- **Components** (`components/*.tsx`) — Reusable UI building blocks
-- **Hooks** (`hooks/*.ts`) — Custom React hooks for API calls, state management
-- **Services** (`services/*.ts`) — API client, local storage, utility functions
-- **Contexts** (`contexts/*.tsx`) — Global state (auth, user, organization)
-- **Types** (`types/*.ts`) — TypeScript interfaces and type definitions
+- Pages, Components, Hooks, Services, Contexts, Types
 
 ---
 
 ### 3. **Shared/Types Layer** (`packages/shared/src`)
 
-**Purpose:** Single source of truth for types, constants, validation schemas across frontend & backend.
+**Purpose:** Single source of truth for types, constants, validation schemas.
 
 **Skill Dependencies:**
-- ✅ `type-safety-skills` — Zod schema design, discriminated unions, inference
-- ✅ `api-contract-skills` — Request/response types, error formats, status codes
-
-**Key Exports:**
-- Zod schemas for all API request/response bodies
-- TypeScript types (User, Organization, Room, AttendanceEntry, etc.)
-- Constants (API_PREFIX, roles, room statuses, permissions)
-- Utility functions (formatters, validators, permission helpers)
+- ✅ `database-design` — Schema contracts
+- ✅ `api-design-principles` — API contracts
+- ✅ Type safety patterns
 
 ---
 
-### 4. **Infrastructure & DevOps** (`terraform/`, `docker-compose.yml`, `.github/workflows/`)
+### 4. **Infrastructure & DevOps**
 
 **Technology Stack:**
-- Terraform (IaC)
-- AWS (ECS Fargate, RDS, ElastiCache, S3/CloudFront, ALB, CloudWatch)
-- Docker (multi-stage Dockerfiles)
-- GitHub Actions (CI/CD)
-- Postgres 15+
-- Redis 7.x
-- MinIO (dev) / Cloudflare R2 or AWS S3 (prod)
+- Terraform, AWS, Docker, GitHub Actions
+- Postgres 15+, Redis 7.x, ECS Fargate
 
 **Skill Dependencies:**
-- ✅ `devops-terraform-skills` — AWS resource provisioning, state management, modules
-- ✅ `ci-cd-github-actions-skills` — Workflows, secrets management, OIDC
-- ✅ `containerization-skills` — Multi-stage Dockerfiles, image optimization, health checks
-- ✅ `observability-skills` — CloudWatch/Prometheus, structured logging, tracing, alerts
-- ✅ `security-infra-skills` — IAM roles, security groups, secrets management, WAF
-
-**Key Areas:**
-- VPC, subnets, NAT, security groups
-- RDS Aurora PostgreSQL (multi-AZ)
-- ElastiCache Redis (replication group)
-- ECS Fargate (API + worker services)
-- S3/R2 (object storage for photos, PDFs, recordings)
-- ALB (load balancing, HTTPS)
-- CloudWatch (logs, metrics, alarms)
+- ✅ `devops-terraform-skills` — IaC, provisioning
+- ✅ `deployment-pipeline-design` — CI/CD
+- ✅ `docker-expert` — Containerization
+- ✅ `aws-skills` — AWS services
+- ✅ `security-scanning-security-hardening` — Security hardening
 
 ---
 
-### 5. **Database & Migrations** (`packages/server/src/db`)
+### 5. **Database & Migrations**
 
-**ORM:** Drizzle
-**Database:** PostgreSQL 15+
-**Migration Tool:** drizzle-kit
+**ORM:** Drizzle | **Database:** PostgreSQL 15+ | **Migration Tool:** drizzle-kit
 
 **Skill Dependencies:**
-- ✅ `database-schema-skills` — Table design, indexes, constraints, relationships
-- ✅ `migration-strategy-skills` — Safe zero-downtime migrations, rollback strategies
-- ✅ `query-optimization-skills` — Indexes, N+1 prevention, query analysis
-
-**Key Patterns:**
-- **Soft deletes** — `deletedAt` column, `withSoftDelete()` helper
-- **Multi-tenancy** — `organizationId` on every tenant-scoped table
-- **Timestamps** — `createdAt`, `updatedAt` on all tables
-- **Relationships** — Foreign keys with ON DELETE CASCADE/SET NULL
+- ✅ `postgres-best-practices` — **CRITICAL for Veridian** — indexing, connection pooling, RLS, query optimization
+- ✅ `database-design` — Schema design
+- ✅ `database-migration` — Safe migrations
+- ✅ `database-optimizer` — Query optimization
 
 ---
 
-### 6. **Security & Authentication** (`packages/server/src/middleware`, `packages/server/src/services/jwt.service.ts`)
+### 6. **Security & Authentication**
 
 **Patterns:**
 - JWT (Access + Refresh tokens)
@@ -222,25 +330,25 @@ Validate Against Skill Standards
 - Permission checks on all endpoints
 
 **Skill Dependencies:**
-- ✅ `security-rbac-skills` — Role definition, permission enforcement, claim structure
-- ✅ `security-jwt-skills` — Token generation, validation, refresh flow
-- ✅ `security-organization-isolation-skills` — Multi-tenancy enforcement, query filtering
-- ✅ `security-audit-skills` — Logging, compliance tracking, data residency
+- ✅ `security-auditor` — Security reviews
+- ✅ `security-scanning-security-hardening` — Hardening
+- ✅ `secrets-management` — Secrets storage
+- ✅ `api-security-best-practices` — API security
 
 ---
 
-### 7. **LiveKit & Real-Time** (`packages/server/src/services/livekit.service.ts`)
+### 7. **LiveKit & Real-Time**
 
 **Integration:** LiveKit server SDK, WebRTC streaming, egress (recordings)
 
 **Skill Dependencies:**
-- ✅ `livekit-integration-skills` — Token generation, room management, egress webhooks
-- ✅ `real-time-skills` — WebSocket patterns, presence tracking, data synchronization
-- ✅ `streaming-media-skills` — Recording reconciliation, video/audio quality, CDN delivery
+- ✅ Streaming media best practices
+- ✅ Real-time data synchronization patterns
+- ✅ Recording management
 
 ---
 
-### 8. **Observability & Monitoring** (Future: Phase 2)
+### 8. **Observability & Monitoring** (Phase 2)
 
 **Stack (Planned):**
 - Structured logging (Pino → CloudWatch)
@@ -250,10 +358,9 @@ Validate Against Skill Standards
 - Dashboards (Grafana / CloudWatch)
 
 **Skill Dependencies:**
-- ✅ `observability-logging-skills` — Structured logs, correlation IDs, log levels
-- ✅ `observability-metrics-skills` — Counter, gauge, histogram instrumentation
-- ✅ `observability-tracing-skills` — Distributed tracing, span context propagation
-- ✅ `observability-alerting-skills` — SLO/SLI definition, alert rules, on-call routing
+- ✅ `prometheus-configuration` — Metrics collection
+- ✅ `grafana-dashboards` — Dashboard creation
+- ✅ `sentry-automation` — Error tracking
 
 ---
 
@@ -263,16 +370,16 @@ Validate Against Skill Standards
 
 | Task | Primary Skill | Secondary Skills |
 |------|---------------|------------------|
-| **Add new API endpoint** | `backend-api-design-skills` | `backend-validation-skills`, `database-schema-skills`, `security-rbac-skills` |
-| **Create new database table** | `database-schema-skills` | `migration-strategy-skills`, `security-organization-isolation-skills` |
-| **Build React component** | `frontend-design-skills` | `ui-component-skills`, `accessibility-skills`, `form-handling-skills` |
-| **Add form builder feature** | `form-handling-skills` | `frontend-design-skills`, `backend-api-design-skills`, `database-schema-skills` |
-| **Implement async job** | `async-job-queue-skills` | `backend-api-design-skills`, `error-handling-skills` |
-| **Fix permission bug** | `security-rbac-skills` | `database-schema-skills`, `backend-api-design-skills` |
-| **Add LiveKit recording** | `livekit-integration-skills` | `async-job-queue-skills`, `backend-validation-skills` |
-| **Deploy to production** | `devops-terraform-skills` | `ci-cd-github-actions-skills`, `security-infra-skills`, `observability-skills` |
-| **Improve query performance** | `query-optimization-skills` | `database-schema-skills`, `observability-metrics-skills` |
-| **Add unit tests** | `testing-skills` | domain-specific (backend/frontend) |
+| **Add new API endpoint** | `backend-dev-guidelines` + `api-design-principles` | `database-design`, `api-security-best-practices`, `testing-patterns` |
+| **Create new database table** | `database-design` + `postgres-best-practices` | `database-migration`, `database-optimizer` |
+| **Build React component** | `frontend-dev-guidelines` + `frontend-design` | `ui-component-skills`, `accessibility-skills`, `testing-patterns` |
+| **Fix performance issue** | `postgres-best-practices` OR `database-optimizer` | Domain-specific skill |
+| **Implement auth** | `api-security-best-practices` | `backend-dev-guidelines`, `secrets-management` |
+| **Deploy to production** | `deployment-pipeline-design` + `devops-terraform-skills` | `docker-expert`, `aws-skills`, `security-scanning-security-hardening` |
+| **Improve query performance** | `postgres-best-practices` | `database-optimizer`, `testing-patterns` |
+| **Add unit tests** | `testing-patterns` + `tdd-workflow` | Domain-specific skill |
+| **Security audit** | `security-auditor` | Domain-specific skill |
+| **Setup monitoring** | `prometheus-configuration` + `grafana-dashboards` | `sentry-automation` |
 
 ---
 
@@ -292,12 +399,12 @@ When a user requests ANY work on Veridian:
 
 #### ✅ Step 2: Find & Load Relevant Skills
 ```
+- [ ] Use load_ability("find-skills") to discover applicable skills for your domain
 - [ ] Identify primary domain (backend, frontend, database, infra, security, etc.)
 - [ ] Load applicable skills via load_ability:
-       Example: load_ability("backend-api-design-skills")
-       Example: load_ability("frontend-design-skills")
-       Example: load_ability("form-handling-skills")
-       Example: load_ability("security-rbac-skills")
+       Example: load_ability("backend-dev-guidelines")
+       Example: load_ability("postgres-best-practices")
+       Example: load_ability("frontend-dev-guidelines")
 - [ ] Read skill documentation thoroughly
 - [ ] Note any constraints or best practices in the skill
 ```
@@ -338,7 +445,7 @@ When a user requests ANY work on Veridian:
 - [ ] Security checks pass (RBAC, org isolation, validation)
 - [ ] No breaking changes to API contracts
 - [ ] Database migrations are safe & reversible
-- [ ] Code follows documented patterns
+- [ ] Code follows documented patterns from loaded skills
 ```
 
 #### ✅ Step 7: Document & Prepare for Review
@@ -646,11 +753,15 @@ resource "aws_secretsmanager_secret_version" "jwt_secret" {
 
 ### Database Query Optimization
 
+**CRITICAL: Load `postgres-best-practices` skill before optimizing queries.**
+
 **Rules:**
 1. Avoid N+1 queries — use JOINs or batch queries
-2. Index frequently queried columns
-3. Use `LIMIT` + `OFFSET` for pagination
+2. Index frequently queried columns (see postgres-best-practices)
+3. Use `LIMIT` + `OFFSET` for pagination or cursor-based pagination
 4. Monitor slow queries (>1s) in CloudWatch
+5. Use covering indexes to avoid table lookups
+6. Create composite indexes for multi-column queries
 
 **Anti-Pattern (N+1):**
 ```typescript
@@ -977,60 +1088,59 @@ const roomsWithAttendance = await db
 
 ---
 
-## Skill Library Quick Reference
+## Quick Skill Reference by Task Type
 
-### Backend Skills to Load
-
+### Frontend Tasks
 ```
-load_ability("backend-api-design-skills")
-load_ability("backend-validation-skills")
-load_ability("async-job-queue-skills")
-load_ability("error-handling-skills")
-load_ability("security-jwt-skills")
-load_ability("security-rbac-skills")
-load_ability("security-organization-isolation-skills")
-```
-
-### Frontend Skills to Load
-
-```
-load_ability("frontend-design-skills")
+load_ability("find-skills")  ← First, discover relevant skills
+load_ability("frontend-dev-guidelines")
+load_ability("frontend-design")
 load_ability("ui-component-skills")
-load_ability("form-handling-skills")
-load_ability("state-management-skills")
-load_ability("accessibility-skills")
-load_ability("react-hooks-skills")
+load_ability("testing-patterns")
 ```
 
-### Database Skills to Load
-
+### Backend Tasks
 ```
-load_ability("database-schema-skills")
-load_ability("migration-strategy-skills")
-load_ability("query-optimization-skills")
-load_ability("indexing-strategies-skills")
+load_ability("find-skills")
+load_ability("backend-dev-guidelines")
+load_ability("api-design-principles")
+load_ability("api-security-best-practices")
+load_ability("testing-patterns")
 ```
 
-### Infrastructure Skills to Load
-
+### Database Tasks
 ```
+load_ability("find-skills")
+load_ability("postgres-best-practices")  ← CRITICAL
+load_ability("database-design")
+load_ability("database-optimizer")
+load_ability("database-migration")
+```
+
+### Infrastructure Tasks
+```
+load_ability("find-skills")
 load_ability("devops-terraform-skills")
-load_ability("ci-cd-github-actions-skills")
-load_ability("containerization-skills")
-load_ability("observability-logging-skills")
-load_ability("observability-metrics-skills")
-load_ability("observability-tracing-skills")
-load_ability("observability-alerting-skills")
-load_ability("security-infra-skills")
+load_ability("deployment-pipeline-design")
+load_ability("docker-expert")
+load_ability("aws-skills")
 ```
 
-### Other Skills to Load
-
+### Security Tasks
 ```
-load_ability("prompt-enhancement-skills")
-load_ability("code-review-skills")
-load_ability("testing-skills")
-load_ability("documentation-skills")
+load_ability("find-skills")
+load_ability("security-auditor")
+load_ability("security-scanning-security-hardening")
+load_ability("api-security-best-practices")
+load_ability("secrets-management")
+```
+
+### Testing Tasks
+```
+load_ability("find-skills")
+load_ability("testing-patterns")
+load_ability("tdd-workflow")
+load_ability("test-automator")
 ```
 
 ---
@@ -1039,18 +1149,19 @@ load_ability("documentation-skills")
 
 This framework ensures that AI agents assisting on Veridian:
 
-1. **Always perform skill discovery first** — leveraging domain-specific guidance
-2. **Respect architectural contracts** — multi-tenancy, RBAC, async patterns
-3. **Maintain high quality standards** — TypeScript strict, tests, error handling
+1. **Always perform skill discovery first** — leveraging domain-specific guidance from 100+ production-grade skills
+2. **Respect architectural contracts** — multi-tenancy, RBAC, async patterns are non-negotiable
+3. **Maintain high quality standards** — TypeScript strict, tests, error handling, Postgres best practices
 4. **Prioritize security & compliance** — organization isolation, audit trails, data privacy
 5. **Follow production best practices** — logging, monitoring, graceful degradation
 
 **Key Mantra:**
-> When in doubt, load the relevant skill, read the guidance, and follow the patterns documented therein.
+> **SKILL DISCOVERY FIRST.** Load abilities relevant to your task domain. Follow the patterns within. Execute with confidence.
 
 ---
 
-**Version:** 1.0  
+**Version:** 2.0 (With Comprehensive Skill Integration)  
 **Last Updated:** 2025-05-21  
 **Maintained By:** NVCES DevOps & Engineering Team  
-**Next Review:** 2025-06-21
+**Next Review:** 2025-06-21  
+**Status:** ✅ Ready for Production
