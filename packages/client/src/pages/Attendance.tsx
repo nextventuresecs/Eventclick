@@ -58,9 +58,14 @@ export const Attendance = () => {
         if (f) {
           setForm(f);
           setData(buildInitialData(f.fields));
+        } else {
+          setForm(null);
+          setData({});
         }
         if (r) {
           setRoom(r);
+        } else {
+          setRoom(null);
         }
       })
       .catch((err) =>
