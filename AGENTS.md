@@ -50,6 +50,7 @@ Validate Against Skill Standards
 ### Why This Framework Exists
 
 Veridian is a **production-grade, multi-tenant NGO platform** handling:
+
 - Real-time WebRTC streaming (LiveKit integration)
 - Sensitive attendance/verification records
 - Multi-role permission hierarchies
@@ -85,13 +86,13 @@ User Request → Identify Task Domain → Find Skills → Load Skills → Review
 2. Find Skills:
    - load_ability("find-skills")  ← Discover available skills for your task
    - Then identify: frontend-design, backend-dev-guidelines, database-design, form-handling, security-rbac-skills
-   
+
 3. Load Skills:
    - load_ability("frontend-dev-guidelines")
    - load_ability("backend-dev-guidelines")
    - load_ability("database-design")
    - load_ability("postgres-best-practices")
-   
+
 4. Review Skill Instructions & Map to Requirements
 5. Implement Following Skill Patterns + Guidelines
 6. Validate: Works across roles, respects RBAC, has tests, passes TypeScript strict, follows DB best practices
@@ -108,6 +109,7 @@ Veridian has **100+ production-grade skills** covering all development domains. 
 ### How to Discover Skills
 
 **Option 1: Use find-skills ability**
+
 ```
 load_ability("find-skills")
 → Describes how to discover skills for your task
@@ -115,6 +117,7 @@ load_ability("find-skills")
 ```
 
 **Option 2: Know your task domain and load directly**
+
 - Frontend task? Load: `frontend-dev-guidelines`, `frontend-design`, `ui-component-skills`
 - Backend task? Load: `backend-dev-guidelines`, `backend-architect`, `api-design-principles`
 - Database task? Load: `database-design`, `database-architect`, `postgres-best-practices`
@@ -124,6 +127,7 @@ load_ability("find-skills")
 ### Categories of Available Skills
 
 **Backend & API Development**
+
 - `backend-dev-guidelines` — Backend patterns, Express.ts, architecture
 - `backend-architect` — High-level design, scalability, patterns
 - `backend-security-coder` — Security hardening, vulnerability prevention
@@ -133,6 +137,7 @@ load_ability("find-skills")
 - `api-documentation-generator` — OpenAPI, documentation automation
 
 **Frontend & UI Development**
+
 - `frontend-dev-guidelines` — React, Vite, component patterns
 - `frontend-design` — UI design, accessibility, responsive design
 - `frontend-developer` — Component implementation, state management
@@ -143,6 +148,7 @@ load_ability("find-skills")
 - `web-design` — Design systems, layout, typography
 
 **Database & Data**
+
 - `database-design` — Schema design, normalization, indexing
 - `database-architect` — Large-scale database design, partitioning
 - `database-admin` — Backup, recovery, monitoring
@@ -153,6 +159,7 @@ load_ability("find-skills")
 - `sql-injection-testing` — Security testing for SQL injection
 
 **Infrastructure & DevOps**
+
 - `devops-terraform-skills` — Terraform, AWS provisioning
 - `devops-troubleshooter` — Troubleshooting infrastructure issues
 - `deployment-engineer` — Deployment strategies, rollback procedures
@@ -166,12 +173,14 @@ load_ability("find-skills")
 - `aws-skills` — AWS service integration
 
 **Testing & Quality**
+
 - `testing-patterns` — Unit testing, integration testing, mocking
 - `tdd-workflow` — Test-driven development practices
 - `test-automator` — Test automation, CI/CD testing
 - `production-code-audit` — Code review and audit
 
 **Security & Compliance**
+
 - `security-auditor` — Security audits, vulnerability assessments
 - `security-bluebook-builder` — Security documentation, policies
 - `security-compliance-compliance-check` — Compliance verification
@@ -182,11 +191,13 @@ load_ability("find-skills")
 - `secrets-management` — Secrets storage and rotation
 
 **Monitoring & Observability**
+
 - `prometheus-configuration` — Prometheus setup, metrics
 - `grafana-dashboards` — Dashboard creation, visualization
 - `sentry-automation` — Error tracking, Sentry integration
 
 **Architecture & Design**
+
 - `architecture` — Architectural decision making
 - `architecture-patterns` — Common architectural patterns
 - `software-architecture` — Software architecture principles
@@ -198,6 +209,7 @@ load_ability("find-skills")
 - `monorepo-management` — Monorepo tooling and practices
 
 **Documentation & Code Quality**
+
 - `code-documentation-doc-generate` — Code documentation generation
 - `docs-architect` — Documentation architecture
 - `documentation-templates` — Documentation templates
@@ -205,12 +217,14 @@ load_ability("find-skills")
 - `api-documentation-generator` — Automated API docs
 
 **Code Review & Collaboration**
+
 - `fix-review` — Code review feedback and improvements
 - `receiving-code-review` — Responding to code reviews
 - `caveman-review` — Simplified review process
 - `production-code-audit` — Production code auditing
 
 **Prompt Engineering & Enhancement**
+
 - `prompt-engineer` — Prompt engineering techniques
 - `prompt-engineering` — Prompt optimization
 - `prompt-engineering-patterns` — Common prompt patterns
@@ -218,6 +232,7 @@ load_ability("find-skills")
 - `prompt-library` — Library of effective prompts
 
 **Additional Specialized Skills**
+
 - `error-debugging-error-analysis` — Error debugging and root cause analysis
 - `debugging-strategies` — Debugging methodologies
 - `debugger` — Using debuggers effectively
@@ -236,6 +251,7 @@ load_ability("find-skills")
 ### 1. **Backend & API Layer** (`packages/server/src`)
 
 **Technology Stack:**
+
 - Express.js 5.x
 - TypeScript (strict mode)
 - Drizzle ORM (PostgreSQL)
@@ -246,6 +262,7 @@ load_ability("find-skills")
 - Redis (caching + sessions)
 
 **Skill Dependencies:**
+
 - ✅ `backend-dev-guidelines` — Express patterns, controller/service/repository
 - ✅ `backend-architect` — Architecture decisions, scalability
 - ✅ `api-design-principles` — REST design, error handling
@@ -255,6 +272,7 @@ load_ability("find-skills")
 - ✅ `testing-patterns` — Unit + integration testing
 
 **Key Domains:**
+
 - Controllers, Services, Database layer, Middleware, Routes, Config
 
 ---
@@ -262,6 +280,7 @@ load_ability("find-skills")
 ### 2. **Frontend & UI Layer** (`packages/client/src`)
 
 **Technology Stack:**
+
 - React 19.x
 - Vite (build tool)
 - TailwindCSS 4.x
@@ -270,6 +289,7 @@ load_ability("find-skills")
 - Zod (client-side validation)
 
 **Skill Dependencies:**
+
 - ✅ `frontend-dev-guidelines` — React patterns, hooks, state management
 - ✅ `frontend-design` — Component design, accessibility
 - ✅ `ui-component-skills` — TailwindCSS, responsive design
@@ -278,6 +298,7 @@ load_ability("find-skills")
 - ✅ `testing-patterns` — Component testing, React Testing Library
 
 **Key Domains:**
+
 - Pages, Components, Hooks, Services, Contexts, Types
 
 ---
@@ -287,6 +308,7 @@ load_ability("find-skills")
 **Purpose:** Single source of truth for types, constants, validation schemas.
 
 **Skill Dependencies:**
+
 - ✅ `database-design` — Schema contracts
 - ✅ `api-design-principles` — API contracts
 - ✅ Type safety patterns
@@ -296,10 +318,12 @@ load_ability("find-skills")
 ### 4. **Infrastructure & DevOps**
 
 **Technology Stack:**
+
 - Terraform, AWS, Docker, GitHub Actions
 - Postgres 15+, Redis 7.x, ECS Fargate
 
 **Skill Dependencies:**
+
 - ✅ `devops-terraform-skills` — IaC, provisioning
 - ✅ `deployment-pipeline-design` — CI/CD
 - ✅ `docker-expert` — Containerization
@@ -313,6 +337,7 @@ load_ability("find-skills")
 **ORM:** Drizzle | **Database:** PostgreSQL 15+ | **Migration Tool:** drizzle-kit
 
 **Skill Dependencies:**
+
 - ✅ `postgres-best-practices` — **CRITICAL for Veridian** — indexing, connection pooling, RLS, query optimization
 - ✅ `database-design` — Schema design
 - ✅ `database-migration` — Safe migrations
@@ -323,6 +348,7 @@ load_ability("find-skills")
 ### 6. **Security & Authentication**
 
 **Patterns:**
+
 - JWT (Access + Refresh tokens)
 - HTTP-only cookies for refresh tokens
 - RBAC (role-based access control)
@@ -330,6 +356,7 @@ load_ability("find-skills")
 - Permission checks on all endpoints
 
 **Skill Dependencies:**
+
 - ✅ `security-auditor` — Security reviews
 - ✅ `security-scanning-security-hardening` — Hardening
 - ✅ `secrets-management` — Secrets storage
@@ -342,6 +369,7 @@ load_ability("find-skills")
 **Integration:** LiveKit server SDK, WebRTC streaming, egress (recordings)
 
 **Skill Dependencies:**
+
 - ✅ Streaming media best practices
 - ✅ Real-time data synchronization patterns
 - ✅ Recording management
@@ -351,6 +379,7 @@ load_ability("find-skills")
 ### 8. **Observability & Monitoring** (Phase 2)
 
 **Stack (Planned):**
+
 - Structured logging (Pino → CloudWatch)
 - Metrics (Prometheus/CloudWatch)
 - Tracing (OpenTelemetry → X-Ray/Jaeger)
@@ -358,6 +387,7 @@ load_ability("find-skills")
 - Dashboards (Grafana / CloudWatch)
 
 **Skill Dependencies:**
+
 - ✅ `prometheus-configuration` — Metrics collection
 - ✅ `grafana-dashboards` — Dashboard creation
 - ✅ `sentry-automation` — Error tracking
@@ -368,18 +398,18 @@ load_ability("find-skills")
 
 ### Common Tasks → Required Skills
 
-| Task | Primary Skill | Secondary Skills |
-|------|---------------|------------------|
-| **Add new API endpoint** | `backend-dev-guidelines` + `api-design-principles` | `database-design`, `api-security-best-practices`, `testing-patterns` |
-| **Create new database table** | `database-design` + `postgres-best-practices` | `database-migration`, `database-optimizer` |
-| **Build React component** | `frontend-dev-guidelines` + `frontend-design` | `ui-component-skills`, `accessibility-skills`, `testing-patterns` |
-| **Fix performance issue** | `postgres-best-practices` OR `database-optimizer` | Domain-specific skill |
-| **Implement auth** | `api-security-best-practices` | `backend-dev-guidelines`, `secrets-management` |
-| **Deploy to production** | `deployment-pipeline-design` + `devops-terraform-skills` | `docker-expert`, `aws-skills`, `security-scanning-security-hardening` |
-| **Improve query performance** | `postgres-best-practices` | `database-optimizer`, `testing-patterns` |
-| **Add unit tests** | `testing-patterns` + `tdd-workflow` | Domain-specific skill |
-| **Security audit** | `security-auditor` | Domain-specific skill |
-| **Setup monitoring** | `prometheus-configuration` + `grafana-dashboards` | `sentry-automation` |
+| Task                          | Primary Skill                                            | Secondary Skills                                                      |
+| ----------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Add new API endpoint**      | `backend-dev-guidelines` + `api-design-principles`       | `database-design`, `api-security-best-practices`, `testing-patterns`  |
+| **Create new database table** | `database-design` + `postgres-best-practices`            | `database-migration`, `database-optimizer`                            |
+| **Build React component**     | `frontend-dev-guidelines` + `frontend-design`            | `ui-component-skills`, `accessibility-skills`, `testing-patterns`     |
+| **Fix performance issue**     | `postgres-best-practices` OR `database-optimizer`        | Domain-specific skill                                                 |
+| **Implement auth**            | `api-security-best-practices`                            | `backend-dev-guidelines`, `secrets-management`                        |
+| **Deploy to production**      | `deployment-pipeline-design` + `devops-terraform-skills` | `docker-expert`, `aws-skills`, `security-scanning-security-hardening` |
+| **Improve query performance** | `postgres-best-practices`                                | `database-optimizer`, `testing-patterns`                              |
+| **Add unit tests**            | `testing-patterns` + `tdd-workflow`                      | Domain-specific skill                                                 |
+| **Security audit**            | `security-auditor`                                       | Domain-specific skill                                                 |
+| **Setup monitoring**          | `prometheus-configuration` + `grafana-dashboards`        | `sentry-automation`                                                   |
 
 ---
 
@@ -390,6 +420,7 @@ load_ability("find-skills")
 When a user requests ANY work on Veridian:
 
 #### ✅ Step 1: Understand the Task
+
 ```
 - [ ] What is being requested? (feature, bug fix, refactor, docs, infra, etc.)
 - [ ] Which domain(s) does it touch? (backend, frontend, database, infra, etc.)
@@ -398,6 +429,7 @@ When a user requests ANY work on Veridian:
 ```
 
 #### ✅ Step 2: Find & Load Relevant Skills
+
 ```
 - [ ] Use load_ability("find-skills") to discover applicable skills for your domain
 - [ ] Identify primary domain (backend, frontend, database, infra, security, etc.)
@@ -410,6 +442,7 @@ When a user requests ANY work on Veridian:
 ```
 
 #### ✅ Step 3: Analyze Codebase Context
+
 ```
 - [ ] Understand current architecture & patterns
 - [ ] Identify similar existing implementations
@@ -419,6 +452,7 @@ When a user requests ANY work on Veridian:
 ```
 
 #### ✅ Step 4: Design Solution
+
 ```
 - [ ] Sketch architecture/data flow
 - [ ] List database changes (if any)
@@ -429,6 +463,7 @@ When a user requests ANY work on Veridian:
 ```
 
 #### ✅ Step 5: Implement Following Skill Guidelines
+
 ```
 - [ ] Write code adhering to skill standards
 - [ ] Follow existing code style & patterns
@@ -439,6 +474,7 @@ When a user requests ANY work on Veridian:
 ```
 
 #### ✅ Step 6: Validate Against Standards
+
 ```
 - [ ] TypeScript compiles (strict mode)
 - [ ] All tests pass
@@ -449,6 +485,7 @@ When a user requests ANY work on Veridian:
 ```
 
 #### ✅ Step 7: Document & Prepare for Review
+
 ```
 - [ ] Add/update code comments
 - [ ] Update relevant documentation
@@ -473,7 +510,7 @@ const room = await db
   .where(
     and(
       eq(eventRooms.id, roomId),
-      eq(eventRooms.organizationId, orgId),  // ← REQUIRED
+      eq(eventRooms.organizationId, orgId), // ← REQUIRED
       isNull(eventRooms.deletedAt),
     ),
   )
@@ -497,11 +534,15 @@ export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const roomId = req.params.id as string;
-    
+
     // Assert user has access to this room
     await assertRoomAccessForUser(req.user!, orgId, roomId);
-    
-    const pdfBuffer = await generateVerificationReportPdf(roomId, orgId, req.user!);
+
+    const pdfBuffer = await generateVerificationReportPdf(
+      roomId,
+      orgId,
+      req.user!,
+    );
     res.setHeader("Content-Type", "application/pdf");
     res.end(pdfBuffer);
   } catch (err) {
@@ -511,7 +552,11 @@ export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
 
 // ❌ WRONG: No permission check
 export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
-  const pdfBuffer = await generateVerificationReportPdf(req.params.id, req.user!.organizationId, req.user!);
+  const pdfBuffer = await generateVerificationReportPdf(
+    req.params.id,
+    req.user!.organizationId,
+    req.user!,
+  );
   res.end(pdfBuffer);
 };
 ```
@@ -526,20 +571,25 @@ export const saveRoomForm: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const roomId = req.params.id as string;
-    
+
     // Validate input with Zod schema
     const { fields } = req.body as FormDefinitionInput;
     const form = await saveFormDefinition(roomId, orgId, req.user!, fields);
-    
+
     res.status(200).json(form);
   } catch (err) {
-    next(err);  // Error handler catches & logs
+    next(err); // Error handler catches & logs
   }
 };
 
 // ❌ WRONG: No validation, no error handling
 export const saveRoomForm: RequestHandler = async (req, res) => {
-  const form = await saveFormDefinition(req.params.id, req.user!.organizationId, req.user!, req.body.fields);
+  const form = await saveFormDefinition(
+    req.params.id,
+    req.user!.organizationId,
+    req.user!,
+    req.body.fields,
+  );
   res.json(form);
 };
 ```
@@ -554,13 +604,13 @@ export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const roomId = req.params.id as string;
-    
+
     const job = await pdfQueue.add("generate", {
       roomId,
       orgId,
       userId: req.user!.id,
     });
-    
+
     res.status(202).json({ jobId: job.id, statusUrl: `/api/v1/reports/${roomId}/status/${job.id}` });
   } catch (err) {
     next(err);
@@ -588,7 +638,7 @@ logger.info(
     status: "room_closed",
     duration: actualEnd - actualStart,
   },
-  "Event room closed"
+  "Event room closed",
 );
 
 // ❌ WRONG: Unstructured log string
@@ -639,6 +689,7 @@ export class ApiError extends Error {
 ### Error Recovery Patterns
 
 **Pattern 1: Validation Errors**
+
 ```typescript
 try {
   const parsed = CreateUserSchema.parse(req.body);
@@ -652,6 +703,7 @@ try {
 ```
 
 **Pattern 2: Database Errors**
+
 ```typescript
 try {
   await db.insert(users).values(userData);
@@ -665,12 +717,15 @@ try {
 ```
 
 **Pattern 3: External Service Errors (LiveKit, Gotenberg, S3)**
+
 ```typescript
 try {
-  const pdfBuffer = await fetch(gotenbergUrl).then(r => r.arrayBuffer());
+  const pdfBuffer = await fetch(gotenbergUrl).then((r) => r.arrayBuffer());
 } catch (err) {
   logger.error({ roomId, err }, "Gotenberg PDF generation failed");
-  throw ApiError.internal("PDF generation temporarily unavailable. Try again in a few minutes.");
+  throw ApiError.internal(
+    "PDF generation temporarily unavailable. Try again in a few minutes.",
+  );
 }
 ```
 
@@ -681,12 +736,14 @@ try {
 ### Authentication & Authorization
 
 **Rules:**
+
 1. All protected endpoints require valid JWT access token
 2. Refresh tokens are HttpOnly cookies, rotated on use
 3. Every endpoint checks `req.user` and `req.user.organizationId`
 4. Permission checks use `hasRolePermission(role, action)` utility
 
 **Middleware Stack (in order):**
+
 ```typescript
 app.use(express.json());
 app.use(cors(...));
@@ -701,6 +758,7 @@ app.use(apiRouter);
 ### Data Privacy & Compliance
 
 **Rules:**
+
 1. **PII Protection:** Never log passwords, tokens, sensitive IDs without redaction
 2. **Audit Trail:** All user actions (create, update, delete) are logged with timestamp + user ID
 3. **Data Retention:** Follow GDPR/CCPA — implement soft deletes, data expiration policies
@@ -715,10 +773,11 @@ rateLimit({
   limit: 100,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-})
+});
 ```
 
 **Increase for trusted endpoints (webhooks):**
+
 ```typescript
 app.post("/webhooks/livekit/egress", rateLimitWebhooks, egressWebhookHandler);
 ```
@@ -728,6 +787,7 @@ app.post("/webhooks/livekit/egress", rateLimitWebhooks, egressWebhookHandler);
 **Rule:** No secrets in code. All secrets in AWS Secrets Manager or environment variables.
 
 **Local Development (.env.example):**
+
 ```bash
 JWT_SECRET=your-super-secret-key-here
 LIVEKIT_API_SECRET=your-livekit-secret
@@ -736,9 +796,10 @@ RESEND_API_KEY=your-resend-api-key
 ```
 
 **Production (AWS Secrets Manager):**
+
 ```hcl
 resource "aws_secretsmanager_secret" "jwt_secret" {
-  name = "evently/jwt-secret"
+  name = "Eventclick/jwt-secret"
 }
 
 resource "aws_secretsmanager_secret_version" "jwt_secret" {
@@ -756,6 +817,7 @@ resource "aws_secretsmanager_secret_version" "jwt_secret" {
 **CRITICAL: Load `postgres-best-practices` skill before optimizing queries.**
 
 **Rules:**
+
 1. Avoid N+1 queries — use JOINs or batch queries
 2. Index frequently queried columns (see postgres-best-practices)
 3. Use `LIMIT` + `OFFSET` for pagination or cursor-based pagination
@@ -764,6 +826,7 @@ resource "aws_secretsmanager_secret_version" "jwt_secret" {
 6. Create composite indexes for multi-column queries
 
 **Anti-Pattern (N+1):**
+
 ```typescript
 // ❌ WRONG: Loops cause N+1 queries
 const rooms = await db.select().from(eventRooms).where(...);
@@ -774,6 +837,7 @@ for (const room of rooms) {
 ```
 
 **Correct Pattern:**
+
 ```typescript
 // ✅ CORRECT: Single query with JOIN
 const roomsWithCounts = await db
@@ -790,6 +854,7 @@ const roomsWithCounts = await db
 ### Monitoring & Alerts
 
 **Key Metrics to Track:**
+
 - **API Response Time** (p50, p95, p99)
 - **Error Rate** (5XX errors / total requests)
 - **Queue Depth** (pending jobs in BullMQ)
@@ -798,6 +863,7 @@ const roomsWithCounts = await db
 - **PDF Generation Latency** (time from request to completion)
 
 **Alert Thresholds (Production):**
+
 - Response time p95 > 1s → alert
 - Error rate > 1% → page on-call
 - Queue depth > 1000 → alert
@@ -807,6 +873,7 @@ const roomsWithCounts = await db
 ### Logging Standards
 
 **Structured Log Format:**
+
 ```json
 {
   "level": "info",
@@ -822,6 +889,7 @@ const roomsWithCounts = await db
 ```
 
 **Log Levels:**
+
 - **`fatal`** — System cannot recover (database down, Redis unavailable)
 - **`error`** — User action failed (validation error, permission denied)
 - **`warn`** — Unexpected but recoverable (retry attempt 2 of 3)
@@ -842,10 +910,14 @@ export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const roomId = req.params.id as string;
-    
+
     // Call service
-    const pdfBuffer = await generateVerificationReportPdf(roomId, orgId, req.user!);
-    
+    const pdfBuffer = await generateVerificationReportPdf(
+      roomId,
+      orgId,
+      req.user!,
+    );
+
     res.setHeader("Content-Type", "application/pdf");
     res.end(pdfBuffer);
   } catch (err) {
@@ -861,17 +933,17 @@ export const generateVerificationReportPdf = async (
 ): Promise<Buffer> => {
   // 1. Fetch room (with org check)
   const room = await getRoom(roomId, orgId);
-  
+
   // 2. Check user permission
   await assertRoomAccessForUser(user, orgId, roomId);
-  
+
   // 3. Fetch attendance data
   const entries = await getAttendanceEntries(roomId);
-  
+
   // 4. Render PDF
   const htmlContent = await renderReportTemplate(room, entries);
   const pdfBuffer = await convertToPdf(htmlContent);
-  
+
   return pdfBuffer;
 };
 
@@ -897,14 +969,14 @@ export const FormBuilder = ({ roomId }: { roomId: string }) => {
   const handleSave = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Validate on client
       const validated = FormDefinitionInput.parse({ fields });
-      
+
       // Call API
       await api.post(`/rooms/${roomId}/form`, validated);
-      
+
       toast.success("Form saved!");
     } catch (err) {
       if (err instanceof ZodError) {
@@ -938,13 +1010,13 @@ export const FormBuilder = ({ roomId }: { roomId: string }) => {
 export const pdfQueue = new Queue<PdfGenerationJob>("pdf-generation", {
   connection: redis,
   defaultJobOptions: {
-    attempts: 3,           // Retry up to 3 times
+    attempts: 3, // Retry up to 3 times
     backoff: {
       type: "exponential",
-      delay: 2000,         // Start with 2s delay, exponential backoff
+      delay: 2000, // Start with 2s delay, exponential backoff
     },
     removeOnComplete: true, // Auto-cleanup successful jobs
-    removeOnFail: false,    // Keep failed jobs for debugging
+    removeOnFail: false, // Keep failed jobs for debugging
   },
 });
 
@@ -953,23 +1025,23 @@ export const pdfWorker = new Worker<PdfGenerationJob>(
   "pdf-generation",
   async (job) => {
     const { roomId, orgId, userId } = job.data;
-    
+
     try {
       const pdfBuffer = await generateVerificationReportPdf(roomId, orgId, {
         id: userId,
         organizationId: orgId,
       } as any);
-      
+
       const key = `reports/${orgId}/${roomId}-${Date.now()}.pdf`;
       await uploadPdfToS3(key, pdfBuffer);
-      
+
       return { downloadUrl: buildPublicUrl(key) };
     } catch (err) {
       logger.error({ jobId: job.id, err }, "PDF generation failed");
-      throw err;  // Will retry
+      throw err; // Will retry
     }
   },
-  { connection: redis, concurrency: 2 }
+  { connection: redis, concurrency: 2 },
 );
 
 pdfWorker.on("failed", (job, err) => {
@@ -986,18 +1058,16 @@ pdfWorker.on("failed", (job, err) => {
 
 ```typescript
 // ❌ WRONG
-const room = await db.select().from(eventRooms).where(eq(eventRooms.id, roomId));
+const room = await db
+  .select()
+  .from(eventRooms)
+  .where(eq(eventRooms.id, roomId));
 
 // ✅ CORRECT
 const room = await db
   .select()
   .from(eventRooms)
-  .where(
-    and(
-      eq(eventRooms.id, roomId),
-      eq(eventRooms.organizationId, orgId),
-    ),
-  );
+  .where(and(eq(eventRooms.id, roomId), eq(eventRooms.organizationId, orgId)));
 ```
 
 #### Anti-Pattern 2: Synchronous Long Operations
@@ -1091,6 +1161,7 @@ const roomsWithAttendance = await db
 ## Quick Skill Reference by Task Type
 
 ### Frontend Tasks
+
 ```
 load_ability("find-skills")  ← First, discover relevant skills
 load_ability("frontend-dev-guidelines")
@@ -1100,6 +1171,7 @@ load_ability("testing-patterns")
 ```
 
 ### Backend Tasks
+
 ```
 load_ability("find-skills")
 load_ability("backend-dev-guidelines")
@@ -1109,6 +1181,7 @@ load_ability("testing-patterns")
 ```
 
 ### Database Tasks
+
 ```
 load_ability("find-skills")
 load_ability("postgres-best-practices")  ← CRITICAL
@@ -1118,6 +1191,7 @@ load_ability("database-migration")
 ```
 
 ### Infrastructure Tasks
+
 ```
 load_ability("find-skills")
 load_ability("devops-terraform-skills")
@@ -1127,6 +1201,7 @@ load_ability("aws-skills")
 ```
 
 ### Security Tasks
+
 ```
 load_ability("find-skills")
 load_ability("security-auditor")
@@ -1136,6 +1211,7 @@ load_ability("secrets-management")
 ```
 
 ### Testing Tasks
+
 ```
 load_ability("find-skills")
 load_ability("testing-patterns")
@@ -1156,6 +1232,7 @@ This framework ensures that AI agents assisting on Veridian:
 5. **Follow production best practices** — logging, monitoring, graceful degradation
 
 **Key Mantra:**
+
 > **SKILL DISCOVERY FIRST.** Load abilities relevant to your task domain. Follow the patterns within. Execute with confidence.
 
 ---

@@ -30,7 +30,7 @@ ENV NODE_ENV=production
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser  --system --uid 1001 evently
+    adduser  --system --uid 1001 Eventclick
 
 # Copy only the compiled output + production deps
 COPY --from=deps   /app/node_modules              ./node_modules
@@ -40,7 +40,7 @@ COPY --from=build  /app/packages/server/package.json ./packages/server/package.j
 COPY --from=build  /app/packages/shared/dist      ./packages/shared/dist
 COPY --from=build  /app/packages/shared/package.json ./packages/shared/package.json
 
-USER evently
+USER Eventclick
 
 EXPOSE 4000
 

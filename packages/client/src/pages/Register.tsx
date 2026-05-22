@@ -75,7 +75,9 @@ export const RegisterPage = () => {
       <Card>
         <CardHeader>
           <CardTitle>Create your account</CardTitle>
-          <CardDescription>Get started with Evently in minutes</CardDescription>
+          <CardDescription>
+            Get started with Eventclick in minutes
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <GoogleSignInButton onToken={onGoogle} disabled={submitting} />

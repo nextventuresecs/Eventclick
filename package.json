@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "version": "1.0.0",
-  "description": "Evently — Online Events Scheduling & Reporting Platform",
+  "description": "Eventclick — Online Events Scheduling & Reporting Platform",
   "main": "index.js",
   "scripts": {
     "dev": "turbo run dev",

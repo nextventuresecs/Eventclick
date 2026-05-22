@@ -1,4 +1,10 @@
-import { createBrowserRouter, RouterProvider, Navigate, Outlet, useLocation } from "react-router-dom";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Navigate,
+  Outlet,
+  useLocation,
+} from "react-router-dom";
 import { hasRolePermission, type RolePermission } from "@application/shared";
 import { useAuth } from "./hooks/useAuth";
 
@@ -25,7 +31,9 @@ const ConnectionError = () => {
     <div className="flex min-h-screen items-center justify-center p-8">
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-4">Connection Lost</h2>
-        <p className="text-muted-foreground mb-6">Unable to verify your session.</p>
+        <p className="text-muted-foreground mb-6">
+          Unable to verify your session.
+        </p>
         <button
           onClick={retryAuth}
           className="inline-block px-6 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90"
@@ -40,15 +48,19 @@ const ConnectionError = () => {
 const ProtectedRoute = () => {
   const { status, user } = useAuth();
   const location = useLocation();
-  
+
   if (status === "loading") {
-    return <div className="p-8 text-center text-muted-foreground">Loading session...</div>;
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        Loading session...
+      </div>
+    );
   }
 
   if (status === "error") {
     return <ConnectionError />;
   }
-  
+
   if (status === "unauthenticated") {
     return <Navigate to="/login" replace />;
   }
@@ -57,7 +69,8 @@ const ProtectedRoute = () => {
     user &&
     user.role === "volunteer" &&
     !user.organizationId &&
-    localStorage.getItem("evently_onboarding_completed_or_skipped") !== "true" &&
+    localStorage.getItem("Eventclick_onboarding_completed_or_skipped") !==
+      "true" &&
     location.pathname !== "/onboarding"
   ) {
     return <Navigate to="/onboarding" replace />;
@@ -71,20 +84,32 @@ const AccessDenied = ({ permission }: { permission: RolePermission }) => (
     <div className="space-y-3 text-center">
       <h2 className="text-2xl font-semibold">Access limited</h2>
       <p className="text-sm text-muted-foreground">
-        Your role does not allow this action yet ({permission.replaceAll("_", " ")}).
+        Your role does not allow this action yet (
+        {permission.replaceAll("_", " ")}).
       </p>
-      <a href="/dashboard" className="text-sm font-medium text-primary hover:underline">
+      <a
+        href="/dashboard"
+        className="text-sm font-medium text-primary hover:underline"
+      >
         Return to dashboard
       </a>
     </div>
   </div>
 );
 
-const PermissionRoute = ({ permission }: { permission: RolePermission | RolePermission[] }) => {
+const PermissionRoute = ({
+  permission,
+}: {
+  permission: RolePermission | RolePermission[];
+}) => {
   const { status, user } = useAuth();
 
   if (status === "loading") {
-    return <div className="p-8 text-center text-muted-foreground">Loading session...</div>;
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        Loading session...
+      </div>
+    );
   }
 
   if (status === "error") {
@@ -96,7 +121,8 @@ const PermissionRoute = ({ permission }: { permission: RolePermission | RolePerm
   }
 
   const permissions = Array.isArray(permission) ? permission : [permission];
-  const hasPermission = user && permissions.some(p => hasRolePermission(user.role, p));
+  const hasPermission =
+    user && permissions.some((p) => hasRolePermission(user.role, p));
 
   if (!user || !hasPermission) {
     return <AccessDenied permission={permissions[0]!} />;
@@ -109,7 +135,11 @@ const RoleRoute = ({ role }: { role: string }) => {
   const { status, user } = useAuth();
 
   if (status === "loading") {
-    return <div className="p-8 text-center text-muted-foreground">Loading session...</div>;
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        Loading session...
+      </div>
+    );
   }
 
   if (status === "error") {
@@ -129,15 +159,19 @@ const RoleRoute = ({ role }: { role: string }) => {
 
 const AuthRoute = () => {
   const { status } = useAuth();
-  
+
   if (status === "loading") {
-    return <div className="p-8 text-center text-muted-foreground">Loading session...</div>;
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        Loading session...
+      </div>
+    );
   }
 
   if (status === "error") {
     return <ConnectionError />;
   }
-  
+
   if (status === "authenticated") {
     return <Navigate to="/dashboard" replace />;
   }
@@ -177,15 +211,28 @@ const router = createBrowserRouter([
           },
           {
             element: <PermissionRoute permission="create_attendance_form" />,
-            children: [{ path: "rooms/:id/form-builder", element: <RoomFormBuilder /> }],
+            children: [
+              { path: "rooms/:id/form-builder", element: <RoomFormBuilder /> },
+            ],
           },
           {
             element: <PermissionRoute permission="take_attendance" />,
-            children: [{ path: "rooms/:id/attendance", element: <Attendance /> }],
+            children: [
+              { path: "rooms/:id/attendance", element: <Attendance /> },
+            ],
           },
           {
-            element: <PermissionRoute permission={["view_reports", "take_attendance"]} />,
-            children: [{ path: "rooms/:id/attendance/records", element: <AttendanceRecords /> }],
+            element: (
+              <PermissionRoute
+                permission={["view_reports", "take_attendance"]}
+              />
+            ),
+            children: [
+              {
+                path: "rooms/:id/attendance/records",
+                element: <AttendanceRecords />,
+              },
+            ],
           },
           {
             element: <PermissionRoute permission="view_live_session" />,
@@ -195,7 +242,10 @@ const router = createBrowserRouter([
             element: <RoleRoute role="ngo_admin" />,
             children: [
               { path: "admin/users", element: <AdminUsers /> },
-              { path: "admin/event-assignments", element: <EventAssignments /> },
+              {
+                path: "admin/event-assignments",
+                element: <EventAssignments />,
+              },
             ],
           },
         ],

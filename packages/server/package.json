@@ -1,7 +1,7 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "Evently API server",
+  "description": "Eventclick API server",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

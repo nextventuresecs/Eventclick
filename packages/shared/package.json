@@ -1,7 +1,7 @@
 {
   "name": "@application/shared",
   "version": "1.0.0",
-  "description": "Shared types, DTOs, and zod schemas for Evently",
+  "description": "Shared types, DTOs, and zod schemas for Eventclick",
   "main": "src/index.ts",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",

@@ -19,13 +19,13 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: drizzle; Type: SCHEMA; Schema: -; Owner: evently_admin
+-- Name: drizzle; Type: SCHEMA; Schema: -; Owner: Eventclick_admin
 --
 
 CREATE SCHEMA drizzle;
 
 
-ALTER SCHEMA drizzle OWNER TO evently_admin;
+ALTER SCHEMA drizzle OWNER TO Eventclick_admin;
 
 --
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
@@ -56,7 +56,7 @@ COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UU
 
 
 --
--- Name: recording_status; Type: TYPE; Schema: public; Owner: evently_admin
+-- Name: recording_status; Type: TYPE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TYPE public.recording_status AS ENUM (
@@ -67,10 +67,10 @@ CREATE TYPE public.recording_status AS ENUM (
 );
 
 
-ALTER TYPE public.recording_status OWNER TO evently_admin;
+ALTER TYPE public.recording_status OWNER TO Eventclick_admin;
 
 --
--- Name: room_status; Type: TYPE; Schema: public; Owner: evently_admin
+-- Name: room_status; Type: TYPE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TYPE public.room_status AS ENUM (
@@ -81,10 +81,10 @@ CREATE TYPE public.room_status AS ENUM (
 );
 
 
-ALTER TYPE public.room_status OWNER TO evently_admin;
+ALTER TYPE public.room_status OWNER TO Eventclick_admin;
 
 --
--- Name: stream_provider; Type: TYPE; Schema: public; Owner: evently_admin
+-- Name: stream_provider; Type: TYPE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TYPE public.stream_provider AS ENUM (
@@ -93,10 +93,10 @@ CREATE TYPE public.stream_provider AS ENUM (
 );
 
 
-ALTER TYPE public.stream_provider OWNER TO evently_admin;
+ALTER TYPE public.stream_provider OWNER TO Eventclick_admin;
 
 --
--- Name: user_role; Type: TYPE; Schema: public; Owner: evently_admin
+-- Name: user_role; Type: TYPE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TYPE public.user_role AS ENUM (
@@ -106,14 +106,14 @@ CREATE TYPE public.user_role AS ENUM (
 );
 
 
-ALTER TYPE public.user_role OWNER TO evently_admin;
+ALTER TYPE public.user_role OWNER TO Eventclick_admin;
 
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- Name: __drizzle_migrations; Type: TABLE; Schema: drizzle; Owner: evently_admin
+-- Name: __drizzle_migrations; Type: TABLE; Schema: drizzle; Owner: Eventclick_admin
 --
 
 CREATE TABLE drizzle.__drizzle_migrations (
@@ -123,10 +123,10 @@ CREATE TABLE drizzle.__drizzle_migrations (
 );
 
 
-ALTER TABLE drizzle.__drizzle_migrations OWNER TO evently_admin;
+ALTER TABLE drizzle.__drizzle_migrations OWNER TO Eventclick_admin;
 
 --
--- Name: __drizzle_migrations_id_seq; Type: SEQUENCE; Schema: drizzle; Owner: evently_admin
+-- Name: __drizzle_migrations_id_seq; Type: SEQUENCE; Schema: drizzle; Owner: Eventclick_admin
 --
 
 CREATE SEQUENCE drizzle.__drizzle_migrations_id_seq
@@ -138,17 +138,17 @@ CREATE SEQUENCE drizzle.__drizzle_migrations_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE drizzle.__drizzle_migrations_id_seq OWNER TO evently_admin;
+ALTER SEQUENCE drizzle.__drizzle_migrations_id_seq OWNER TO Eventclick_admin;
 
 --
--- Name: __drizzle_migrations_id_seq; Type: SEQUENCE OWNED BY; Schema: drizzle; Owner: evently_admin
+-- Name: __drizzle_migrations_id_seq; Type: SEQUENCE OWNED BY; Schema: drizzle; Owner: Eventclick_admin
 --
 
 ALTER SEQUENCE drizzle.__drizzle_migrations_id_seq OWNED BY drizzle.__drizzle_migrations.id;
 
 
 --
--- Name: attendance_entries; Type: TABLE; Schema: public; Owner: evently_admin
+-- Name: attendance_entries; Type: TABLE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TABLE public.attendance_entries (
@@ -165,10 +165,10 @@ CREATE TABLE public.attendance_entries (
 );
 
 
-ALTER TABLE public.attendance_entries OWNER TO evently_admin;
+ALTER TABLE public.attendance_entries OWNER TO Eventclick_admin;
 
 --
--- Name: event_rooms; Type: TABLE; Schema: public; Owner: evently_admin
+-- Name: event_rooms; Type: TABLE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TABLE public.event_rooms (
@@ -194,10 +194,10 @@ CREATE TABLE public.event_rooms (
 );
 
 
-ALTER TABLE public.event_rooms OWNER TO evently_admin;
+ALTER TABLE public.event_rooms OWNER TO Eventclick_admin;
 
 --
--- Name: form_definitions; Type: TABLE; Schema: public; Owner: evently_admin
+-- Name: form_definitions; Type: TABLE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TABLE public.form_definitions (
@@ -210,10 +210,10 @@ CREATE TABLE public.form_definitions (
 );
 
 
-ALTER TABLE public.form_definitions OWNER TO evently_admin;
+ALTER TABLE public.form_definitions OWNER TO Eventclick_admin;
 
 --
--- Name: org_members; Type: TABLE; Schema: public; Owner: evently_admin
+-- Name: org_members; Type: TABLE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TABLE public.org_members (
@@ -228,10 +228,10 @@ CREATE TABLE public.org_members (
 );
 
 
-ALTER TABLE public.org_members OWNER TO evently_admin;
+ALTER TABLE public.org_members OWNER TO Eventclick_admin;
 
 --
--- Name: organizations; Type: TABLE; Schema: public; Owner: evently_admin
+-- Name: organizations; Type: TABLE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TABLE public.organizations (
@@ -249,10 +249,10 @@ CREATE TABLE public.organizations (
 );
 
 
-ALTER TABLE public.organizations OWNER TO evently_admin;
+ALTER TABLE public.organizations OWNER TO Eventclick_admin;
 
 --
--- Name: room_recordings; Type: TABLE; Schema: public; Owner: evently_admin
+-- Name: room_recordings; Type: TABLE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TABLE public.room_recordings (
@@ -270,10 +270,10 @@ CREATE TABLE public.room_recordings (
 );
 
 
-ALTER TABLE public.room_recordings OWNER TO evently_admin;
+ALTER TABLE public.room_recordings OWNER TO Eventclick_admin;
 
 --
--- Name: sessions; Type: TABLE; Schema: public; Owner: evently_admin
+-- Name: sessions; Type: TABLE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TABLE public.sessions (
@@ -290,10 +290,10 @@ CREATE TABLE public.sessions (
 );
 
 
-ALTER TABLE public.sessions OWNER TO evently_admin;
+ALTER TABLE public.sessions OWNER TO Eventclick_admin;
 
 --
--- Name: users; Type: TABLE; Schema: public; Owner: evently_admin
+-- Name: users; Type: TABLE; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE TABLE public.users (
@@ -313,17 +313,17 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO evently_admin;
+ALTER TABLE public.users OWNER TO Eventclick_admin;
 
 --
--- Name: __drizzle_migrations id; Type: DEFAULT; Schema: drizzle; Owner: evently_admin
+-- Name: __drizzle_migrations id; Type: DEFAULT; Schema: drizzle; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY drizzle.__drizzle_migrations ALTER COLUMN id SET DEFAULT nextval('drizzle.__drizzle_migrations_id_seq'::regclass);
 
 
 --
--- Data for Name: __drizzle_migrations; Type: TABLE DATA; Schema: drizzle; Owner: evently_admin
+-- Data for Name: __drizzle_migrations; Type: TABLE DATA; Schema: drizzle; Owner: Eventclick_admin
 --
 
 COPY drizzle.__drizzle_migrations (id, hash, created_at) FROM stdin;
@@ -334,26 +334,26 @@ COPY drizzle.__drizzle_migrations (id, hash, created_at) FROM stdin;
 
 
 --
--- Data for Name: attendance_entries; Type: TABLE DATA; Schema: public; Owner: evently_admin
+-- Data for Name: attendance_entries; Type: TABLE DATA; Schema: public; Owner: Eventclick_admin
 --
 
 COPY public.attendance_entries (id, room_id, form_definition_id, submitted_by, data, photo_key, photo_url, ip_address, user_agent, submitted_at) FROM stdin;
-d3e9c433-eaef-4bea-a5ee-3b4f021cb41f	785117a5-ea35-414d-8ad0-4740e3ddb550	ce11af1e-de3f-46ff-9b20-aa99fdac559d	43a4306b-44e2-4ff1-9655-5e561ec8e42d	{"age": 30, "name": "Alice", "agree": true, "email": "a@b.com", "phone": "+919876543210", "gender": "female"}	attendance/785117a5-ea35-414d-8ad0-4740e3ddb550/bHDEjwq9h_zu0-B-nV_yoIxV.jpg	http://localhost:9000/evently-recordings/attendance/785117a5-ea35-414d-8ad0-4740e3ddb550/bHDEjwq9h_zu0-B-nV_yoIxV.jpg	::ffff:172.18.0.1	curl/8.17.0	2026-04-22 08:13:35.49786+00
-d57a5509-2984-4ec2-b850-6ed0858f0b44	753b2d11-63c0-4e40-ae3b-f6f9c3e76bc2	b4766b8a-3bf6-4815-8724-50489cbe95ea	21ee6fbf-1ab1-4aa1-90ca-7265775e77de	{"name": "Alice", "email": "a@b.com", "gender": "female"}	attendance/753b2d11-63c0-4e40-ae3b-f6f9c3e76bc2/1tGb3PfO88D3KPjipGi_JoR7.jpg	http://localhost:9000/evently-recordings/attendance/753b2d11-63c0-4e40-ae3b-f6f9c3e76bc2/1tGb3PfO88D3KPjipGi_JoR7.jpg	::ffff:172.18.0.1	curl/8.17.0	2026-04-22 08:27:00.732486+00
+d3e9c433-eaef-4bea-a5ee-3b4f021cb41f	785117a5-ea35-414d-8ad0-4740e3ddb550	ce11af1e-de3f-46ff-9b20-aa99fdac559d	43a4306b-44e2-4ff1-9655-5e561ec8e42d	{"age": 30, "name": "Alice", "agree": true, "email": "a@b.com", "phone": "+919876543210", "gender": "female"}	attendance/785117a5-ea35-414d-8ad0-4740e3ddb550/bHDEjwq9h_zu0-B-nV_yoIxV.jpg	http://localhost:9000/Eventclick-recordings/attendance/785117a5-ea35-414d-8ad0-4740e3ddb550/bHDEjwq9h_zu0-B-nV_yoIxV.jpg	::ffff:172.18.0.1	curl/8.17.0	2026-04-22 08:13:35.49786+00
+d57a5509-2984-4ec2-b850-6ed0858f0b44	753b2d11-63c0-4e40-ae3b-f6f9c3e76bc2	b4766b8a-3bf6-4815-8724-50489cbe95ea	21ee6fbf-1ab1-4aa1-90ca-7265775e77de	{"name": "Alice", "email": "a@b.com", "gender": "female"}	attendance/753b2d11-63c0-4e40-ae3b-f6f9c3e76bc2/1tGb3PfO88D3KPjipGi_JoR7.jpg	http://localhost:9000/Eventclick-recordings/attendance/753b2d11-63c0-4e40-ae3b-f6f9c3e76bc2/1tGb3PfO88D3KPjipGi_JoR7.jpg	::ffff:172.18.0.1	curl/8.17.0	2026-04-22 08:27:00.732486+00
 38357b70-8417-49ed-8b7d-0075320355aa	d9bb5476-d170-40f6-9e52-034ffa536d1b	4dd6124c-8399-4206-9deb-51a479398180	7822732e-4ec5-4499-b3b5-f790dcf70d4b	{"n": "User1"}	\N	\N	::ffff:172.18.0.1	curl/8.17.0	2026-04-22 08:27:21.132994+00
 9d4e8250-c187-4463-9d7f-97726235dcce	d9bb5476-d170-40f6-9e52-034ffa536d1b	4dd6124c-8399-4206-9deb-51a479398180	7822732e-4ec5-4499-b3b5-f790dcf70d4b	{"n": "User2"}	\N	\N	::ffff:172.18.0.1	curl/8.17.0	2026-04-22 08:27:21.297508+00
 cee8325a-3279-445b-87ed-17a9c95e43d0	d9bb5476-d170-40f6-9e52-034ffa536d1b	4dd6124c-8399-4206-9deb-51a479398180	7822732e-4ec5-4499-b3b5-f790dcf70d4b	{"n": "User3"}	\N	\N	::ffff:172.18.0.1	curl/8.17.0	2026-04-22 08:27:21.472921+00
 5820701e-b5c3-4a43-9a15-baa523eb8e41	8637d8c1-e75f-4ed8-9bae-f912d15846e3	b8af1ff1-50d6-41a9-8fd4-1980d58dd913	5db60b77-4c9c-4387-8f72-8fc1c52a83f3	{"1bsoz37j": "formtest", "69xtra6s": 12345678912, "axa1zbh1": "1234567890", "enl6kk6u": "formTest@gmail.com", "qdwsmmym": 42342352434, "z08jc97r": "fgd"}	\N	\N	::ffff:172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36	2026-04-22 15:08:45.030231+00
-6e80fa19-544a-45f6-9ed4-453677a12a82	3d7f71e3-ff20-4638-8a6c-09c80017d89f	1c2f4936-f376-4558-8dd6-6776b07fb9e7	8cb0404c-713f-4324-bc60-fbb7b3d3716c	{"name": "Alice Smoke", "role": "Engineer", "email": "alice@smoke.dev"}	attendance/3d7f71e3-ff20-4638-8a6c-09c80017d89f/bKSXlkjSCH4qHHdd7k0I70Hr.jpg	http://localhost:9000/evently-recordings/attendance/3d7f71e3-ff20-4638-8a6c-09c80017d89f/bKSXlkjSCH4qHHdd7k0I70Hr.jpg	::ffff:172.18.0.1	curl/8.17.0	2026-05-04 12:22:55.321901+00
+6e80fa19-544a-45f6-9ed4-453677a12a82	3d7f71e3-ff20-4638-8a6c-09c80017d89f	1c2f4936-f376-4558-8dd6-6776b07fb9e7	8cb0404c-713f-4324-bc60-fbb7b3d3716c	{"name": "Alice Smoke", "role": "Engineer", "email": "alice@smoke.dev"}	attendance/3d7f71e3-ff20-4638-8a6c-09c80017d89f/bKSXlkjSCH4qHHdd7k0I70Hr.jpg	http://localhost:9000/Eventclick-recordings/attendance/3d7f71e3-ff20-4638-8a6c-09c80017d89f/bKSXlkjSCH4qHHdd7k0I70Hr.jpg	::ffff:172.18.0.1	curl/8.17.0	2026-05-04 12:22:55.321901+00
 34ccf766-8865-4f4e-8af8-160ee92d46d7	5ed559b8-a4d6-4017-871e-c953c0aa8df3	c9f612bb-9ec7-4bb6-afd4-086b638c943d	5db60b77-4c9c-4387-8f72-8fc1c52a83f3	{"hortvbxu": "test", "kus49x39": "test@gmail.com", "yt63vmmo": "1234567890"}	\N	\N	::ffff:172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36	2026-05-08 14:25:35.503986+00
 f89df3b6-4cee-48c2-9eeb-fec99d6e19c9	5ed559b8-a4d6-4017-871e-c953c0aa8df3	c9f612bb-9ec7-4bb6-afd4-086b638c943d	5db60b77-4c9c-4387-8f72-8fc1c52a83f3	{"hortvbxu": "test2", "kus49x39": "test2@gmail.com", "yt63vmmo": "1234567890"}	\N	\N	::ffff:172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36	2026-05-13 11:13:25.740256+00
-38187b3e-dd24-4021-8d59-1bf05e1e950d	5ed559b8-a4d6-4017-871e-c953c0aa8df3	c9f612bb-9ec7-4bb6-afd4-086b638c943d	5db60b77-4c9c-4387-8f72-8fc1c52a83f3	{"hortvbxu": "test_capture", "kus49x39": "test_capture@gmail.com", "yt63vmmo": "1234567890"}	attendance/5ed559b8-a4d6-4017-871e-c953c0aa8df3/yykWomjVKFumsUVpu5urgnao.jpg	http://localhost:9000/evently-recordings/attendance/5ed559b8-a4d6-4017-871e-c953c0aa8df3/yykWomjVKFumsUVpu5urgnao.jpg	::ffff:172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36	2026-05-14 10:06:54.039106+00
-0702de90-10b4-459e-ad48-a35d5bfbd7b7	5a21c8a9-acb0-42f4-adcc-dd01cd36f60b	bcabfba4-ab6d-45a8-80e7-ccfa3ca45317	5db60b77-4c9c-4387-8f72-8fc1c52a83f3	{"8g3ffy67": "Test new", "9dfdv89s": "Male", "buz4hs71": "test@gmail.com", "cskic1ia": "1234567890", "fipbo88u": 1}	attendance/5a21c8a9-acb0-42f4-adcc-dd01cd36f60b/Ux1m6amXVT1pNQPf-DKLevrg.jpg	http://localhost:9000/evently-recordings/attendance/5a21c8a9-acb0-42f4-adcc-dd01cd36f60b/Ux1m6amXVT1pNQPf-DKLevrg.jpg	::ffff:172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36	2026-05-14 12:18:32.525905+00
+38187b3e-dd24-4021-8d59-1bf05e1e950d	5ed559b8-a4d6-4017-871e-c953c0aa8df3	c9f612bb-9ec7-4bb6-afd4-086b638c943d	5db60b77-4c9c-4387-8f72-8fc1c52a83f3	{"hortvbxu": "test_capture", "kus49x39": "test_capture@gmail.com", "yt63vmmo": "1234567890"}	attendance/5ed559b8-a4d6-4017-871e-c953c0aa8df3/yykWomjVKFumsUVpu5urgnao.jpg	http://localhost:9000/Eventclick-recordings/attendance/5ed559b8-a4d6-4017-871e-c953c0aa8df3/yykWomjVKFumsUVpu5urgnao.jpg	::ffff:172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36	2026-05-14 10:06:54.039106+00
+0702de90-10b4-459e-ad48-a35d5bfbd7b7	5a21c8a9-acb0-42f4-adcc-dd01cd36f60b	bcabfba4-ab6d-45a8-80e7-ccfa3ca45317	5db60b77-4c9c-4387-8f72-8fc1c52a83f3	{"8g3ffy67": "Test new", "9dfdv89s": "Male", "buz4hs71": "test@gmail.com", "cskic1ia": "1234567890", "fipbo88u": 1}	attendance/5a21c8a9-acb0-42f4-adcc-dd01cd36f60b/Ux1m6amXVT1pNQPf-DKLevrg.jpg	http://localhost:9000/Eventclick-recordings/attendance/5a21c8a9-acb0-42f4-adcc-dd01cd36f60b/Ux1m6amXVT1pNQPf-DKLevrg.jpg	::ffff:172.18.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36	2026-05-14 12:18:32.525905+00
 \.
 
 
 --
--- Data for Name: event_rooms; Type: TABLE DATA; Schema: public; Owner: evently_admin
+-- Data for Name: event_rooms; Type: TABLE DATA; Schema: public; Owner: Eventclick_admin
 --
 
 COPY public.event_rooms (id, organization_id, created_by, title, description, status, scheduled_start, scheduled_end, actual_start, actual_end, max_participants, share_token, livekit_room_name, created_at, updated_at, deleted_at, stream_provider, youtube_watch_url, youtube_embed_url) FROM stdin;
@@ -384,7 +384,7 @@ d9bb5476-d170-40f6-9e52-034ffa536d1b	03a3e9d4-ff6e-431a-b468-c21a806f8a5a	782273
 
 
 --
--- Data for Name: form_definitions; Type: TABLE DATA; Schema: public; Owner: evently_admin
+-- Data for Name: form_definitions; Type: TABLE DATA; Schema: public; Owner: Eventclick_admin
 --
 
 COPY public.form_definitions (id, room_id, version, fields, created_at, updated_at) FROM stdin;
@@ -404,7 +404,7 @@ bcabfba4-ab6d-45a8-80e7-ccfa3ca45317	5a21c8a9-acb0-42f4-adcc-dd01cd36f60b	3	[{"i
 
 
 --
--- Data for Name: org_members; Type: TABLE DATA; Schema: public; Owner: evently_admin
+-- Data for Name: org_members; Type: TABLE DATA; Schema: public; Owner: Eventclick_admin
 --
 
 COPY public.org_members (id, user_id, organization_id, role, invited_by, joined_at, created_at, updated_at) FROM stdin;
@@ -441,7 +441,7 @@ f47f8026-a9bb-40f3-83c9-0897bb754aa6	7822732e-4ec5-4499-b3b5-f790dcf70d4b	03a3e9
 
 
 --
--- Data for Name: organizations; Type: TABLE DATA; Schema: public; Owner: evently_admin
+-- Data for Name: organizations; Type: TABLE DATA; Schema: public; Owner: Eventclick_admin
 --
 
 COPY public.organizations (id, name, slug, description, logo_url, website_url, contact_email, is_active, created_at, updated_at, deleted_at) FROM stdin;
@@ -471,14 +471,14 @@ bea42115-eafd-48cb-a060-aa94829b9638	OrgA	orga-wyhg4r	\N	\N	\N	att5-1776846324@t
 5fa21644-8e2c-4a1d-be21-fd446905dd86	OrgA	orga-hvdcg0	\N	\N	\N	full-1776846415@test.com	t	2026-04-22 08:26:56.372987+00	2026-04-22 08:26:56.372987+00	\N
 03a3e9d4-ff6e-431a-b468-c21a806f8a5a	OrgA	orga-odhgew	\N	\N	\N	list-1776846438@test.com	t	2026-04-22 08:27:19.323012+00	2026-04-22 08:27:19.323012+00	\N
 31ffd921-762f-4f0c-8350-c1abf5766703	LiveOrg 1776852526	liveorg-1776852526-rw9j1u	\N	\N	\N	live-1776852526@test.com	t	2026-04-22 10:08:46.942406+00	2026-04-22 10:08:46.942406+00	\N
-07c26e07-6c51-421f-960d-dfc15dd063a5	SmokeOrg	smokeorg-rnyx_w	\N	\N	\N	smoketest+1777897289@evently.dev	t	2026-05-04 12:21:36.038728+00	2026-05-04 12:21:36.038728+00	\N
+07c26e07-6c51-421f-960d-dfc15dd063a5	SmokeOrg	smokeorg-rnyx_w	\N	\N	\N	smoketest+1777897289@Eventclick.dev	t	2026-05-04 12:21:36.038728+00	2026-05-04 12:21:36.038728+00	\N
 d29d2db3-6a4f-46f8-9c8e-561231db73e2	UNFPCL	unfpcl-sdllha	\N	\N	\N	nextventures.ecs@gmail.com	t	2026-05-15 10:43:14.273951+00	2026-05-15 10:43:14.273951+00	\N
 580c3eb2-d21f-4351-98dd-1561b708f83c	Prathm Foundation	prathm-foundation-5-jx_n	\N	\N	\N	pj@gmail.com	t	2026-05-15 11:23:58.775117+00	2026-05-15 11:23:58.775117+00	\N
 \.
 
 
 --
--- Data for Name: room_recordings; Type: TABLE DATA; Schema: public; Owner: evently_admin
+-- Data for Name: room_recordings; Type: TABLE DATA; Schema: public; Owner: Eventclick_admin
 --
 
 COPY public.room_recordings (id, room_id, status, egress_id, s3_key, mime_type, size_bytes, started_at, ended_at, error, created_at) FROM stdin;
@@ -486,7 +486,7 @@ COPY public.room_recordings (id, room_id, status, egress_id, s3_key, mime_type, 
 
 
 --
--- Data for Name: sessions; Type: TABLE DATA; Schema: public; Owner: evently_admin
+-- Data for Name: sessions; Type: TABLE DATA; Schema: public; Owner: Eventclick_admin
 --
 
 COPY public.sessions (id, user_id, token_hash, family_id, replaced_by_id, user_agent, ip_address, expires_at, revoked_at, created_at) FROM stdin;
@@ -641,7 +641,7 @@ d70dfc1c-1734-4ad5-8290-61d06b749b86	9c4bc36a-2d54-420f-8236-cb493c0a81dc	885c12
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: evently_admin
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: Eventclick_admin
 --
 
 COPY public.users (id, email, password_hash, full_name, role, organization_id, google_id, email_verified_at, is_active, last_login_at, created_at, updated_at, deleted_at) FROM stdin;
@@ -672,7 +672,7 @@ d5bc7a16-948b-48e4-8ec6-3773b5bb6ebf	att5-1776846324@test.com	$2b$12$mjNPvScOjCn
 21ee6fbf-1ab1-4aa1-90ca-7265775e77de	full-1776846415@test.com	$2b$12$0L2iWdq09W2on8MCsEKvj.jZC276PMGxrmaCfRLJ8jVs56GtM5kNu	A	event_admin	5fa21644-8e2c-4a1d-be21-fd446905dd86	\N	\N	t	2026-04-22 08:26:56.389+00	2026-04-22 08:26:56.372987+00	2026-04-22 08:26:56.372987+00	\N
 7822732e-4ec5-4499-b3b5-f790dcf70d4b	list-1776846438@test.com	$2b$12$rd.cUS/N5swGN6shvHBhvOLyDSZszEe1wW.iCsRp0ssn9Rm2DU3uW	A	event_admin	03a3e9d4-ff6e-431a-b468-c21a806f8a5a	\N	\N	t	2026-04-22 08:27:19.338+00	2026-04-22 08:27:19.323012+00	2026-04-22 08:27:19.323012+00	\N
 20dd9754-1ad3-48e7-836f-6eb0c503ed2e	pj@gmail.com	$2b$12$.2g18lHxxHC5dOkqbD37yeewt/qSKKdCcV88OK5evw0ZVAz4DHUTe	Prathmesh Jagtap	event_admin	580c3eb2-d21f-4351-98dd-1561b708f83c	\N	\N	t	2026-05-15 12:55:33.746+00	2026-05-15 11:23:58.775117+00	2026-05-15 11:23:58.775117+00	\N
-8cb0404c-713f-4324-bc60-fbb7b3d3716c	smoketest+1777897289@evently.dev	$2b$12$M8iZoqge4Thp5nCBQ2vmruEKsiVXQtGrL01KzxH46gLI62Cbg3PLO	Smoke Test	event_admin	07c26e07-6c51-421f-960d-dfc15dd063a5	\N	\N	t	2026-05-04 12:21:36.068+00	2026-05-04 12:21:36.038728+00	2026-05-04 12:21:36.038728+00	\N
+8cb0404c-713f-4324-bc60-fbb7b3d3716c	smoketest+1777897289@Eventclick.dev	$2b$12$M8iZoqge4Thp5nCBQ2vmruEKsiVXQtGrL01KzxH46gLI62Cbg3PLO	Smoke Test	event_admin	07c26e07-6c51-421f-960d-dfc15dd063a5	\N	\N	t	2026-05-04 12:21:36.068+00	2026-05-04 12:21:36.038728+00	2026-05-04 12:21:36.038728+00	\N
 920ef4e5-f1d7-4936-a255-41c2b3c65caf	live-1776852526@test.com	$2b$12$ucnmjhzk99EJfqOjNsGbiOBK84355JbRYk0cWtSCIijLwisUhP6oy	Live Tester	event_admin	31ffd921-762f-4f0c-8350-c1abf5766703	\N	\N	t	2026-04-22 10:08:47.007+00	2026-04-22 10:08:46.942406+00	2026-04-22 10:08:46.942406+00	\N
 65093de4-c6f8-40bc-9ad4-d2cbd6583cda	test_verify@example.com	$2b$12$T2mTHgYEal22MsUwuBbRzunGEezdGIx0Xfj6Fx3V0m8R7Wc44QjNS	Test Verify	organizer	\N	\N	\N	t	2026-05-13 12:03:26.196+00	2026-05-13 12:03:25.696307+00	2026-05-13 12:03:25.696307+00	\N
 9c4bc36a-2d54-420f-8236-cb493c0a81dc	nextventures.ecs@gmail.com	$2b$12$BJQ7l.aqnDSzkAYnWeKcMOEI.w6w65BCAlxMp.kfSrtA90klnYqGe	Adhyant Patil	event_admin	d29d2db3-6a4f-46f8-9c8e-561231db73e2	\N	\N	t	2026-05-15 11:23:12.13+00	2026-05-15 10:43:14.273951+00	2026-05-15 10:43:14.273951+00	\N
@@ -681,14 +681,14 @@ d5bc7a16-948b-48e4-8ec6-3773b5bb6ebf	att5-1776846324@test.com	$2b$12$mjNPvScOjCn
 
 
 --
--- Name: __drizzle_migrations_id_seq; Type: SEQUENCE SET; Schema: drizzle; Owner: evently_admin
+-- Name: __drizzle_migrations_id_seq; Type: SEQUENCE SET; Schema: drizzle; Owner: Eventclick_admin
 --
 
 SELECT pg_catalog.setval('drizzle.__drizzle_migrations_id_seq', 3, true);
 
 
 --
--- Name: __drizzle_migrations __drizzle_migrations_pkey; Type: CONSTRAINT; Schema: drizzle; Owner: evently_admin
+-- Name: __drizzle_migrations __drizzle_migrations_pkey; Type: CONSTRAINT; Schema: drizzle; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY drizzle.__drizzle_migrations
@@ -696,7 +696,7 @@ ALTER TABLE ONLY drizzle.__drizzle_migrations
 
 
 --
--- Name: attendance_entries attendance_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: attendance_entries attendance_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.attendance_entries
@@ -704,7 +704,7 @@ ALTER TABLE ONLY public.attendance_entries
 
 
 --
--- Name: event_rooms event_rooms_pkey; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: event_rooms event_rooms_pkey; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.event_rooms
@@ -712,7 +712,7 @@ ALTER TABLE ONLY public.event_rooms
 
 
 --
--- Name: event_rooms event_rooms_share_token_unique; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: event_rooms event_rooms_share_token_unique; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.event_rooms
@@ -720,7 +720,7 @@ ALTER TABLE ONLY public.event_rooms
 
 
 --
--- Name: form_definitions form_definitions_pkey; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: form_definitions form_definitions_pkey; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.form_definitions
@@ -728,7 +728,7 @@ ALTER TABLE ONLY public.form_definitions
 
 
 --
--- Name: org_members org_members_pkey; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: org_members org_members_pkey; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.org_members
@@ -736,7 +736,7 @@ ALTER TABLE ONLY public.org_members
 
 
 --
--- Name: organizations organizations_pkey; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: organizations organizations_pkey; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.organizations
@@ -744,7 +744,7 @@ ALTER TABLE ONLY public.organizations
 
 
 --
--- Name: organizations organizations_slug_unique; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: organizations organizations_slug_unique; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.organizations
@@ -752,7 +752,7 @@ ALTER TABLE ONLY public.organizations
 
 
 --
--- Name: room_recordings room_recordings_pkey; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: room_recordings room_recordings_pkey; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.room_recordings
@@ -760,7 +760,7 @@ ALTER TABLE ONLY public.room_recordings
 
 
 --
--- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.sessions
@@ -768,7 +768,7 @@ ALTER TABLE ONLY public.sessions
 
 
 --
--- Name: sessions sessions_token_hash_unique; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: sessions sessions_token_hash_unique; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.sessions
@@ -776,7 +776,7 @@ ALTER TABLE ONLY public.sessions
 
 
 --
--- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.users
@@ -784,7 +784,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_google_id_unique; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: users users_google_id_unique; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.users
@@ -792,7 +792,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.users
@@ -800,133 +800,133 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: attendance_entries_form_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: attendance_entries_form_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX attendance_entries_form_idx ON public.attendance_entries USING btree (form_definition_id);
 
 
 --
--- Name: attendance_entries_room_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: attendance_entries_room_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX attendance_entries_room_idx ON public.attendance_entries USING btree (room_id);
 
 
 --
--- Name: attendance_entries_submitted_at_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: attendance_entries_submitted_at_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX attendance_entries_submitted_at_idx ON public.attendance_entries USING btree (submitted_at);
 
 
 --
--- Name: event_rooms_org_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: event_rooms_org_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX event_rooms_org_idx ON public.event_rooms USING btree (organization_id);
 
 
 --
--- Name: event_rooms_scheduled_start_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: event_rooms_scheduled_start_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX event_rooms_scheduled_start_idx ON public.event_rooms USING btree (scheduled_start);
 
 
 --
--- Name: event_rooms_status_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: event_rooms_status_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX event_rooms_status_idx ON public.event_rooms USING btree (status);
 
 
 --
--- Name: form_definitions_room_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: form_definitions_room_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX form_definitions_room_idx ON public.form_definitions USING btree (room_id);
 
 
 --
--- Name: form_definitions_room_version_unique; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: form_definitions_room_version_unique; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE UNIQUE INDEX form_definitions_room_version_unique ON public.form_definitions USING btree (room_id, version);
 
 
 --
--- Name: org_members_org_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: org_members_org_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX org_members_org_idx ON public.org_members USING btree (organization_id);
 
 
 --
--- Name: org_members_user_org_uniq; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: org_members_user_org_uniq; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE UNIQUE INDEX org_members_user_org_uniq ON public.org_members USING btree (user_id, organization_id);
 
 
 --
--- Name: room_recordings_egress_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: room_recordings_egress_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX room_recordings_egress_idx ON public.room_recordings USING btree (egress_id);
 
 
 --
--- Name: room_recordings_room_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: room_recordings_room_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX room_recordings_room_idx ON public.room_recordings USING btree (room_id);
 
 
 --
--- Name: room_recordings_status_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: room_recordings_status_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX room_recordings_status_idx ON public.room_recordings USING btree (status);
 
 
 --
--- Name: sessions_expires_at_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: sessions_expires_at_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX sessions_expires_at_idx ON public.sessions USING btree (expires_at);
 
 
 --
--- Name: sessions_family_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: sessions_family_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX sessions_family_idx ON public.sessions USING btree (family_id);
 
 
 --
--- Name: sessions_user_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: sessions_user_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX sessions_user_idx ON public.sessions USING btree (user_id);
 
 
 --
--- Name: users_org_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: users_org_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX users_org_idx ON public.users USING btree (organization_id);
 
 
 --
--- Name: users_role_idx; Type: INDEX; Schema: public; Owner: evently_admin
+-- Name: users_role_idx; Type: INDEX; Schema: public; Owner: Eventclick_admin
 --
 
 CREATE INDEX users_role_idx ON public.users USING btree (role);
 
 
 --
--- Name: attendance_entries attendance_entries_form_definition_id_form_definitions_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: attendance_entries attendance_entries_form_definition_id_form_definitions_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.attendance_entries
@@ -934,7 +934,7 @@ ALTER TABLE ONLY public.attendance_entries
 
 
 --
--- Name: attendance_entries attendance_entries_room_id_event_rooms_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: attendance_entries attendance_entries_room_id_event_rooms_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.attendance_entries
@@ -942,7 +942,7 @@ ALTER TABLE ONLY public.attendance_entries
 
 
 --
--- Name: attendance_entries attendance_entries_submitted_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: attendance_entries attendance_entries_submitted_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.attendance_entries
@@ -950,7 +950,7 @@ ALTER TABLE ONLY public.attendance_entries
 
 
 --
--- Name: event_rooms event_rooms_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: event_rooms event_rooms_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.event_rooms
@@ -958,7 +958,7 @@ ALTER TABLE ONLY public.event_rooms
 
 
 --
--- Name: event_rooms event_rooms_organization_id_organizations_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: event_rooms event_rooms_organization_id_organizations_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.event_rooms
@@ -966,7 +966,7 @@ ALTER TABLE ONLY public.event_rooms
 
 
 --
--- Name: form_definitions form_definitions_room_id_event_rooms_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: form_definitions form_definitions_room_id_event_rooms_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.form_definitions
@@ -974,7 +974,7 @@ ALTER TABLE ONLY public.form_definitions
 
 
 --
--- Name: org_members org_members_invited_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: org_members org_members_invited_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.org_members
@@ -982,7 +982,7 @@ ALTER TABLE ONLY public.org_members
 
 
 --
--- Name: org_members org_members_organization_id_organizations_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: org_members org_members_organization_id_organizations_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.org_members
@@ -990,7 +990,7 @@ ALTER TABLE ONLY public.org_members
 
 
 --
--- Name: org_members org_members_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: org_members org_members_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.org_members
@@ -998,7 +998,7 @@ ALTER TABLE ONLY public.org_members
 
 
 --
--- Name: room_recordings room_recordings_room_id_event_rooms_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: room_recordings room_recordings_room_id_event_rooms_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.room_recordings
@@ -1006,7 +1006,7 @@ ALTER TABLE ONLY public.room_recordings
 
 
 --
--- Name: sessions sessions_replaced_by_id_sessions_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: sessions sessions_replaced_by_id_sessions_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.sessions
@@ -1014,7 +1014,7 @@ ALTER TABLE ONLY public.sessions
 
 
 --
--- Name: sessions sessions_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: sessions sessions_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.sessions
@@ -1022,7 +1022,7 @@ ALTER TABLE ONLY public.sessions
 
 
 --
--- Name: users users_organization_id_organizations_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: evently_admin
+-- Name: users users_organization_id_organizations_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: Eventclick_admin
 --
 
 ALTER TABLE ONLY public.users
