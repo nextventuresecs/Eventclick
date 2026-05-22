@@ -187,20 +187,7 @@ export const CreateRoom = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="maxParticipants">Max Participants <span className="text-muted-foreground font-normal">(optional)</span></Label>
-              <Input
-                id="maxParticipants"
-                type="number"
-                min="1"
-                max="10000"
-                placeholder="Leave empty for unlimited"
-                value={maxParticipants}
-                onChange={(e) => setMaxParticipants(e.target.value)}
-                disabled={submitting}
-              />
-            </div>
-
+            {/* Attendance Window Configuration  */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="attendanceWindowBefore">Early Submission Buffer (Minutes)</Label>
@@ -208,7 +195,7 @@ export const CreateRoom = () => {
                   id="attendanceWindowBefore"
                   type="number"
                   min="0"
-                  placeholder="15"
+                  placeholder="30"
                   value={attendanceWindowBefore}
                   onChange={(e) => setAttendanceWindowBefore(e.target.value)}
                   disabled={submitting}
@@ -232,6 +219,21 @@ export const CreateRoom = () => {
                   Minutes after event ends that attendance can still be taken (default 30).
                 </p>
               </div>
+            </div>
+
+            {/* Max Participants Configuration */}
+            <div className="space-y-2">
+              <Label htmlFor="maxParticipants">Max Online Participants <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                id="maxParticipants"
+                type="number"
+                min="1"
+                max="10000"
+                placeholder="Leave empty for unlimited"
+                value={maxParticipants}
+                onChange={(e) => setMaxParticipants(e.target.value)}
+                disabled={submitting}
+              />
             </div>
 
             {/* Activity Quality Checklist */}
