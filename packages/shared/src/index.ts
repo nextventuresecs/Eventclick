@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const APP_NAME = "Evently";
+export const APP_NAME = "Eventclick";
 export const API_VERSION = "v1";
 export const API_PREFIX = `/api/${API_VERSION}`;
 
@@ -54,8 +54,10 @@ const ROLE_PERMISSION_MAP: Record<UserRole, readonly RolePermission[]> = {
 export const getRolePermissions = (role: UserRole): readonly RolePermission[] =>
   ROLE_PERMISSION_MAP[role];
 
-export const hasRolePermission = (role: UserRole, permission: RolePermission): boolean =>
-  ROLE_PERMISSION_MAP[role].includes(permission);
+export const hasRolePermission = (
+  role: UserRole,
+  permission: RolePermission,
+): boolean => ROLE_PERMISSION_MAP[role].includes(permission);
 
 // ─── Room Status Enum ───────────────────────────────
 export const ROOM_STATUSES = [
@@ -160,14 +162,24 @@ export const SubmitActivityPhotoSchema = z.object({
   activityId: z.string().min(1),
   photoKey: z.string().min(1).max(256),
 });
-export type SubmitActivityPhotoInput = z.infer<typeof SubmitActivityPhotoSchema>;
+export type SubmitActivityPhotoInput = z.infer<
+  typeof SubmitActivityPhotoSchema
+>;
 
 export const ActivityPhotoUploadRequestSchema = z.object({
   activityId: z.string().min(1),
-  contentType: z.string().regex(/^image\/(jpeg|png|webp)$/, "Must be image/jpeg, png, or webp"),
-  sizeBytes: z.number().int().positive().max(5 * 1024 * 1024),
+  contentType: z
+    .string()
+    .regex(/^image\/(jpeg|png|webp)$/, "Must be image/jpeg, png, or webp"),
+  sizeBytes: z
+    .number()
+    .int()
+    .positive()
+    .max(5 * 1024 * 1024),
 });
-export type ActivityPhotoUploadRequestInput = z.infer<typeof ActivityPhotoUploadRequestSchema>;
+export type ActivityPhotoUploadRequestInput = z.infer<
+  typeof ActivityPhotoUploadRequestSchema
+>;
 
 export interface ActivitySubmissionPhoto {
   url: string;
@@ -251,7 +263,10 @@ export interface EventAdminAssignment {
   updatedAt: string;
   revokedAt: string | null;
   user: OrgUserSummary;
-  room: Pick<EventRoom, "id" | "title" | "scheduledStart" | "scheduledEnd" | "status">;
+  room: Pick<
+    EventRoom,
+    "id" | "title" | "scheduledStart" | "scheduledEnd" | "status"
+  >;
 }
 
 export const AssignEventAdminSchema = z.object({
@@ -263,7 +278,9 @@ export type AssignEventAdminInput = z.infer<typeof AssignEventAdminSchema>;
 export const UpdateEventAdminAssignmentSchema = z.object({
   roomId: z.uuid(),
 });
-export type UpdateEventAdminAssignmentInput = z.infer<typeof UpdateEventAdminAssignmentSchema>;
+export type UpdateEventAdminAssignmentInput = z.infer<
+  typeof UpdateEventAdminAssignmentSchema
+>;
 
 // ── Admin user management ──────────────────────────────────────────────────
 export const CreateOrgUserSchema = z.object({
@@ -400,7 +417,11 @@ export const PhotoUploadRequestSchema = z.object({
   contentType: z
     .string()
     .regex(/^image\/(jpeg|png|webp)$/, "Must be image/jpeg, png, or webp"),
-  sizeBytes: z.number().int().positive().max(5 * 1024 * 1024),
+  sizeBytes: z
+    .number()
+    .int()
+    .positive()
+    .max(5 * 1024 * 1024),
 });
 export type PhotoUploadRequestInput = z.infer<typeof PhotoUploadRequestSchema>;
 

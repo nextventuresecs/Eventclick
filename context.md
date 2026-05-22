@@ -1,16 +1,18 @@
-# Project Context: Veridian (Evently)
+# Project Context: Veridian (Eventclick)
 
-Veridian (Evently) is a real-time NGO transparency and verification platform. It allows non-profit organizations to demonstrate active fieldwork and operational accountability to donors and funders by hosting live-streamed event rooms, sharing secure live-view links, and capturing time-bound attendance verification records with photo evidence.
+Veridian (Eventclick) is a real-time NGO transparency and verification platform. It allows non-profit organizations to demonstrate active fieldwork and operational accountability to donors and funders by hosting live-streamed event rooms, sharing secure live-view links, and capturing time-bound attendance verification records with photo evidence.
 
 ---
 
 ## 🚀 Tech Stack
 
 ### Monorepo Setup
+
 - **Workspaces**: `packages/client`, `packages/server`, `packages/shared`
 - **Orchestration**: Turborepo + npm Workspaces
 
 ### Frontend (`packages/client`)
+
 - **Core**: React 19 + Vite + TypeScript
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`)
 - **Routing**: `react-router-dom` v7 (web app framework)
@@ -18,6 +20,7 @@ Veridian (Evently) is a real-time NGO transparency and verification platform. It
 - **Media & Capture**: Browser MediaDevices API (`getUserMedia` / Canvas) with aspect-correct frame snapping, real-time client-side JPEG compression, and drag-and-drop uploads.
 
 ### Backend (`packages/server`)
+
 - **Server**: Express 5 + TypeScript
 - **Database ORM**: Drizzle ORM
 - **Database Driver**: `pg` (PostgreSQL)
@@ -27,6 +30,7 @@ Veridian (Evently) is a real-time NGO transparency and verification platform. It
 - **Logging**: Pino / `pino-http`
 
 ### Shared Library (`packages/shared`)
+
 - **Role**: Shared models, types, helper functions, and Zod validator schemas.
 - **Consumption**: Loaded directly as TypeScript source from `packages/shared/src/index.ts` without a compilation/build step.
 
@@ -131,31 +135,37 @@ erDiagram
 ## 🔑 Key Architecture & System Workflows
 
 ### 1. Dual-Token Authentication Model
+
 - **Access Token**: Short-lived JWT (`JWT_ACCESS_TTL`, default 15m), stored in memory on the client side. Received in payload on login/refresh.
-- **Refresh Token**: Long-lived random opaque token (`Evently_rt` cookie, httpOnly, secure, path scoped to `/api/v1/auth`, `JWT_REFRESH_TTL`, default 7d). Only its SHA-256 hash is saved in `sessions`.
-- **Token Rotation & Security**: 
+- **Refresh Token**: Long-lived random opaque token (`Eventclick_rt` cookie, httpOnly, secure, path scoped to `/api/v1/auth`, `JWT_REFRESH_TTL`, default 7d). Only its SHA-256 hash is saved in `sessions`.
+- **Token Rotation & Security**:
   - Token exchange uses single-use rotation. A new pair is generated and the old one is flagged as invalid.
   - If an expired/already-used refresh token is presented, a **replay attack is suspected**. The backend immediately revokes the entire `tokenFamily` lineage, invalidating all associated access and forcing a complete re-login.
 
 ### 2. Permissions Model
+
 Shared role system mapped in `@application/shared`:
+
 - **Roles**: `ngo_admin`, `event_admin`, `volunteer`.
 - **NGO Admin**: Full control over organizations, user creation, room building, live sessions, reporting, and assignments.
 - **Event Admin**: Create volunteers, build custom forms, start live streams, trigger recordings, view room assignments, and capture reports.
 - **Volunteer**: Live viewing, room link sharing, taking attendance submissions.
 
 ### 3. Real-Time Room & Streaming Flow
+
 - **Primary Streaming Provider**: LiveKit (real-time low latency WebRTC). Emits JSON Web Tokens for client publisher/viewer join credentials.
 - **Backup Provider**: YouTube Live stream URLs. Parsed on backend and embedded as iframe viewing fallbacks (`youtubeWatchUrl` -> `youtubeEmbedUrl`).
 - **Presence Tracking**: Active connections tracked using Redis sorted sets, allowing real-time participant metrics per room.
 
 ### 4. Dynamic Verification (Attendance Forms)
+
 - **Form Builder**: NGO Admins or Event Admins design custom forms inside `RoomFormBuilder.tsx` supporting standard input types (`text`, `email`, `phone`, `number`, `select`, `checkbox`, `date`).
 - **Storage**: Schema definitions stored as JSONB array configurations inside `formDefinitions`.
 - **Validation**: Submissions are strictly verified against the matching JSONB schema.
 - **Photo Capture**: Incorporates visual verification. Presigned S3/S3-compatible URLs are requested via `/api/v1/rooms/:id/attendance/upload-url`, uploaded directly via client, and the key is submitted with dynamic form values.
 
 ### 5. Quality-Control (QC) Activity Tracking
+
 - **Checklist Definitions**: NGO Admins set a mandatory checklist of activities per room during creation. Mapped inside `event_rooms.activity_definitions` as a flat JSONB schema array (`title`, `description`, `min_photos`).
 - **Submission Normalization**: Activity submissions are relationally stored in `activity_submissions` mapping to `roomId` and `activityId`, featuring a fast index on room lookup.
 - **Incremental S3 Uploading & Keys**: Volunteers request dynamic, collision-free S3 upload PUT tickets matching the pattern `rooms/${roomId}/activities/${activityId}/${uuid()}-${contentType}`. Photo proofs are uploaded sequentially to isolate assets.
@@ -170,6 +180,7 @@ Shared role system mapped in `@application/shared`:
 All commands are run from the project root directory.
 
 ### Daily Development
+
 ```bash
 # Run client and server workspaces in parallel (client: port 3000, server: port 4000)
 npm run dev
@@ -180,6 +191,7 @@ npm run dev --workspace=client
 ```
 
 ### Build & Compilation
+
 ```bash
 # Full build check (client build, server compile, checks types across packages)
 npm run build
@@ -189,6 +201,7 @@ npm run typecheck
 ```
 
 ### Database Operations (Run in packages/server)
+
 ```bash
 # Generate SQL migration script from schemas (saves to packages/server/drizzle)
 npm run db:generate
@@ -204,6 +217,7 @@ npm run db:studio
 ```
 
 ### Production Setup via Docker
+
 ```bash
 # Boots Postgres database, Redis cache, local server, and client bundle
 docker compose up -d

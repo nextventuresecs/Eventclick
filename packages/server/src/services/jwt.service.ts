@@ -11,14 +11,14 @@ export interface AccessTokenClaims {
 export const signAccessToken = (claims: AccessTokenClaims): string =>
   jwt.sign(claims, env.JWT_SECRET, {
     expiresIn: env.JWT_ACCESS_TTL as SignOptions["expiresIn"],
-    issuer: "Evently",
-    audience: "Evently-api",
+    issuer: "Eventclick",
+    audience: "Eventclick-api",
   });
 
 export const verifyAccessToken = (token: string): AccessTokenClaims => {
   const decoded = jwt.verify(token, env.JWT_SECRET, {
-    issuer: "Evently",
-    audience: "Evently-api",
+    issuer: "Eventclick",
+    audience: "Eventclick-api",
   });
   if (typeof decoded === "string") throw new Error("Invalid token payload");
   return decoded as AccessTokenClaims & { iat: number; exp: number };

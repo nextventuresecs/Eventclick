@@ -16,7 +16,7 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       PORT: "0",
-      DATABASE_URL: "postgresql://test:test@localhost:5432/evently_test",
+      DATABASE_URL: "postgresql://test:test@localhost:5432/Eventclick_test",
       REDIS_URL: "redis://localhost:6379/1",
       JWT_SECRET: "test-jwt-secret-at-least-16",
       JWT_REFRESH_SECRET: "test-jwt-refresh-secret-at-least-16",
@@ -32,7 +32,7 @@ export default defineConfig({
       S3_ENDPOINT: "http://localhost:9000",
       S3_PUBLIC_ENDPOINT: "http://localhost:9000",
       S3_REGION: "us-east-1",
-      S3_BUCKET: "evently-test",
+      S3_BUCKET: "Eventclick-test",
       S3_ACCESS_KEY: "minioadmin",
       S3_SECRET_KEY: "minioadmin",
       S3_FORCE_PATH_STYLE: "true",

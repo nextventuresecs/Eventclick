@@ -1,4 +1,10 @@
-import { AccessToken, EgressClient, EncodedFileOutput, EncodedFileType, S3Upload } from "livekit-server-sdk";
+import {
+  AccessToken,
+  EgressClient,
+  EncodedFileOutput,
+  EncodedFileType,
+  S3Upload,
+} from "livekit-server-sdk";
 import { and, eq, isNull } from "drizzle-orm";
 import type { LiveRole, LiveTokenResponse } from "@application/shared";
 import { db } from "../db";
@@ -11,10 +17,10 @@ const TOKEN_TTL_SECONDS = 2 * 60 * 60;
 const egressClient = new EgressClient(
   env.LIVEKIT_URL,
   env.LIVEKIT_API_KEY,
-  env.LIVEKIT_API_SECRET
+  env.LIVEKIT_API_SECRET,
 );
 
-export const roomNameFor = (roomId: string) => `evently-${roomId}`;
+export const roomNameFor = (roomId: string) => `Eventclick-${roomId}`;
 
 export interface SignTokenInput {
   roomId: string;
@@ -99,26 +105,23 @@ export const startRecording = async (roomId: string) => {
   const s3Key = `recordings/${roomName}/${Date.now()}.mp4`;
 
   // Start the Egress job in LiveKit
-  const info = await egressClient.startRoomCompositeEgress(
-    roomName,
-    {
-      file: new EncodedFileOutput({
-        filepath: s3Key,
-        fileType: EncodedFileType.MP4,
-        output: {
-          case: "s3",
-          value: new S3Upload({
-            accessKey: env.S3_ACCESS_KEY,
-            secret: env.S3_SECRET_KEY,
-            bucket: env.S3_BUCKET,
-            endpoint: env.S3_ENDPOINT,
-            region: env.S3_REGION,
-            forcePathStyle: env.S3_FORCE_PATH_STYLE,
-          }),
-        },
-      })
-    }
-  );
+  const info = await egressClient.startRoomCompositeEgress(roomName, {
+    file: new EncodedFileOutput({
+      filepath: s3Key,
+      fileType: EncodedFileType.MP4,
+      output: {
+        case: "s3",
+        value: new S3Upload({
+          accessKey: env.S3_ACCESS_KEY,
+          secret: env.S3_SECRET_KEY,
+          bucket: env.S3_BUCKET,
+          endpoint: env.S3_ENDPOINT,
+          region: env.S3_REGION,
+          forcePathStyle: env.S3_FORCE_PATH_STYLE,
+        }),
+      },
+    }),
+  });
 
   // Save the metadata in our local database
   const [recording] = await db

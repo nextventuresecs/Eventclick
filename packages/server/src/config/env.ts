@@ -2,7 +2,9 @@ import "dotenv/config";
 import { z } from "zod";
 
 const EnvSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "test", "production"])
+    .default("development"),
   PORT: z.coerce.number().int().nonnegative().default(4000),
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
@@ -12,7 +14,9 @@ const EnvSchema = z.object({
   REDIS_URL: z.url(),
 
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 chars"),
-  JWT_REFRESH_SECRET: z.string().min(16, "JWT_REFRESH_SECRET must be at least 16 chars"),
+  JWT_REFRESH_SECRET: z
+    .string()
+    .min(16, "JWT_REFRESH_SECRET must be at least 16 chars"),
   JWT_ACCESS_TTL: z.string().default("15m"),
   JWT_REFRESH_TTL: z.string().default("7d"),
 
@@ -20,8 +24,16 @@ const EnvSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
 
-  ATTENDANCE_WINDOW_BEFORE_MINUTES: z.coerce.number().int().nonnegative().default(15),
-  ATTENDANCE_WINDOW_AFTER_MINUTES: z.coerce.number().int().nonnegative().default(30),
+  ATTENDANCE_WINDOW_BEFORE_MINUTES: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .default(15),
+  ATTENDANCE_WINDOW_AFTER_MINUTES: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .default(30),
 
   APP_URL: z.url().default("http://localhost:3000"),
   COOKIE_DOMAIN: z.string().optional(),
@@ -32,7 +44,7 @@ const EnvSchema = z.object({
 
   // ─── Email ────────────────────────────────────────
   RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM_EMAIL: z.string().default("noreply@evently.com"),
+  RESEND_FROM_EMAIL: z.string().default("noreply@Eventclick.com"),
 
   // ─── LiveKit ──────────────────────────────────────
   LIVEKIT_URL: z.string().min(1, "LIVEKIT_URL is required"),
