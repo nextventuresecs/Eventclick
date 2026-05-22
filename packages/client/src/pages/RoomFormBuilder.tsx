@@ -227,6 +227,9 @@ export const RoomFormBuilder = () => {
         if (form) {
           setFields(form.fields);
           setVersion(form.version);
+        } else {
+          setFields([]);
+          setVersion(null);
         }
       })
       .catch((err) =>
