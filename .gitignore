@@ -13,3 +13,4 @@ Sprint*.md
 ROLE*.md
 *.pdf
 !*.pdf.example
+.agents/
