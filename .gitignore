@@ -14,3 +14,4 @@ ROLE*.md
 *.pdf
 !*.pdf.example
 .agents/
+*.pem
