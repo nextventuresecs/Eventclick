@@ -28,7 +28,7 @@ const redactPaths = [
 
 export const logger = pino({
   level: env.LOG_LEVEL ?? defaultLevel,
-  base: { service: "Evently-server", env: env.NODE_ENV },
+  base: { service: "Eventclick-server", env: env.NODE_ENV },
   redact: { paths: redactPaths, censor: "[REDACTED]" },
   serializers: {
     req(req: SerializedRequest) {

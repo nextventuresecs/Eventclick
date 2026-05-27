@@ -27,7 +27,7 @@ export const DashboardLayout = () => {
       <aside className="w-64 border-r border-border bg-card hidden md:flex flex-col">
         <div className="p-6">
           <h1 className="text-2xl font-bold bg-linear-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-            Evently
+            Eventclick
           </h1>
         </div>
 
@@ -85,7 +85,7 @@ export const DashboardLayout = () => {
       <main className="flex-1 flex flex-col min-w-0">
         {/* Mobile Header */}
         <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 md:hidden">
-          <h1 className="text-xl font-bold text-primary">Evently</h1>
+          <h1 className="text-xl font-bold text-primary">Eventclick</h1>
           <Button variant="ghost" size="icon" onClick={logout}>
             <LogOut className="w-5 h-5 text-muted-foreground" />
           </Button>

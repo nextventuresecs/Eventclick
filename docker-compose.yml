@@ -1,4 +1,3 @@
-version: "3.8"
 
 services:
   # ─── PostgreSQL ───────────────────────────────────
@@ -24,7 +23,7 @@ services:
   # ─── Redis ────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: evently_redis
+    container_name: Eventclick_redis
     restart: unless-stopped
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -40,7 +39,7 @@ services:
   # ─── LiveKit (self-hosted WebRTC SFU) ─────────────
   livekit:
     image: livekit/livekit-server:latest
-    container_name: evently_livekit
+    container_name: Eventclick_livekit
     restart: unless-stopped
     command: --dev --bind 0.0.0.0
     ports:
@@ -53,7 +52,7 @@ services:
   # ─── MinIO (S3-compatible object storage for dev) ─
   minio:
     image: minio/minio:latest
-    container_name: evently_minio
+    container_name: Eventclick_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     ports:
@@ -73,7 +72,7 @@ services:
   # Seed bucket on first run, then exit
   minio-init:
     image: minio/mc:latest
-    container_name: evently_minio_init
+    container_name: Eventclick_minio_init
     depends_on:
       minio:
         condition: service_started
@@ -94,7 +93,7 @@ services:
     build:
       context: .
       dockerfile: packages/server/Dockerfile.dev
-    container_name: evently_server
+    container_name: Eventclick_server
     restart: unless-stopped
     ports:
       - "${API_PORT:-4000}:4000"
@@ -135,7 +134,7 @@ services:
     build:
       context: .
       dockerfile: packages/client/Dockerfile.dev
-    container_name: evently_client
+    container_name: Eventclick_client
     restart: unless-stopped
     ports:
       - "${CLIENT_PORT:-3000}:3000"
@@ -151,7 +150,7 @@ services:
   # ─── Gotenberg (HTML to PDF) ──────────────────────
   gotenberg:
     image: gotenberg/gotenberg:8
-    container_name: evently_gotenberg
+    container_name: Eventclick_gotenberg
     restart: unless-stopped
     ports:
       - "8686:3000"

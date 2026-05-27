@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const APP_NAME = "Evently";
+export const APP_NAME = "Eventclick";
 export const API_VERSION = "v1";
 export const API_PREFIX = `/api/${API_VERSION}`;
 

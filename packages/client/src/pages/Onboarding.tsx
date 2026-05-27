@@ -46,7 +46,7 @@ export const OnboardingPage = () => {
     try {
       await completeOnboarding(parsed.data);
       // Mark onboarding as completed in localStorage to bypass redirection gates
-      localStorage.setItem("evently_onboarding_completed_or_skipped", "true");
+      localStorage.setItem("Eventclick_onboarding_completed_or_skipped", "true");
       navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Onboarding failed");
@@ -73,7 +73,7 @@ export const OnboardingPage = () => {
       <Card className="relative z-10 w-full max-w-xl border-border/80 bg-card/85 backdrop-blur-md shadow-2xl transition-all duration-300 hover:shadow-primary/5">
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-            Welcome to Evently
+            Welcome to Eventclick
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
             Choose how you would like to participate on the platform. You can always change your settings later.

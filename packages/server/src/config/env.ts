@@ -32,7 +32,7 @@ const EnvSchema = z.object({
 
   // ─── Email ────────────────────────────────────────
   RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM_EMAIL: z.string().default("noreply@evently.com"),
+  RESEND_FROM_EMAIL: z.string().default("noreply@Eventclick.com"),
 
   // ─── LiveKit ──────────────────────────────────────
   LIVEKIT_URL: z.string().min(1, "LIVEKIT_URL is required"),
@@ -51,9 +51,14 @@ const EnvSchema = z.object({
   S3_SECRET_KEY: z.string().min(1),
   S3_FORCE_PATH_STYLE: z
     .string()
-    .default("true")
+    .default("false")
     .transform((v) => v === "true"),
-  GOTENBERG_URL: z.string().url().default("http://localhost:8686"),
+
+  // ─── Gotenberg (PDF generation) ────────────────────
+  GOTENBERG_URL: z.string().url().default("http://gotenberg:3000"),
+
+  // ─── Observability (optional) ──────────────────────
+  SENTRY_DSN: z.string().optional(),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

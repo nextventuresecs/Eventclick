@@ -69,7 +69,7 @@ export const LoginPage = () => {
       <Card>
         <CardHeader>
           <CardTitle>Welcome back</CardTitle>
-          <CardDescription>Sign in to your Evently account</CardDescription>
+          <CardDescription>Sign in to your Eventclick account</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <GoogleSignInButton onToken={onGoogle} disabled={submitting} />

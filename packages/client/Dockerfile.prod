@@ -30,7 +30,7 @@ FROM nginx:1.27-alpine AS runner
 RUN rm /etc/nginx/conf.d/default.conf
 
 # Copy custom Nginx config
-COPY packages/client/nginx.conf /etc/nginx/conf.d/evently.conf
+COPY packages/client/nginx.conf /etc/nginx/conf.d/Eventclick.conf
 
 # Copy built static assets
 COPY --from=build /app/packages/client/dist /usr/share/nginx/html

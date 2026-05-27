@@ -14,7 +14,7 @@ const egressClient = new EgressClient(
   env.LIVEKIT_API_SECRET
 );
 
-export const roomNameFor = (roomId: string) => `evently-${roomId}`;
+export const roomNameFor = (roomId: string) => `Eventclick-${roomId}`;
 
 export interface SignTokenInput {
   roomId: string;

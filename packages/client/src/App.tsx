@@ -57,7 +57,7 @@ const ProtectedRoute = () => {
     user &&
     user.role === "volunteer" &&
     !user.organizationId &&
-    localStorage.getItem("evently_onboarding_completed_or_skipped") !== "true" &&
+    localStorage.getItem("Eventclick_onboarding_completed_or_skipped") !== "true" &&
     location.pathname !== "/onboarding"
   ) {
     return <Navigate to="/onboarding" replace />;

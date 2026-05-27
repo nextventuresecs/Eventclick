@@ -16,7 +16,7 @@ import {
 import { refreshTtlMs } from "../services/session.service";
 import { API_PREFIX } from "@application/shared";
 
-const REFRESH_COOKIE = "Evently_rt";
+const REFRESH_COOKIE = "Eventclick_rt";
 const REFRESH_COOKIE_PATH = `${API_PREFIX}/auth`;
 
 const cookieOptions = (): CookieOptions => ({
