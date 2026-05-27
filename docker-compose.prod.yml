@@ -95,11 +95,11 @@ services:
         max-size: "5m"
         max-file: "3"
 
-  # ─── LiveKit (self-hosted WebRTC SFU) ─────────────────────────────────────
-  # Production mode: Redis-backed room state, no --dev flag
-  livekit:
-    image: livekit/livekit-server:latest
-    container_name: Eventclick_livekit_prod
+  # ─── Gotenberg (HTML → PDF) ──────────────────────────────────────────────
+  # Required for report PDF generation
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: Eventclick_gotenberg_prod
     restart: always
     expose:
       - "3000"
@@ -168,7 +168,7 @@ services:
     build:
       context: .
       dockerfile: packages/server/Dockerfile.prod
-    image: Eventclick/server:${IMAGE_TAG:-latest}
+    image: eventclick/server:${IMAGE_TAG:-latest}
     container_name: Eventclick_server_prod
     restart: always
     expose:
@@ -248,7 +248,7 @@ services:
         VITE_API_URL: ${VITE_API_URL}
         VITE_LIVEKIT_URL: ${VITE_LIVEKIT_URL}
         VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
-    image: Eventclick/client:${IMAGE_TAG:-latest}
+    image: eventclick/client:${IMAGE_TAG:-latest}
     container_name: Eventclick_client_prod
     restart: always
     ports:
