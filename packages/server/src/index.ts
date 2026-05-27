@@ -65,7 +65,9 @@ app.use(
     customErrorMessage: (req, res, err) =>
       `${req.method} ${req.url} → ${res.statusCode} (${err.name})`,
     autoLogging: {
-      ignore: (req) => req.url === `${API_PREFIX}/health`,
+      ignore: (req) =>
+        req.url === `${API_PREFIX}/health` ||
+        req.url === `${API_PREFIX}/ready`,
     },
   }),
 );
