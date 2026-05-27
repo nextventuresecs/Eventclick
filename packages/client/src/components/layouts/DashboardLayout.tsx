@@ -16,7 +16,11 @@ export const DashboardLayout = () => {
     ...(user && user.role === "ngo_admin"
       ? [
           { name: "Users", path: "/admin/users", icon: Users },
-          { name: "Event Assignments", path: "/admin/event-assignments", icon: UserCog },
+          {
+            name: "Event Assignments",
+            path: "/admin/event-assignments",
+            icon: UserCog,
+          },
         ]
       : []),
   ];
@@ -33,7 +37,10 @@ export const DashboardLayout = () => {
 
         <nav className="flex-1 px-4 py-2 space-y-1">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path || (item.path !== "/dashboard" && location.pathname.startsWith(item.path));
+            const isActive =
+              location.pathname === item.path ||
+              (item.path !== "/dashboard" &&
+                location.pathname.startsWith(item.path));
             return (
               <Link
                 key={item.path}
@@ -69,10 +76,10 @@ export const DashboardLayout = () => {
               )}
             </div>
           </div>
-          
-          <Button 
-            variant="outline" 
-            className="w-full justify-start text-muted-foreground hover:text-destructive hover:border-destructive hover:bg-destructive/10" 
+
+          <Button
+            variant="outline"
+            className="w-full justify-start text-muted-foreground hover:text-destructive hover:border-destructive hover:bg-destructive/10"
             onClick={logout}
           >
             <LogOut className="w-4 h-4 mr-2" />

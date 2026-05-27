@@ -4,7 +4,10 @@ import { env } from "../config/env";
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
-export const sendPasswordResetEmail = async (email: string, token: string): Promise<void> => {
+export const sendPasswordResetEmail = async (
+  email: string,
+  token: string,
+): Promise<void> => {
   const resetLink = `${env.APP_URL}/reset-password?token=${token}`;
 
   if (resend) {
@@ -21,9 +24,15 @@ export const sendPasswordResetEmail = async (email: string, token: string): Prom
           <p>If you did not request this, you can safely ignore this email.</p>
         `,
       });
-      logger.info({ email, event: "email.password_reset_sent" }, "Password reset email sent via Resend");
+      logger.info(
+        { email, event: "email.password_reset_sent" },
+        "Password reset email sent via Resend",
+      );
     } catch (error) {
-      logger.error({ email, error, event: "email.password_reset_failed" }, "Failed to send password reset email");
+      logger.error(
+        { email, error, event: "email.password_reset_failed" },
+        "Failed to send password reset email",
+      );
     }
   } else {
     // Fallback for local development when Resend is not configured

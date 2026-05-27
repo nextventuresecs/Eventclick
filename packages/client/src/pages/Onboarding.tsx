@@ -46,10 +46,15 @@ export const OnboardingPage = () => {
     try {
       await completeOnboarding(parsed.data);
       // Mark onboarding as completed in localStorage to bypass redirection gates
-      localStorage.setItem("Eventclick_onboarding_completed_or_skipped", "true");
+      localStorage.setItem(
+        "Eventclick_onboarding_completed_or_skipped",
+        "true",
+      );
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Onboarding failed");
+      setError(
+        err instanceof ApiClientError ? err.message : "Onboarding failed",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -76,7 +81,8 @@ export const OnboardingPage = () => {
             Welcome to Eventclick
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-            Choose how you would like to participate on the platform. You can always change your settings later.
+            Choose how you would like to participate on the platform. You can
+            always change your settings later.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6 pt-6">
@@ -121,7 +127,8 @@ export const OnboardingPage = () => {
                 </h3>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Create and manage your own organization, design attendance forms, and orchestrate hybrid events.
+                Create and manage your own organization, design attendance
+                forms, and orchestrate hybrid events.
               </p>
             </div>
 
@@ -166,7 +173,8 @@ export const OnboardingPage = () => {
                 </h3>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Join live event rooms, scan attendance, take photos of activities, and contribute directly on-site.
+                Join live event rooms, scan attendance, take photos of
+                activities, and contribute directly on-site.
               </p>
             </div>
           </div>
@@ -188,12 +196,17 @@ export const OnboardingPage = () => {
                 className="mt-1 focus:border-primary focus:ring-1 focus:ring-primary"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                This will create a shared workspace for all administrators and volunteers under your NGO.
+                This will create a shared workspace for all administrators and
+                volunteers under your NGO.
               </p>
             </div>
           )}
 
-          {error && <p className="text-sm text-destructive text-center font-medium animate-bounce">{error}</p>}
+          {error && (
+            <p className="text-sm text-destructive text-center font-medium animate-bounce">
+              {error}
+            </p>
+          )}
         </CardContent>
         <CardFooter className="flex flex-col gap-3 justify-center border-t border-border/50 pt-6">
           <Button

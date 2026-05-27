@@ -1,12 +1,21 @@
-import { pino, stdSerializers, type SerializedRequest, type SerializedResponse } from "pino";
+import {
+  pino,
+  stdSerializers,
+  type SerializedRequest,
+  type SerializedResponse,
+} from "pino";
 import { env } from "../config/env";
 
 const defaultLevel =
-  env.NODE_ENV === "production" ? "info" : env.NODE_ENV === "test" ? "silent" : "debug";
+  env.NODE_ENV === "production"
+    ? "info"
+    : env.NODE_ENV === "test"
+      ? "silent"
+      : "debug";
 
 const redactPaths = [
-  'req.headers.authorization',
-  'req.headers.cookie',
+  "req.headers.authorization",
+  "req.headers.cookie",
   'req.headers["set-cookie"]',
   'res.headers["set-cookie"]',
   "req.body.password",
