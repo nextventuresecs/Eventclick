@@ -24,6 +24,7 @@ import {
   type SessionMeta,
 } from "./session.service";
 import { verifyGoogleIdToken } from "./google.service";
+import { cacheGet, cacheSet, cacheDel } from "./cache.service";
 
 const slugify = (name: string): string =>
   name
@@ -45,22 +46,25 @@ const toAuthUser = (u: User, orgName?: string | null): AuthUser => ({
 
 type UserWithOrg = User & { organizationName?: string | null };
 
-const findUserByEmail = async (email: string): Promise<UserWithOrg | null> => {
-  const [row] = await db
-    .select({
-      user: users,
-      orgName: organizations.name,
-    })
-    .from(users)
-    .leftJoin(organizations, eq(users.organizationId, organizations.id))
-    .where(eq(users.email, email))
-    .limit(1);
-
-  if (!row) return null;
-  return { ...row.user, organizationName: row.orgName };
+const invalidateUserCache = async (userId: string, email?: string): Promise<void> => {
+  await cacheDel(`user:${userId}`);
+  if (email) {
+    await cacheDel(`email:${email.toLowerCase().trim()}`);
+  }
 };
 
 const findUserById = async (id: string): Promise<UserWithOrg | null> => {
+  const cacheKey = `user:${id}`;
+  const cached = await cacheGet<UserWithOrg>(cacheKey);
+  if (cached !== null) {
+    if ((cached as any).__is_null) return null;
+    if (cached.createdAt) cached.createdAt = new Date(cached.createdAt);
+    if (cached.updatedAt) cached.updatedAt = new Date(cached.updatedAt);
+    if (cached.emailVerifiedAt) cached.emailVerifiedAt = new Date(cached.emailVerifiedAt);
+    if (cached.lastLoginAt) cached.lastLoginAt = new Date(cached.lastLoginAt);
+    return cached;
+  }
+
   const [row] = await db
     .select({
       user: users,
@@ -71,8 +75,44 @@ const findUserById = async (id: string): Promise<UserWithOrg | null> => {
     .where(eq(users.id, id))
     .limit(1);
 
-  if (!row) return null;
-  return { ...row.user, organizationName: row.orgName };
+  if (!row) {
+    await cacheSet(cacheKey, { __is_null: true }, 30);
+    return null;
+  }
+
+  const userWithOrg = { ...row.user, organizationName: row.orgName };
+  await cacheSet(cacheKey, userWithOrg, 120);
+  return userWithOrg;
+};
+
+const findUserByEmail = async (email: string): Promise<UserWithOrg | null> => {
+  const emailKey = `email:${email.toLowerCase().trim()}`;
+  const cachedUserId = await cacheGet<string>(emailKey);
+  if (cachedUserId) {
+    if (cachedUserId === "__null__") return null;
+    const user = await findUserById(cachedUserId);
+    if (user) return user;
+  }
+
+  const [row] = await db
+    .select({
+      user: users,
+      orgName: organizations.name,
+    })
+    .from(users)
+    .leftJoin(organizations, eq(users.organizationId, organizations.id))
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (!row) {
+    await cacheSet(emailKey, "__null__", 30);
+    return null;
+  }
+
+  const userWithOrg = { ...row.user, organizationName: row.orgName };
+  await cacheSet(`user:${userWithOrg.id}`, userWithOrg, 120);
+  await cacheSet(emailKey, userWithOrg.id, 120);
+  return userWithOrg;
 };
 
 export interface AuthResult {
@@ -207,6 +247,7 @@ export const loginWithGoogle = async (
         .returning();
       if (updated) user = updated;
       logger.info({ userId: user.id, event: "google.linked" }, "google account linked");
+      await invalidateUserCache(user.id, user.email);
     }
   } else {
     const [created] = await db
@@ -323,6 +364,8 @@ export const resetPassword = async (token: string, newPassword: string): Promise
   // Revoke all existing sessions to force re-login on all devices
   await revokeAllUserSessions(resetReq.userId);
 
+  await invalidateUserCache(resetReq.userId);
+
   logger.info({ userId: resetReq.userId, event: "password_reset.success" }, "password reset successfully");
 };
 
@@ -377,6 +420,7 @@ export const completeOnboarding = async (
   });
 
   // Fetch updated user to generate new JWT & refresh token representing the new role & organization
+  await invalidateUserCache(userId);
   const updatedUser = await findUserById(userId);
   if (!updatedUser) throw ApiError.internal("Failed to retrieve onboarded user");
 

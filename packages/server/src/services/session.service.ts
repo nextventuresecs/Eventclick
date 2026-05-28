@@ -5,6 +5,7 @@ import { sessions, type Session } from "../db/schema";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
 import { ApiError } from "../utils/errors";
+import { cacheGet, cacheSet, cacheDel } from "./cache.service";
 
 const REFRESH_BYTES = 48;
 
@@ -60,22 +61,63 @@ export const issueRefreshToken = async (
 
 export const findActiveSessionByToken = async (raw: string): Promise<Session | null> => {
   const tokenHash = hashToken(raw);
+  const cacheKey = `session:token:${tokenHash}`;
+
+  const cached = await cacheGet<Session>(cacheKey);
+  if (cached !== null) {
+    if ((cached as any).__is_null) return null;
+    if (cached.expiresAt) cached.expiresAt = new Date(cached.expiresAt);
+    if (cached.createdAt) cached.createdAt = new Date(cached.createdAt);
+    if (cached.revokedAt) cached.revokedAt = new Date(cached.revokedAt);
+
+    return cached;
+  }
+
   const [row] = await db.select().from(sessions).where(eq(sessions.tokenHash, tokenHash)).limit(1);
-  return row ?? null;
+  if (!row) {
+    await cacheSet(cacheKey, { __is_null: true }, 30);
+    return null;
+  }
+
+  const remainingSeconds = Math.max(0, Math.floor((row.expiresAt.getTime() - Date.now()) / 1000));
+  const ttl = Math.min(300, remainingSeconds);
+  if (ttl > 0) {
+    await cacheSet(cacheKey, row, ttl);
+  }
+
+  return row;
 };
 
 export const revokeSessionFamily = async (familyId: string): Promise<void> => {
+  const rows = await db
+    .select({ tokenHash: sessions.tokenHash })
+    .from(sessions)
+    .where(and(eq(sessions.familyId, familyId), isNull(sessions.revokedAt)));
+
   await db
     .update(sessions)
     .set({ revokedAt: new Date() })
     .where(and(eq(sessions.familyId, familyId), isNull(sessions.revokedAt)));
+
+  for (const row of rows) {
+    await cacheDel(`session:token:${row.tokenHash}`);
+  }
 };
 
 export const revokeAllUserSessions = async (userId: string): Promise<void> => {
+  const rows = await db
+    .select({ tokenHash: sessions.tokenHash })
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
+
   await db
     .update(sessions)
     .set({ revokedAt: new Date() })
     .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
+
+  for (const row of rows) {
+    await cacheDel(`session:token:${row.tokenHash}`);
+  }
 };
 
 export const rotateSession = async (
@@ -94,9 +136,23 @@ export const rotateSession = async (
     .update(sessions)
     .set({ revokedAt: new Date(), replacedById: next.sessionId })
     .where(eq(sessions.id, current.id));
+
+  // Invalidate cache for rotated session
+  await cacheDel(`session:token:${current.tokenHash}`);
+
   return next;
 };
 
 export const revokeSession = async (sessionId: string): Promise<void> => {
+  const [row] = await db
+    .select({ tokenHash: sessions.tokenHash })
+    .from(sessions)
+    .where(eq(sessions.id, sessionId))
+    .limit(1);
+
   await db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, sessionId));
+
+  if (row) {
+    await cacheDel(`session:token:${row.tokenHash}`);
+  }
 };

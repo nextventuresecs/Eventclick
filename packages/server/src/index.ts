@@ -3,11 +3,13 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { rateLimit } from "express-rate-limit";
+import RedisStore from "rate-limit-redis";
 import { pinoHttp } from "pino-http";
 import { nanoid } from "nanoid";
 
 import { env } from "./config/env";
 import { logger } from "./utils/logger";
+import { redisClient, connectRedis, disconnectRedis } from "./config/redis";
 import { apiRouter } from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { API_PREFIX } from "@application/shared";
@@ -78,6 +80,21 @@ app.use(
     limit: env.RATE_LIMIT_MAX,
     standardHeaders: "draft-7",
     legacyHeaders: false,
+    store: new RedisStore({
+      sendCommand: async (...args: string[]) => {
+        if (!redisClient.isOpen) {
+          // If Redis is not connected, return mock values that rate-limit-redis LUA script would return.
+          // LUA script returns array: [totalHits, resetTimeMs]
+          return [0, Date.now() + env.RATE_LIMIT_WINDOW_MS];
+        }
+        try {
+          return await redisClient.sendCommand(args);
+        } catch (err) {
+          logger.error({ err, args }, "[redis-rate-limit] sendCommand failed, falling back");
+          return [0, Date.now() + env.RATE_LIMIT_WINDOW_MS];
+        }
+      },
+    }),
   }),
 );
 
@@ -86,23 +103,33 @@ app.use(API_PREFIX, apiRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const server = app.listen(env.PORT, () => {
-  logger.info(`[server] running on http://localhost:${env.PORT}${API_PREFIX}`);
-});
+async function startServer() {
+  await connectRedis();
 
-const shutdown = (signal: string) => {
-  logger.info(`${signal} received, shutting down gracefully…`);
-  server.close(() => {
-    logger.info("server closed");
-    process.exit(0);
+  const server = app.listen(env.PORT, () => {
+    logger.info(`[server] running on http://localhost:${env.PORT}${API_PREFIX}`);
   });
-  setTimeout(() => {
-    logger.warn("forced shutdown after timeout");
-    process.exit(1);
-  }, 10_000).unref();
-};
 
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+  const shutdown = async (signal: string) => {
+    logger.info(`${signal} received, shutting down gracefully…`);
+    await disconnectRedis();
+    server.close(() => {
+      logger.info("server closed");
+      process.exit(0);
+    });
+    setTimeout(() => {
+      logger.warn("forced shutdown after timeout");
+      process.exit(1);
+    }, 10_000).unref();
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+}
+
+startServer().catch((err) => {
+  logger.fatal({ err }, "Failed to start server");
+  process.exit(1);
+});
 
 export { app };

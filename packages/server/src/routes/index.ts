@@ -6,6 +6,7 @@ import { logRouter } from "./log.routes";
 import { adminRouter } from "./admin.routes";
 import { eventAssignmentRouter } from "./event-assignment.routes";
 import { pool } from "../db";
+import { redisClient } from "../config/redis";
 
 export const apiRouter = Router();
 
@@ -30,6 +31,20 @@ apiRouter.get("/ready", async (_req, res) => {
     checks.database = result.rows[0]?.alive === 1 ? "ok" : "degraded";
   } catch {
     checks.database = "error";
+    healthy = false;
+  }
+
+  // Check Redis
+  try {
+    if (redisClient.isOpen) {
+      const pong = await redisClient.ping();
+      checks.redis = pong === "PONG" ? "ok" : "degraded";
+    } else {
+      checks.redis = "disconnected";
+      healthy = false;
+    }
+  } catch {
+    checks.redis = "error";
     healthy = false;
   }
 
