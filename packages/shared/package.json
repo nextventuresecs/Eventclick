@@ -2,8 +2,8 @@
   "name": "@application/shared",
   "version": "1.0.0",
   "description": "Shared types, DTOs, and zod schemas for Eventclick",
-  "main": "src/index.ts",
-  "module": "src/index.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
