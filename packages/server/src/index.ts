@@ -83,13 +83,22 @@ app.use(
     store: new RedisStore({
       sendCommand: async (...args: string[]) => {
         if (!redisClient.isOpen) {
-          // If Redis is not connected, return mock values that rate-limit-redis LUA script would return.
-          // LUA script returns array: [totalHits, resetTimeMs]
+          // During store initialization, rate-limit-redis loads its script via 'SCRIPT LOAD'.
+          // This command expects a string return value (the SHA). If we are not connected yet,
+          // return a dummy SHA string to satisfy the init phase check.
+          if (args[0] === "SCRIPT" && args[1] === "LOAD") {
+            return "dummy_sha_fallback";
+          }
+          // The increment/liveness command expects [totalHits, resetTimeMs].
           return [0, Date.now() + env.RATE_LIMIT_WINDOW_MS];
         }
         try {
           return await redisClient.sendCommand(args);
         } catch (err) {
+          const errorString = String(err);
+          if (errorString.includes("NOSCRIPT")) {
+            throw err; // Let rate-limit-redis load the script
+          }
           logger.error({ err, args }, "[redis-rate-limit] sendCommand failed, falling back");
           return [0, Date.now() + env.RATE_LIMIT_WINDOW_MS];
         }
