@@ -135,11 +135,12 @@ sleep 3
 log "Waiting for server health check..."
 HEALTHY=false
 for i in $(seq 1 $HEALTH_RETRIES); do
-  if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
+  STATUS=$(docker inspect --format='{{.State.Health.Status}}' Eventclick_server_prod 2>/dev/null || echo "failed")
+  if [[ "$STATUS" == "healthy" ]]; then
     HEALTHY=true
     break
   fi
-  info "Health check attempt ${i}/${HEALTH_RETRIES}... waiting ${HEALTH_INTERVAL}s"
+  info "Health check attempt ${i}/${HEALTH_RETRIES} (status: ${STATUS})... waiting ${HEALTH_INTERVAL}s"
   sleep "$HEALTH_INTERVAL"
 done
 
