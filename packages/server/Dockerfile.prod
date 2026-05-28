@@ -37,6 +37,7 @@ COPY --from=deps   /app/node_modules              ./node_modules
 COPY --from=deps   /app/package.json              ./package.json
 COPY --from=build  /app/packages/server/dist      ./packages/server/dist
 COPY --from=build  /app/packages/server/package.json ./packages/server/package.json
+COPY --from=build  /app/packages/server/drizzle      ./packages/server/drizzle
 COPY --from=build  /app/packages/shared/dist      ./packages/shared/dist
 COPY --from=build  /app/packages/shared/package.json ./packages/shared/package.json
 
