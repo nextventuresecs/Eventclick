@@ -6,6 +6,7 @@ import { eventRooms } from "../db/schema";
 import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
 import { roomNameFor } from "./livekit.service";
+import { cacheGet, cacheSet } from "./cache.service";
 
 const livekitHttpUrl = env.LIVEKIT_URL.replace(/^ws(s?):\/\//, "http$1://");
 
@@ -16,9 +17,17 @@ const roomService = new RoomServiceClient(
 );
 
 const countParticipants = async (roomId: string): Promise<number> => {
+  const cacheKey = `presence:${roomId}`;
+  const cached = await cacheGet<number>(cacheKey);
+  if (cached !== null) {
+    return cached;
+  }
+
   try {
     const list = await roomService.listParticipants(roomNameFor(roomId));
-    return list.length;
+    const count = list.length;
+    await cacheSet(cacheKey, count, 10);
+    return count;
   } catch {
     return 0;
   }
