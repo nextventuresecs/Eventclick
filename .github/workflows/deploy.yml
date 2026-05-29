@@ -166,7 +166,7 @@ jobs:
             --timeout-seconds 300 \
             --parameters commands='[
               "set -euo pipefail",
-              "cd /home/deploy/app",
+              "cd /home/deploy/app/Eventclick",
               "",
               "echo \"=== [1/5] Authenticating with ghcr.io ===\"",
               "echo \"${{ secrets.GHCR_PAT }}\" | docker login ghcr.io -u \"${{ secrets.GHCR_USER }}\" --password-stdin",
@@ -181,8 +181,8 @@ jobs:
               "docker tag \"${{ needs.build.outputs.client_image }}:${IMAGE_TAG}\" \"eventclick/client:latest\"",
               "",
               "echo \"=== [4/5] Running deploy.sh ===\"",
-              "chmod +x Eventclick/scripts/deploy.sh",
-              "SKIP_PULL=1 SKIP_BUILD=1 IMAGE_TAG=\"${IMAGE_TAG}\" ./Eventclick/scripts/deploy.sh",
+              "chmod +x scripts/deploy.sh",
+              "SKIP_PULL=1 SKIP_BUILD=1 IMAGE_TAG=\"${IMAGE_TAG}\" ./scripts/deploy.sh",
               "",
               "echo \"=== [5/5] Deployment complete ===\"",
               "docker compose -f docker-compose.prod.yml ps",
@@ -203,14 +203,14 @@ jobs:
           echo "Waiting for SSM command ${COMMAND_ID} to complete..."
 
           # Poll every 15 seconds for up to 5 minutes
-          for i in $(seq 1 40); do
+          for i in $(seq 1 20); do
             STATUS=$(aws ssm get-command-invocation \
               --command-id "$COMMAND_ID" \
               --instance-id "$INSTANCE_ID" \
               --query "Status" \
               --output text 2>/dev/null || echo "InProgress")
 
-            echo "Attempt ${i}/40 — Status: ${STATUS}"
+            echo "Attempt ${i}/20 — Status: ${STATUS}"
 
             if [[ "$STATUS" == "Success" ]]; then
               echo "✅ Deployment completed successfully!"
