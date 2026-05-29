@@ -166,7 +166,7 @@ jobs:
             --timeout-seconds 300 \
             --parameters commands='[
               "set -euo pipefail",
-              "cd ~/app",
+              "cd /home/deploy/app",
               "",
               "echo \"=== [1/5] Authenticating with ghcr.io ===\"",
               "echo \"${{ secrets.GHCR_PAT }}\" | docker login ghcr.io -u \"${{ secrets.GHCR_USER }}\" --password-stdin",
