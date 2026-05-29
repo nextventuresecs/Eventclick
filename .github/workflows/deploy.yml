@@ -208,7 +208,7 @@ jobs:
               --command-id "$COMMAND_ID" \
               --instance-id "$INSTANCE_ID" \
               --query "Status" \
-              --output text 2>/dev/null || echo "InProgress")
+              --output text || echo "InProgress")
 
             echo "Attempt ${i}/40 — Status: ${STATUS}"
 
