@@ -20,7 +20,8 @@ set -euo pipefail
 
 # ── Config ──────────────────────────────────────────
 COMPOSE_FILE="docker-compose.prod.yml"
-HEALTH_URL="http://localhost:4000/api/v1/health"
+# NOTE: port 4000 uses 'expose' not 'ports' — only accessible inside Docker network.
+# Health check uses 'docker inspect', NOT curl localhost:4000
 HEALTH_RETRIES=30
 HEALTH_INTERVAL=5
 DEPLOY_LOG="/tmp/deploy-$(date +%Y%m%d-%H%M%S).log"
@@ -96,11 +97,15 @@ info "Previous server image: ${PREV_SERVER_IMAGE:0:12}"
 info "Previous client image: ${PREV_CLIENT_IMAGE:0:12}"
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 2. Build Docker images
+# 2. Build Docker images (skipped when images pre-pulled from ghcr.io)
 # ═══════════════════════════════════════════════════════════════════════════
-log "Building Docker images..."
-docker compose -f "$COMPOSE_FILE" build --no-cache server client
-log "Docker images built ✅"
+if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+  log "Building Docker images..."
+  docker compose -f "$COMPOSE_FILE" build --no-cache server client
+  log "Docker images built ✅"
+else
+  warn "SKIP_BUILD=1 — using pre-pulled images (ghcr.io)"
+fi
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 3. Run database migrations
@@ -155,8 +160,9 @@ if [[ "$HEALTHY" != "true" ]]; then
   warn "Rolling back to previous version..."
   if [[ "$PREV_SERVER_IMAGE" != "none" ]]; then
     docker compose -f "$COMPOSE_FILE" stop server
-    # Restore previous image by reverting git and rebuilding
-    git checkout HEAD~1 -- packages/server/ packages/shared/
+    # git reset --hard moves HEAD back cleanly (no dirty working tree)
+    # git checkout HEAD~1 -- was leaving repo in dirty state, breaking next deploy
+    git reset --hard HEAD~1
     docker compose -f "$COMPOSE_FILE" up -d --no-deps --build server
     warn "Rollback complete. Previous version restored."
     warn "Check the deploy log: ${DEPLOY_LOG}"
@@ -192,4 +198,3 @@ docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\
 
 echo ""
 log "Deploy log saved to: ${DEPLOY_LOG}"
-log "Health endpoint: ${HEALTH_URL}"

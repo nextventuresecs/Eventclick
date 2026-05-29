@@ -1,6 +1,6 @@
-# Project Context: Veridian (Eventclick)
+# Project Context: Eventclick (Eventclick)
 
-Veridian (Eventclick) is a real-time NGO transparency and verification platform. It allows non-profit organizations to demonstrate active fieldwork and operational accountability to donors and funders by hosting live-streamed event rooms, sharing secure live-view links, and capturing time-bound attendance verification records with photo evidence.
+Eventclick (Eventclick) is a real-time NGO transparency and verification platform. It allows non-profit organizations to demonstrate active fieldwork and operational accountability to donors and funders by hosting live-streamed event rooms, sharing secure live-view links, and capturing time-bound attendance verification records with photo evidence.
 
 ---
 

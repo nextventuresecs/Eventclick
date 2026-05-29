@@ -3,8 +3,29 @@ name: CI
 on:
   push:
     branches: [main]
+    # Only run CI when actual code changes — skip docs-only commits
+    # (Saves GitHub Actions minutes on the free plan)
+    paths:
+      - 'packages/**'
+      - 'docker-compose*.yml'
+      - 'packages/**/Dockerfile*'
+      - 'Dockerfile*'
+      - '.github/workflows/**'
+      - 'turbo.json'
+      - 'tsconfig.json'
+      - 'package*.json'
+
   pull_request:
     branches: [main]
+    paths:
+      - 'packages/**'
+      - 'docker-compose*.yml'
+      - 'packages/**/Dockerfile*'
+      - 'Dockerfile*'
+      - '.github/workflows/**'
+      - 'turbo.json'
+      - 'tsconfig.json'
+      - 'package*.json'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

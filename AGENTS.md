@@ -1,6 +1,6 @@
-# AGENTS.md — AI-Assisted Development Framework for Veridian
+# AGENTS.md — AI-Assisted Development Framework for Eventclick
 
-> **Veridian**: Real-time NGO transparency and verification platform for live field work monitoring, attendance verification, and donor accountability.
+> **Eventclick**: Real-time NGO transparency and verification platform for live field work monitoring, attendance verification, and donor accountability.
 
 ---
 
@@ -49,7 +49,7 @@ Validate Against Skill Standards
 
 ### Why This Framework Exists
 
-Veridian is a **production-grade, multi-tenant NGO platform** handling:
+Eventclick is a **production-grade, multi-tenant NGO platform** handling:
 
 - Real-time WebRTC streaming (LiveKit integration)
 - Sensitive attendance/verification records
@@ -104,7 +104,7 @@ User Request → Identify Task Domain → Find Skills → Load Skills → Review
 
 ## Comprehensive Skill Library
 
-Veridian has **100+ production-grade skills** covering all development domains. Skills are organized in `.agents/skills/` directory.
+Eventclick has **100+ production-grade skills** covering all development domains. Skills are organized in `.agents/skills/` directory.
 
 ### How to Discover Skills
 
@@ -154,7 +154,7 @@ load_ability("find-skills")
 - `database-admin` — Backup, recovery, monitoring
 - `database-migration` — Safe migrations, zero-downtime deployments
 - `database-optimizer` — Query optimization, performance tuning
-- `postgres-best-practices` — PostgreSQL-specific optimization (CRITICAL for Veridian)
+- `postgres-best-practices` — PostgreSQL-specific optimization (CRITICAL for Eventclick)
 - `sql-optimization-patterns` — SQL query optimization
 - `sql-injection-testing` — Security testing for SQL injection
 
@@ -338,7 +338,7 @@ load_ability("find-skills")
 
 **Skill Dependencies:**
 
-- ✅ `postgres-best-practices` — **CRITICAL for Veridian** — indexing, connection pooling, RLS, query optimization
+- ✅ `postgres-best-practices` — **CRITICAL for Eventclick** — indexing, connection pooling, RLS, query optimization
 - ✅ `database-design` — Schema design
 - ✅ `database-migration` — Safe migrations
 - ✅ `database-optimizer` — Query optimization
@@ -417,7 +417,7 @@ load_ability("find-skills")
 
 ### Every Task Begins Here
 
-When a user requests ANY work on Veridian:
+When a user requests ANY work on Eventclick:
 
 #### ✅ Step 1: Understand the Task
 
@@ -1223,7 +1223,7 @@ load_ability("test-automator")
 
 ## Conclusion
 
-This framework ensures that AI agents assisting on Veridian:
+This framework ensures that AI agents assisting on Eventclick:
 
 1. **Always perform skill discovery first** — leveraging domain-specific guidance from 100+ production-grade skills
 2. **Respect architectural contracts** — multi-tenancy, RBAC, async patterns are non-negotiable

@@ -79,7 +79,7 @@ services:
     volumes:
       - redis_data_prod:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "--no-auth-warning", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -151,8 +151,7 @@ services:
         console.log('[migrate] ✅ done');
         await pool.end();
       }
-      run().catch(e => { console.error('[migrate] ❌', e); process.exit(1); });
-    "]
+      run().catch(e => { console.error('[migrate] ❌', e); process.exit(1); });"]
     depends_on:
       postgres:
         condition: service_healthy

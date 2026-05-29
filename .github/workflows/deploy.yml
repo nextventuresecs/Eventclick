@@ -1,21 +1,36 @@
 name: Deploy to Production
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Pipeline Design (deployment-pipeline-design skill):
+#
+#  CI passes → Approval Gate (production env) → SSH → deploy.sh → verify
+#
+# Key decisions:
+#  - Build images in CI (GitHub Actions), NOT on EC2 (t3.small can't handle it)
+#  - ghcr.io as the image registry (free, integrated)
+#  - deploy.sh on EC2 handles: pull image, migrate, restart, health check, rollback
+#  - GitHub Environment "production" provides manual approval gate
+#  - if: failure() step triggers rollback notification
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
+  # Auto-deploy only when CI pipeline passes on main
   workflow_run:
     workflows: ["CI"]
     types: [completed]
     branches: [main]
 
-  # Allow manual deployment
+  # Allow manual trigger for hotfixes or forced redeploys
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'production'
+      skip_approval:
+        description: 'Skip approval gate (emergency deploy only)'
+        required: false
+        default: 'false'
         type: choice
         options:
-          - production
+          - 'false'
+          - 'true'
 
 concurrency:
   group: deploy-production
@@ -23,11 +38,10 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  SERVER_IMAGE: ghcr.io/${{ github.repository }}/server
-  CLIENT_IMAGE: ghcr.io/${{ github.repository }}/client
+  IMAGE_NAME: ${{ github.repository }}
 
+# ── Job 1: Gate — Only continue if CI passed ──────────────────────────────────
 jobs:
-  # ── Gate: Only deploy if CI passed ─────────────────────────────────────
   check-ci:
     name: Verify CI Status
     runs-on: ubuntu-latest
@@ -36,13 +50,21 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
     outputs:
       should_deploy: ${{ steps.check.outputs.deploy }}
+      sha_short: ${{ steps.meta.outputs.sha_short }}
     steps:
-      - id: check
+      - name: Set deploy flag
+        id: check
         run: echo "deploy=true" >> $GITHUB_OUTPUT
 
-  # ── Build & Push Docker Images ─────────────────────────────────────────
+      - name: Extract commit metadata
+        id: meta
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          echo "sha_short=${SHA:0:7}" >> $GITHUB_OUTPUT
+
+  # ── Job 2: Build & Push Docker Images to ghcr.io ─────────────────────────
   build:
-    name: Build Docker Images
+    name: Build & Push Images
     needs: check-ci
     runs-on: ubuntu-latest
     if: needs.check-ci.outputs.should_deploy == 'true'
@@ -50,9 +72,17 @@ jobs:
       contents: read
       packages: write
 
+    outputs:
+      server_image: ${{ steps.image-tags.outputs.server_image }}
+      client_image: ${{ steps.image-tags.outputs.client_image }}
+      sha_short: ${{ needs.check-ci.outputs.sha_short }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Checkout the commit that triggered CI (not the current HEAD)
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -64,111 +94,119 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
+      - name: Compute image tags
+        id: image-tags
         run: |
-          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "timestamp=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+          SHA="${{ needs.check-ci.outputs.sha_short }}"
+          REPO_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "server_image=${{ env.REGISTRY }}/${REPO_LOWER}/server" >> $GITHUB_OUTPUT
+          echo "client_image=${{ env.REGISTRY }}/${REPO_LOWER}/client" >> $GITHUB_OUTPUT
+          echo "sha=${SHA}" >> $GITHUB_OUTPUT
 
-      # Build Server Image
-      - name: Build & Push Server
-        uses: docker/build-push-action@v5
+      # Build Server Image — multi-stage: deps → build → runner (non-root)
+      - name: Build & Push Server Image
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: packages/server/Dockerfile.prod
           push: true
           tags: |
-            ${{ env.SERVER_IMAGE }}:latest
-            ${{ env.SERVER_IMAGE }}:${{ steps.meta.outputs.sha_short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ steps.image-tags.outputs.server_image }}:latest
+            ${{ steps.image-tags.outputs.server_image }}:${{ steps.image-tags.outputs.sha }}
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+          provenance: false
 
-      # Build Client Image
-      - name: Build & Push Client
-        uses: docker/build-push-action@v5
+      # Build Client Image — includes Vite build args (VITE_* are build-time only)
+      - name: Build & Push Client Image
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: packages/client/Dockerfile.prod
           push: true
           tags: |
-            ${{ env.CLIENT_IMAGE }}:latest
-            ${{ env.CLIENT_IMAGE }}:${{ steps.meta.outputs.sha_short }}
+            ${{ steps.image-tags.outputs.client_image }}:latest
+            ${{ steps.image-tags.outputs.client_image }}:${{ steps.image-tags.outputs.sha }}
           build-args: |
             VITE_API_URL=${{ secrets.VITE_API_URL }}
             VITE_LIVEKIT_URL=${{ secrets.VITE_LIVEKIT_URL }}
             VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=client
+          cache-to: type=gha,mode=max,scope=client
+          provenance: false
 
-  # ── Deploy to EC2 ──────────────────────────────────────────────────────
+  # ── Job 3: Deploy to EC2 (requires approval via GitHub Environment) ───────
   deploy:
-    name: Deploy to EC2
+    name: Deploy to EC2 (Production)
     needs: build
     runs-on: ubuntu-latest
+
+    # GitHub Environment "production" — configure Required Reviewers in:
+    # GitHub → Settings → Environments → production → Required reviewers
+    # This pauses the workflow and sends an email asking for approval.
     environment:
       name: production
+      url: ${{ vars.APP_URL }}
 
     steps:
-      - name: Deploy via SSH
+      - name: Deploy via SSH → scripts/deploy.sh
+        # deploy.sh handles: git pull → migrate → restart → health check → rollback
+        # Health check uses `docker inspect` (NOT curl localhost — port is not exposed)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          timeout: 120s
+          timeout: 300s
+          command_timeout: 280s
           script: |
-            set -e
+            set -euo pipefail
             cd ~/app
 
-            echo "=== Pulling latest code ==="
-            git pull --ff-only origin main
+            echo "=== [1/5] Authenticating with ghcr.io ==="
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
 
-            echo "=== Pulling new Docker images ==="
-            docker compose -f docker-compose.prod.yml pull server client 2>/dev/null || true
+            echo "=== [2/5] Pulling pre-built images from ghcr.io ==="
+            IMAGE_TAG="${{ needs.build.outputs.sha_short }}"
+            docker pull "${{ needs.build.outputs.server_image }}:${IMAGE_TAG}"
+            docker pull "${{ needs.build.outputs.client_image }}:${IMAGE_TAG}"
 
-            echo "=== Running migrations ==="
-            docker compose -f docker-compose.prod.yml up migrate --build --abort-on-container-exit
+            echo "=== [3/5] Tagging images for docker-compose ==="
+            docker tag "${{ needs.build.outputs.server_image }}:${IMAGE_TAG}" "eventclick/server:latest"
+            docker tag "${{ needs.build.outputs.client_image }}:${IMAGE_TAG}" "eventclick/client:latest"
 
-            echo "=== Restarting services ==="
-            docker compose -f docker-compose.prod.yml up -d --no-deps server
-            sleep 10
+            echo "=== [4/5] Running deploy.sh ==="
+            chmod +x scripts/deploy.sh
+            SKIP_PULL=1 SKIP_BUILD=1 IMAGE_TAG="${IMAGE_TAG}" ./scripts/deploy.sh
 
-            echo "=== Health check ==="
-            for i in $(seq 1 20); do
-              if curl -sf http://localhost:4000/api/v1/health > /dev/null 2>&1; then
-                echo "Server healthy ✅"
-                break
-              fi
-              echo "Waiting for server... attempt $i/20"
-              sleep 5
-            done
-
-            # Verify health check passed
-            curl -sf http://localhost:4000/api/v1/health || {
-              echo "❌ Health check failed! Rolling back..."
-              docker compose -f docker-compose.prod.yml logs --tail=30 server
-              exit 1
-            }
-
-            echo "=== Restarting client ==="
-            docker compose -f docker-compose.prod.yml up -d --no-deps client
-            sleep 3
-
-            echo "=== Deployment complete ✅ ==="
+            echo "=== [5/5] Deployment complete ==="
             docker compose -f docker-compose.prod.yml ps
-            docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}" 2>/dev/null || true
+            docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}" 2>/dev/null || true
 
-      - name: Notify on Success
-        if: success()
-        run: |
-          echo "✅ Deployment successful!"
-          echo "Commit: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
-
-      - name: Notify on Failure
+      # ── Rollback notification on failure ─────────────────────────────────
+      - name: Rollback Notification on Failure
         if: failure()
         run: |
-          echo "❌ Deployment FAILED!"
-          echo "Commit: ${{ github.sha }}"
-          echo "Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "❌ DEPLOYMENT FAILED — deploy.sh rollback was triggered on EC2"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Commit : ${{ github.sha }}"
+          echo "  Branch : ${{ github.ref_name }}"
+          echo "  Run    : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Action required:"
+          echo "  1. SSH into EC2 and check: docker compose -f docker-compose.prod.yml logs server"
+          echo "  2. Verify rollback was successful: docker compose -f docker-compose.prod.yml ps"
+          echo "  3. Fix the root cause and push a new commit to trigger a fresh deployment"
+
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo "✅ Deployment Successful!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Commit  : ${{ github.sha }}"
+          echo "  SHA     : ${{ needs.build.outputs.sha_short }}"
+          echo "  App URL : ${{ secrets.APP_URL }}"
+          echo "  Images  : ${{ needs.build.outputs.server_image }}:${{ needs.build.outputs.sha_short }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
