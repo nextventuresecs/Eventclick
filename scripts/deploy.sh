@@ -22,8 +22,8 @@ set -euo pipefail
 COMPOSE_FILE="docker-compose.prod.yml"
 # NOTE: port 4000 uses 'expose' not 'ports' — only accessible inside Docker network.
 # Health check uses 'docker inspect', NOT curl localhost:4000
-HEALTH_RETRIES=30
-HEALTH_INTERVAL=5
+HEALTH_RETRIES=20
+HEALTH_INTERVAL=3
 DEPLOY_LOG="/tmp/deploy-$(date +%Y%m%d-%H%M%S).log"
 
 # ── Colors ──────────────────────────────────────────
