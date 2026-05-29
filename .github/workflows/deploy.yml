@@ -135,7 +135,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=client
           provenance: false
 
-  # ── Job 3: Deploy to EC2 (requires approval via GitHub Environment) ───────
+  # ── Job 3: Deploy to EC2 via SSM (no SSH / port 22 needed) ─────────────
   deploy:
     name: Deploy to EC2 (Production)
     needs: build
@@ -149,40 +149,108 @@ jobs:
       url: ${{ vars.APP_URL }}
 
     steps:
-      - name: Deploy via SSH → scripts/deploy.sh
-        # deploy.sh handles: git pull → migrate → restart → health check → rollback
-        # Health check uses `docker inspect` (NOT curl localhost — port is not exposed)
-        uses: appleboy/ssh-action@v1
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          timeout: 300s
-          command_timeout: 280s
-          script: |
-            set -euo pipefail
-            cd ~/app
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-            echo "=== [1/5] Authenticating with ghcr.io ==="
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
+      - name: Deploy via SSM SendCommand
+        id: ssm-deploy
+        run: |
+          # Send deployment commands to EC2 via SSM (no SSH, no port 22)
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --timeout-seconds 300 \
+            --parameters commands='[
+              "set -euo pipefail",
+              "cd ~/app",
+              "",
+              "echo \"=== [1/5] Authenticating with ghcr.io ===\"",
+              "echo \"${{ secrets.GHCR_PAT }}\" | docker login ghcr.io -u \"${{ secrets.GHCR_USER }}\" --password-stdin",
+              "",
+              "echo \"=== [2/5] Pulling pre-built images from ghcr.io ===\"",
+              "IMAGE_TAG=\"${{ needs.build.outputs.sha_short }}\"",
+              "docker pull \"${{ needs.build.outputs.server_image }}:${IMAGE_TAG}\"",
+              "docker pull \"${{ needs.build.outputs.client_image }}:${IMAGE_TAG}\"",
+              "",
+              "echo \"=== [3/5] Tagging images for docker-compose ===\"",
+              "docker tag \"${{ needs.build.outputs.server_image }}:${IMAGE_TAG}\" \"eventclick/server:latest\"",
+              "docker tag \"${{ needs.build.outputs.client_image }}:${IMAGE_TAG}\" \"eventclick/client:latest\"",
+              "",
+              "echo \"=== [4/5] Running deploy.sh ===\"",
+              "chmod +x scripts/deploy.sh",
+              "SKIP_PULL=1 SKIP_BUILD=1 IMAGE_TAG=\"${IMAGE_TAG}\" ./scripts/deploy.sh",
+              "",
+              "echo \"=== [5/5] Deployment complete ===\"",
+              "docker compose -f docker-compose.prod.yml ps",
+              "docker stats --no-stream --format \"table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}\" 2>/dev/null || true"
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
 
-            echo "=== [2/5] Pulling pre-built images from ghcr.io ==="
-            IMAGE_TAG="${{ needs.build.outputs.sha_short }}"
-            docker pull "${{ needs.build.outputs.server_image }}:${IMAGE_TAG}"
-            docker pull "${{ needs.build.outputs.client_image }}:${IMAGE_TAG}"
+          echo "command_id=${COMMAND_ID}" >> $GITHUB_OUTPUT
+          echo "SSM Command ID: ${COMMAND_ID}"
 
-            echo "=== [3/5] Tagging images for docker-compose ==="
-            docker tag "${{ needs.build.outputs.server_image }}:${IMAGE_TAG}" "eventclick/server:latest"
-            docker tag "${{ needs.build.outputs.client_image }}:${IMAGE_TAG}" "eventclick/client:latest"
+      - name: Wait for deployment to complete
+        id: ssm-wait
+        run: |
+          COMMAND_ID="${{ steps.ssm-deploy.outputs.command_id }}"
+          INSTANCE_ID="${{ secrets.EC2_INSTANCE_ID }}"
 
-            echo "=== [4/5] Running deploy.sh ==="
-            chmod +x scripts/deploy.sh
-            SKIP_PULL=1 SKIP_BUILD=1 IMAGE_TAG="${IMAGE_TAG}" ./scripts/deploy.sh
+          echo "Waiting for SSM command ${COMMAND_ID} to complete..."
 
-            echo "=== [5/5] Deployment complete ==="
-            docker compose -f docker-compose.prod.yml ps
-            docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}" 2>/dev/null || true
+          # Poll every 15 seconds for up to 5 minutes
+          for i in $(seq 1 20); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "InProgress")
+
+            echo "Attempt ${i}/20 — Status: ${STATUS}"
+
+            if [[ "$STATUS" == "Success" ]]; then
+              echo "✅ Deployment completed successfully!"
+
+              # Print command output
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardOutputContent" \
+                --output text
+              exit 0
+            fi
+
+            if [[ "$STATUS" == "Failed" || "$STATUS" == "TimedOut" || "$STATUS" == "Cancelled" ]]; then
+              echo "❌ Deployment ${STATUS}!"
+
+              # Print stdout
+              echo "=== STDOUT ==="
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardOutputContent" \
+                --output text || true
+
+              # Print stderr
+              echo "=== STDERR ==="
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardErrorContent" \
+                --output text || true
+
+              exit 1
+            fi
+
+            sleep 15
+          done
+
+          echo "❌ Timed out waiting for SSM command to complete"
+          exit 1
 
       # ── Rollback notification on failure ─────────────────────────────────
       - name: Rollback Notification on Failure
@@ -196,8 +264,8 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
           echo "Action required:"
-          echo "  1. SSH into EC2 and check: docker compose -f docker-compose.prod.yml logs server"
-          echo "  2. Verify rollback was successful: docker compose -f docker-compose.prod.yml ps"
+          echo "  1. Check SSM Run Command history in AWS Console"
+          echo "  2. Verify rollback was successful: aws ssm send-command to run 'docker compose ps'"
           echo "  3. Fix the root cause and push a new commit to trigger a fresh deployment"
 
       - name: Deployment Summary
@@ -207,6 +275,6 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "  Commit  : ${{ github.sha }}"
           echo "  SHA     : ${{ needs.build.outputs.sha_short }}"
-          echo "  App URL : ${{ secrets.APP_URL }}"
           echo "  Images  : ${{ needs.build.outputs.server_image }}:${{ needs.build.outputs.sha_short }}"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
