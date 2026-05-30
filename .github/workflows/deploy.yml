@@ -166,7 +166,7 @@ jobs:
             --timeout-seconds 300 \
             --parameters commands='[
               "set -euo pipefail",
-              "export HOME=/home/deploy"
+              "export HOME=/home/deploy",
               "cd /home/deploy/app/Eventclick",
               "git config --global --add safe.directory /home/deploy/app/Eventclick",
               "",
