@@ -167,6 +167,7 @@ jobs:
             --parameters commands='[
               "set -euo pipefail",
               "cd /home/deploy/app/Eventclick",
+              "git config --global --add safe.directory /home/deploy/app/Eventclick",
               "",
               "echo \"=== [1/6] Pulling latest code from Git ===\"",
               "sudo -u deploy git fetch origin",
