@@ -119,6 +119,7 @@ services:
     volumes:
       - ./packages/server/src:/app/packages/server/src
       - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/shared/dist:/app/packages/shared/dist
     depends_on:
       postgres:
         condition: service_healthy
@@ -144,6 +145,7 @@ services:
     volumes:
       - ./packages/client/src:/app/packages/client/src
       - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/shared/dist:/app/packages/shared/dist
     depends_on:
       - server
 
