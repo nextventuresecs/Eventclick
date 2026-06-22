@@ -1,6 +1,6 @@
 import type { AuthUser } from "@application/shared";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api/v1";
+const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
 let accessToken: string | null = null;
 let refreshPromise: Promise<string | null> | null = null;

@@ -1,6 +1,6 @@
 import type { ClientLogInput, ClientLogLevel } from "@application/shared";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api/v1";
+const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 const MAX_PER_WINDOW = 20;
 const WINDOW_MS = 60_000;
 
