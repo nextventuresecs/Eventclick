@@ -24,7 +24,7 @@ export interface EmailJobPayload {
 }
 
 export async function enqueueEmail(payload: EmailJobPayload): Promise<void> {
-  const queueUrl = env.AWS_SQS_QUEUE_URL;
+  const queueUrl = env.SQS_QUEUE_URL;
 
   if (!queueUrl) {
     // Local development fallback: Send email synchronously using the mock/direct services

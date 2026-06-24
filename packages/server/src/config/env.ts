@@ -70,7 +70,7 @@ const EnvSchema = z.object({
   GOTENBERG_URL: z.string().url().default("http://gotenberg:3000"),
 
   // ─── AWS SQS ──────────────────────────────────────
-  AWS_SQS_QUEUE_URL: z.string().url().optional(),
+  SQS_QUEUE_URL: z.string().url().optional(),
 
   // ─── Observability (optional) ──────────────────────
   SENTRY_DSN: z.string().optional(),
