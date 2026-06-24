@@ -115,8 +115,8 @@ else
 fi
 
 # Save current image IDs for rollback
-PREV_SERVER_IMAGE=$(docker inspect --format='{{.Image}}' eventclick_server_prod 2>/dev/null || echo "none")
-PREV_CLIENT_IMAGE=$(docker inspect --format='{{.Image}}' eventclick_client_prod 2>/dev/null || echo "none")
+PREV_SERVER_IMAGE=$(docker inspect --format='{{.Image}}' Eventclick_server_prod 2>/dev/null || echo "none")
+PREV_CLIENT_IMAGE=$(docker inspect --format='{{.Image}}' Eventclick_client_prod 2>/dev/null || echo "none")
 info "Previous server image: ${PREV_SERVER_IMAGE:0:12}"
 info "Previous client image: ${PREV_CLIENT_IMAGE:0:12}"
 

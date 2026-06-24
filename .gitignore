@@ -15,4 +15,4 @@ ROLE*.md
 !*.pdf.example
 .agents/
 *.pem
-*_Token.txt
+*_Token*.txt
