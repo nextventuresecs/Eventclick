@@ -142,10 +142,6 @@ jobs:
     name: Deploy to EC2 (Production)
     needs: build
     runs-on: ubuntu-latest
-
-    # GitHub Environment "production" — configure Required Reviewers in:
-    # GitHub → Settings → Environments → production → Required reviewers
-    # This pauses the workflow and sends an email asking for approval.
     environment:
       name: production
       url: ${{ vars.APP_URL }}
