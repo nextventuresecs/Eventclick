@@ -6,10 +6,10 @@ let mockResetResult: any[] = [];
 let mockInsertResetResult: any[] = [];
 let mockUpdateResult: any[] = [];
 
-// Mock the email service
-const mockSendPasswordResetEmail = vi.fn().mockResolvedValue(undefined);
-vi.mock("../email.service", () => ({
-  sendPasswordResetEmail: (...args: any[]) => mockSendPasswordResetEmail(...args),
+// Mock SQS client
+const mockEnqueueEmail = vi.fn().mockResolvedValue(undefined);
+vi.mock("../../queues/sqs.client", () => ({
+  enqueueEmail: (...args: any[]) => mockEnqueueEmail(...args),
 }));
 
 // Mock password service
@@ -87,10 +87,10 @@ describe("auth.service - Password Recovery Flow", () => {
       mockUserResult = [];
 
       await expect(forgotPassword("nonexistent@example.com")).resolves.toBeUndefined();
-      expect(mockSendPasswordResetEmail).not.toHaveBeenCalled();
+      expect(mockEnqueueEmail).not.toHaveBeenCalled();
     });
 
-    it("successfully creates a password reset token and calls sendPasswordResetEmail", async () => {
+    it("successfully creates a password reset token and enqueues to SQS", async () => {
       mockUserResult = [
         {
           user: {
@@ -105,10 +105,11 @@ describe("auth.service - Password Recovery Flow", () => {
 
       await forgotPassword("test@example.com");
 
-      expect(mockSendPasswordResetEmail).toHaveBeenCalled();
-      const calls = mockSendPasswordResetEmail.mock.calls;
-      expect(calls[0]?.[0]).toBe("test@example.com");
-      expect(typeof calls[0]?.[1]).toBe("string");
+      expect(mockEnqueueEmail).toHaveBeenCalled();
+      const calls = mockEnqueueEmail.mock.calls;
+      expect(calls[0]?.[0]?.email).toBe("test@example.com");
+      expect(calls[0]?.[0]?.type).toBe("reset-password");
+      expect(typeof calls[0]?.[0]?.token).toBe("string");
     });
   });
 
@@ -116,8 +117,14 @@ describe("auth.service - Password Recovery Flow", () => {
     it("throws a badRequest error if the token is invalid, used, or expired", async () => {
       mockResetResult = []; // Not found or expired
 
-      await expect(resetPassword("invalid-token", "newpassword123")).rejects.toThrowError(
+      await expect(resetPassword("invalid-token", "ComplexP@ss123!")).rejects.toThrowError(
         ApiError.badRequest("Invalid or expired reset token")
+      );
+    });
+
+    it("throws a badRequest error if the new password is too weak", async () => {
+      await expect(resetPassword("some-token", "123456")).rejects.toThrowError(
+        /Password is too weak/
       );
     });
 
@@ -132,7 +139,7 @@ describe("auth.service - Password Recovery Flow", () => {
         },
       ];
 
-      await resetPassword("valid-token", "newpassword123");
+      await resetPassword("valid-token", "ComplexP@ss123!");
 
       // Verify no errors thrown and succeeds
     });
