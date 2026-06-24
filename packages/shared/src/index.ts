@@ -70,9 +70,18 @@ export const RoomStatusSchema = z.enum(ROOM_STATUSES);
 export type RoomStatus = z.infer<typeof RoomStatusSchema>;
 
 // ─── Auth DTOs ──────────────────────────────────────
+const PasswordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(128, "Password must be less than 128 characters")
+  .regex(
+    /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{8,}$/,
+    "Password must contain at least one letter, one number, and one special character"
+  );
+
 export const RegisterSchema = z.object({
-  email: z.email().toLowerCase(),
-  password: z.string().min(8).max(128),
+  email: z.string().email().toLowerCase(),
+  password: PasswordSchema,
   fullName: z.string().min(1).max(120),
   organizationName: z.string().min(1).max(160).optional(),
 });
@@ -96,7 +105,7 @@ export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
 
 export const ResetPasswordSchema = z.object({
   token: z.string().min(1),
-  password: z.string().min(8).max(128),
+  password: PasswordSchema,
 });
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 
@@ -286,7 +295,7 @@ export type UpdateEventAdminAssignmentInput = z.infer<
 export const CreateOrgUserSchema = z.object({
   email: z.string().email(),
   fullName: z.string().min(1).max(120),
-  password: z.string().min(8).max(128),
+  password: PasswordSchema,
   role: z.enum(["event_admin", "volunteer"]).optional(),
 });
 export type CreateOrgUserInput = z.infer<typeof CreateOrgUserSchema>;

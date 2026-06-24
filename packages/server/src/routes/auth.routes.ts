@@ -40,3 +40,6 @@ authRouter.get("/me", requireAuth, authController.me);
 authRouter.post("/forgot-password", recoveryLimiter, validate(ForgotPasswordSchema), authController.forgot);
 authRouter.post("/reset-password", recoveryLimiter, validate(ResetPasswordSchema), authController.reset);
 authRouter.post("/onboarding", requireAuth, validate(OnboardingSchema), authController.onboard);
+
+authRouter.post("/verify-email", recoveryLimiter, authController.verifyEmail);
+authRouter.post("/resend-verification", recoveryLimiter, authController.resendVerification);

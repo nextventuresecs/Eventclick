@@ -1,4 +1,6 @@
 import { eq, and, gt, isNull } from "drizzle-orm";
+import zxcvbn from "zxcvbn";
+import emailValidator from "deep-email-validator";
 import crypto from "crypto";
 import { nanoid } from "nanoid";
 import type {
@@ -9,12 +11,12 @@ import type {
   OnboardingInput,
 } from "@application/shared";
 import { db } from "../db";
-import { users, organizations, orgMembers, passwordResets, type User } from "../db/schema";
+import { users, organizations, orgMembers, passwordResets, emailVerifications, type User } from "../db/schema";
 import { ApiError } from "../utils/errors";
 import { logger } from "../utils/logger";
 import { hashPassword, verifyPassword } from "./password.service";
 import { signAccessToken } from "./jwt.service";
-import { sendPasswordResetEmail } from "./email.service";
+import { enqueueEmail } from "../queues/sqs.client";
 import {
   findActiveSessionByToken,
   issueRefreshToken,
@@ -132,7 +134,28 @@ const issueTokensFor = async (user: UserWithOrg, meta: SessionMeta): Promise<Aut
   return { user: toAuthUser(user, user.organizationName), accessToken, refreshToken: refresh.raw };
 };
 
-export const registerUser = async (input: RegisterInput, meta: SessionMeta): Promise<AuthResult> => {
+export const registerUser = async (input: RegisterInput, meta: SessionMeta): Promise<{ message: string; user: AuthUser }> => {
+  // Validate Password Strength
+  const pwdScore = zxcvbn(input.password);
+  if (pwdScore.score < 3) {
+    throw ApiError.badRequest(`Password is too weak. ${pwdScore.feedback.warning || "Please choose a stronger password."}`);
+  }
+
+  // Deep Email Validation
+  const emailValResult = await emailValidator({
+    email: input.email,
+    validateRegex: true,
+    validateMx: true,
+    validateTypo: true,
+    validateDisposable: true,
+    validateSMTP: false,
+  });
+
+  if (!emailValResult.valid) {
+    logger.warn({ email: input.email, reason: emailValResult.reason }, "email validation failed during registration");
+    throw ApiError.badRequest("Please provide a valid, deliverable email address.");
+  }
+
   const existing = await findUserByEmail(input.email);
   if (existing) {
     logger.warn({ email: input.email, event: "register.conflict" }, "register attempt for existing email");
@@ -177,6 +200,19 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
       });
     }
 
+    // Generate Email Verification Token
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await tx.insert(emailVerifications).values({
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+    });
+
+    (user as any)._verificationToken = token;
+
     return user;
   });
 
@@ -185,11 +221,19 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
     "user registered",
   );
   
-  // Need to fetch again or manually add org name for the first registration response
+  await enqueueEmail({
+    type: "verification",
+    email: created.email,
+    token: (created as any)._verificationToken,
+  });
+
   const userWithOrg = await findUserById(created.id);
   if (!userWithOrg) throw ApiError.internal("Failed to retrieve created user");
 
-  return issueTokensFor(userWithOrg, meta);
+  return {
+    message: "Registration successful. Please check your email to verify your account.",
+    user: toAuthUser(userWithOrg, userWithOrg.organizationName)
+  };
 };
 
 export const loginUser = async (input: LoginInput, meta: SessionMeta): Promise<AuthResult> => {
@@ -204,6 +248,10 @@ export const loginUser = async (input: LoginInput, meta: SessionMeta): Promise<A
   if (!user.isActive) {
     logger.warn({ userId: user.id, event: "login.disabled" }, "login blocked: account disabled");
     throw ApiError.forbidden("This account is disabled");
+  }
+  if (!user.emailVerifiedAt) {
+    logger.warn({ userId: user.id, event: "login.unverified" }, "login blocked: email not verified");
+    throw ApiError.forbidden("Please verify your email address before logging in.");
   }
 
   const ok = await verifyPassword(input.password, user.passwordHash);
@@ -321,11 +369,20 @@ export const forgotPassword = async (email: string): Promise<void> => {
     expiresAt,
   });
 
-  await sendPasswordResetEmail(email, token);
+  await enqueueEmail({
+    type: "reset-password",
+    email,
+    token,
+  });
   logger.info({ userId: user.id, email, event: "password_reset.requested" }, "password reset token generated and email queued");
 };
 
 export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+  const pwdScore = zxcvbn(newPassword);
+  if (pwdScore.score < 3) {
+    throw ApiError.badRequest(`Password is too weak. ${pwdScore.feedback.warning || "Please choose a stronger password."}`);
+  }
+
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
   const [resetReq] = await db
@@ -425,4 +482,71 @@ export const completeOnboarding = async (
   if (!updatedUser) throw ApiError.internal("Failed to retrieve onboarded user");
 
   return issueTokensFor(updatedUser, meta);
+};
+
+export const verifyEmailToken = async (token: string, meta: SessionMeta): Promise<AuthResult> => {
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  const [verifyReq] = await db
+    .select()
+    .from(emailVerifications)
+    .where(
+      and(
+        eq(emailVerifications.tokenHash, tokenHash),
+        isNull(emailVerifications.usedAt),
+        gt(emailVerifications.expiresAt, new Date())
+      )
+    )
+    .limit(1);
+
+  if (!verifyReq) {
+    logger.warn({ event: "email_verification.failed" }, "invalid or expired email verification token used");
+    throw ApiError.badRequest("Invalid or expired verification token");
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(emailVerifications)
+      .set({ usedAt: new Date() })
+      .where(eq(emailVerifications.id, verifyReq.id));
+
+    await tx
+      .update(users)
+      .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, verifyReq.userId));
+  });
+
+  await invalidateUserCache(verifyReq.userId);
+  const user = await findUserById(verifyReq.userId);
+  if (!user) throw ApiError.internal("User not found after verification");
+  
+  logger.info({ userId: verifyReq.userId, event: "email_verification.success" }, "email verified successfully");
+  return issueTokensFor(user, meta);
+};
+
+export const resendVerificationToken = async (email: string): Promise<void> => {
+  const user = await findUserByEmail(email);
+  if (!user || user.emailVerifiedAt) return; // Silent return for security
+
+  // Expire previous unused tokens
+  await db.update(emailVerifications)
+    .set({ usedAt: new Date() })
+    .where(and(eq(emailVerifications.userId, user.id), isNull(emailVerifications.usedAt)));
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+  await db.insert(emailVerifications).values({
+    userId: user.id,
+    tokenHash,
+    expiresAt,
+  });
+
+  await enqueueEmail({
+    type: "verification",
+    email,
+    token,
+  });
+  logger.info({ userId: user.id, event: "email_verification.resent" }, "email verification resent");
 };
