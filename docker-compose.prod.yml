@@ -250,6 +250,12 @@ services:
     image: eventclick/client:${IMAGE_TAG:-latest}
     container_name: Eventclick_client_prod
     restart: always
+    volumes:
+      - ./packages/client/src:/app/packages/client/src
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/shared/dist:/app/packages/shared/dist
+      - /etc/ssl/cloudflare/origin-cert.pem:/etc/nginx/ssl/origin-cert.pem:ro
+      - /etc/ssl/cloudflare/origin-key.pem:/etc/nginx/ssl/origin-key.pem:ro
     ports:
       - "${CLIENT_PORT:-80}:80"
       - "${CLIENT_SSL_PORT:-443}:443"
