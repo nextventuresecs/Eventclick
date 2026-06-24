@@ -61,7 +61,7 @@ services:
       options:
         awslogs-region: ${AWS_REGION:-ap-south-1}
         awslogs-group: "/eventclick/prod/containers"
-        awslogs-stream-prefix: "postgres"
+        awslogs-stream: "postgres"
         awslogs-create-group: "true"
 
   # ─── Redis ────────────────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ services:
       options:
         awslogs-region: ${AWS_REGION:-ap-south-1}
         awslogs-group: "/eventclick/prod/containers"
-        awslogs-stream-prefix: "redis"
+        awslogs-stream: "redis"
         awslogs-create-group: "true"
 
   # ─── Gotenberg (HTML → PDF) ──────────────────────────────────────────────
@@ -131,7 +131,7 @@ services:
       options:
         awslogs-region: ${AWS_REGION:-ap-south-1}
         awslogs-group: "/eventclick/prod/containers"
-        awslogs-stream-prefix: "gotenberg"
+        awslogs-stream: "gotenberg"
         awslogs-create-group: "true"
 
   # ─── Database Migration (run-once init) ──────────────────────────────────
@@ -167,7 +167,7 @@ services:
       options:
         awslogs-region: ${AWS_REGION:-ap-south-1}
         awslogs-group: "/eventclick/prod/containers"
-        awslogs-stream-prefix: "migrate"
+        awslogs-stream: "migrate"
         awslogs-create-group: "true"
 
   # ─── Backend API ─────────────────────────────────────────────────────────
@@ -244,7 +244,7 @@ services:
       options:
         awslogs-region: ${AWS_REGION:-ap-south-1}
         awslogs-group: "/eventclick/prod/containers"
-        awslogs-stream-prefix: "server"
+        awslogs-stream: "server"
         awslogs-create-group: "true"
 
   # ─── Frontend (Nginx + Vite static build) ────────────────────────────────
@@ -283,7 +283,7 @@ services:
       options:
         awslogs-region: ${AWS_REGION:-ap-south-1}
         awslogs-group: "/eventclick/prod/containers"
-        awslogs-stream-prefix: "client"
+        awslogs-stream: "client"
         awslogs-create-group: "true"
 
 volumes:
