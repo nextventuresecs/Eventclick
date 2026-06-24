@@ -3,26 +3,31 @@
 # fetch-secrets.sh — Pull production secrets from AWS SSM Parameter Store
 # ─────────────────────────────────────────────────────────────────────────────
 #
-# Prerequisites:
-#   - AWS CLI installed: sudo apt-get install -y awscli
-#   - EC2 instance must have IAM role with AmazonSSMReadOnlyAccess attached
-#   - Secrets stored in SSM under /Eventclick/prod/*
+# This script is the SINGLE SOURCE OF TRUTH bridge between SSM and Docker.
+# It fetches all parameters under /eventclick/prod/* and writes them to .env
 #
-# Usage (called by deploy.sh or manually):
+# Prerequisites:
+#   - AWS CLI v2 installed
+#   - EC2 instance must have IAM role with these permissions:
+#       ssm:GetParametersByPath
+#       ssm:GetParameter
+#   - Parameters stored in SSM under /eventclick/prod/*
+#
+# Usage (called automatically by deploy.sh, or manually):
 #   ./scripts/fetch-secrets.sh              # writes to .env in project root
 #   ./scripts/fetch-secrets.sh /tmp/.env    # writes to custom path
 #
-# How to populate SSM (one-time, run from your local machine with AWS credentials):
-#   aws ssm put-parameter --name "/Eventclick/prod/JWT_SECRET"       --value "..." --type SecureString --region ap-south-1
-#   aws ssm put-parameter --name "/Eventclick/prod/DB_PASSWORD"      --value "..." --type SecureString --region ap-south-1
-#   aws ssm put-parameter --name "/Eventclick/prod/REDIS_PASSWORD"   --value "..." --type SecureString --region ap-south-1
-#   aws ssm put-parameter --name "/Eventclick/prod/JWT_REFRESH_SECRET" --value "..." --type SecureString --region ap-south-1
-#   aws ssm put-parameter --name "/Eventclick/prod/LIVEKIT_API_KEY"  --value "..." --type SecureString --region ap-south-1
-#   aws ssm put-parameter --name "/Eventclick/prod/LIVEKIT_API_SECRET" --value "..." --type SecureString --region ap-south-1
-#   aws ssm put-parameter --name "/Eventclick/prod/S3_ACCESS_KEY"    --value "..." --type SecureString --region ap-south-1
-#   aws ssm put-parameter --name "/Eventclick/prod/S3_SECRET_KEY"    --value "..." --type SecureString --region ap-south-1
-#   aws ssm put-parameter --name "/Eventclick/prod/RESEND_API_KEY"   --value "..." --type SecureString --region ap-south-1
-#   # Add all other variables from .env.production.example similarly
+# How to populate SSM (from your local machine with AWS credentials):
+#   aws ssm put-parameter --name "/eventclick/prod/JWT_SECRET" \
+#     --value "your-secret" --type SecureString --region ap-south-1
+#
+#   aws ssm put-parameter --name "/eventclick/prod/CORS_ORIGIN" \
+#     --value "https://app.eventclick.live,https://www.eventclick.live,https://eventclick.live" \
+#     --type String --region ap-south-1
+#
+# To update an existing parameter, add --overwrite:
+#   aws ssm put-parameter --name "/eventclick/prod/CORS_ORIGIN" \
+#     --value "new-value" --type String --overwrite --region ap-south-1
 #
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -41,35 +46,76 @@ NC='\033[0m'
 
 log()  { echo -e "${GREEN}[SSM]${NC}  $(date +%H:%M:%S) $1"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $(date +%H:%M:%S) $1"; }
-err()  { echo -e "${RED}[ERROR]${NC}$(date +%H:%M:%S) $1" >&2; }
+err()  { echo -e "${RED}[ERROR]${NC} $(date +%H:%M:%S) $1" >&2; }
 
 # ── Check AWS CLI available ───────────────────────────────────────────────────
 if ! command -v aws &>/dev/null; then
-  err "AWS CLI not found. Install with: sudo apt-get install -y awscli"
+  err "AWS CLI not found. Install with: sudo yum install -y aws-cli"
   exit 1
 fi
 
 # ── Check IAM credentials are available (EC2 instance role or env vars) ──────
 if ! aws sts get-caller-identity --region "$AWS_REGION" &>/dev/null; then
-  err "AWS credentials not available. Ensure EC2 IAM role has AmazonSSMReadOnlyAccess."
-  err "Or export AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN."
+  err "AWS credentials not available. Ensure EC2 IAM role has SSM read permissions."
+  err "Required: ssm:GetParametersByPath, ssm:GetParameter"
   exit 1
 fi
 
 log "Fetching secrets from SSM path: ${SSM_PATH} (region: ${AWS_REGION})"
 
-# ── Fetch all parameters under /Eventclick/prod/ ───────────────────────────────
-# --with-decryption: decrypt SecureString parameters
-# --recursive: get all nested paths
-PARAMS=$(aws ssm get-parameters-by-path \
-  --path "$SSM_PATH" \
-  --with-decryption \
-  --recursive \
-  --query "Parameters[*].{Name:Name,Value:Value}" \
-  --output json \
-  --region "$AWS_REGION" 2>/dev/null)
+# ── Fetch all parameters with pagination ──────────────────────────────────────
+# SSM returns max 10 params per page. We need to paginate to get all of them.
+ALL_PARAMS="[]"
+NEXT_TOKEN=""
 
-PARAM_COUNT=$(echo "$PARAMS" | python3 -c "import sys,json; data=json.load(sys.stdin); print(len(data))" 2>/dev/null || echo "0")
+while true; do
+  if [[ -n "$NEXT_TOKEN" ]]; then
+    RESPONSE=$(aws ssm get-parameters-by-path \
+      --path "$SSM_PATH" \
+      --with-decryption \
+      --recursive \
+      --output json \
+      --region "$AWS_REGION" \
+      --next-token "$NEXT_TOKEN" 2>/dev/null)
+  else
+    RESPONSE=$(aws ssm get-parameters-by-path \
+      --path "$SSM_PATH" \
+      --with-decryption \
+      --recursive \
+      --output json \
+      --region "$AWS_REGION" 2>/dev/null)
+  fi
+
+  # Extract parameters from this page and merge into ALL_PARAMS
+  PAGE_PARAMS=$(echo "$RESPONSE" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+params = data.get('Parameters', [])
+print(json.dumps([{'Name': p['Name'], 'Value': p['Value']} for p in params]))
+" 2>/dev/null || echo "[]")
+
+  ALL_PARAMS=$(python3 -c "
+import sys, json
+existing = json.loads('$ALL_PARAMS' if len('$ALL_PARAMS') < 10000 else sys.stdin.read())
+new_page = json.loads('''$PAGE_PARAMS''')
+existing.extend(new_page)
+print(json.dumps(existing))
+" 2>/dev/null <<< "$ALL_PARAMS")
+
+  # Check for NextToken (more pages)
+  NEXT_TOKEN=$(echo "$RESPONSE" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+print(data.get('NextToken', ''))
+" 2>/dev/null || echo "")
+
+  if [[ -z "$NEXT_TOKEN" ]]; then
+    break
+  fi
+  log "  ...fetching next page of parameters"
+done
+
+PARAM_COUNT=$(echo "$ALL_PARAMS" | python3 -c "import sys,json; data=json.load(sys.stdin); print(len(data))" 2>/dev/null || echo "0")
 
 if [[ "$PARAM_COUNT" -eq 0 ]]; then
   err "No parameters found at SSM path '${SSM_PATH}'."
@@ -77,7 +123,7 @@ if [[ "$PARAM_COUNT" -eq 0 ]]; then
   exit 1
 fi
 
-log "Found ${PARAM_COUNT} parameters. Writing to ${OUTPUT_FILE}..."
+log "Found ${PARAM_COUNT} parameters from SSM. Writing to ${OUTPUT_FILE}..."
 
 # ── Write .env file ────────────────────────────────────────────────────────────
 # Remove existing file first (security: don't append stale values)
@@ -91,17 +137,19 @@ cat >> "$OUTPUT_FILE" << EOF
 # AUTO-GENERATED by fetch-secrets.sh from AWS SSM Parameter Store
 # Generated at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 # SSM path: ${SSM_PATH}
-# DO NOT COMMIT — this file is in .gitignore
+# DO NOT EDIT MANUALLY — update values in SSM Parameter Store instead:
+#   aws ssm put-parameter --name "${SSM_PATH}/VARIABLE_NAME" \\
+#     --value "new_value" --type SecureString --overwrite --region ${AWS_REGION}
 # ─────────────────────────────────────────────────────────────────────────────
 EOF
 
 # Convert SSM JSON output to KEY=VALUE pairs
-# SSM param name: /Eventclick/prod/JWT_SECRET → env key: JWT_SECRET
-echo "$PARAMS" | python3 -c "
+# SSM param name: /eventclick/prod/JWT_SECRET → env key: JWT_SECRET
+echo "$ALL_PARAMS" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 prefix = '${SSM_PATH}/'
-for item in data:
+for item in sorted(data, key=lambda x: x['Name']):
     key = item['Name'].replace(prefix, '').replace('/', '_').upper()
     value = item['Value']
     # Escape any double quotes in value
@@ -109,7 +157,18 @@ for item in data:
     print(f'{key}=\"{value}\"')
 " >> "$OUTPUT_FILE"
 
-log "Secrets written to ${OUTPUT_FILE} (${PARAM_COUNT} variables, mode 600)"
+log "SSM secrets written to ${OUTPUT_FILE} (${PARAM_COUNT} variables, mode 600)"
+
+# ── Append hardcoded defaults for non-secret values ──────────────────────────
+# These are internal Docker network values that never change and don't belong in SSM
+cat >> "$OUTPUT_FILE" << 'DEFAULTS'
+
+# ── Hardcoded defaults (internal Docker network, not managed by SSM) ─────────
+GOTENBERG_URL="http://gotenberg:3000"
+NODE_ENV="production"
+DEFAULTS
+
+log "Appended hardcoded defaults (GOTENBERG_URL, NODE_ENV)"
 
 # ── Verify required secrets are present ──────────────────────────────────────
 REQUIRED_KEYS=(
@@ -118,8 +177,16 @@ REQUIRED_KEYS=(
   "DB_PASSWORD"
   "DATABASE_URL"
   "REDIS_PASSWORD"
+  "REDIS_URL"
+  "CORS_ORIGIN"
+  "APP_URL"
+  "COOKIE_DOMAIN"
   "LIVEKIT_API_KEY"
   "LIVEKIT_API_SECRET"
+  "RESEND_API_KEY"
+  "RESEND_FROM_EMAIL"
+  "S3_ACCESS_KEY"
+  "S3_SECRET_KEY"
 )
 
 MISSING=()
@@ -138,4 +205,4 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
   exit 1
 fi
 
-log "All required secrets present ✅"
+log "All ${#REQUIRED_KEYS[@]} required secrets verified ✅"

@@ -49,13 +49,36 @@ log "Compose file: ${COMPOSE_FILE}"
 log "Deploy log: ${DEPLOY_LOG}"
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 0. Fetch secrets from AWS SSM Parameter Store
+# ═══════════════════════════════════════════════════════════════════════════
+# SSM is the single source of truth for production environment variables.
+# fetch-secrets.sh pulls all params under /eventclick/prod/* and writes .env
+# If fetch-secrets.sh is missing or fails, we fall back to the existing .env
+
+if [[ -x "${SCRIPT_DIR}/fetch-secrets.sh" ]]; then
+  log "Fetching environment from SSM Parameter Store..."
+  if "${SCRIPT_DIR}/fetch-secrets.sh" "${PROJECT_ROOT}/.env"; then
+    log "SSM secrets fetched → .env generated ✅"
+  else
+    warn "fetch-secrets.sh failed (exit $?) — falling back to existing .env"
+    if [[ ! -f .env ]]; then
+      err "No existing .env to fall back to. Cannot continue."
+      exit 1
+    fi
+  fi
+else
+  warn "fetch-secrets.sh not found or not executable — using existing .env"
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Pre-flight checks
 # ═══════════════════════════════════════════════════════════════════════════
 log "Running pre-flight checks..."
 
 # Check .env exists
 if [[ ! -f .env ]]; then
-  err ".env file not found! Copy .env.production.example → .env and fill in values."
+  err ".env file not found! Either populate SSM Parameter Store or manually create .env."
+  err "SSM: Ensure params exist under /eventclick/prod/* and EC2 IAM role has SSM read access."
   exit 1
 fi
 

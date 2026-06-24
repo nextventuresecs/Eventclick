@@ -190,6 +190,7 @@ jobs:
               "",
               "echo \"=== [5/6] Running deploy.sh ===\"",
               "chmod +x scripts/deploy.sh",
+              "chmod +x scripts/fetch-secrets.sh",
               "SKIP_PULL=1 SKIP_BUILD=1 IMAGE_TAG=\"${IMAGE_TAG}\" ./scripts/deploy.sh",
               "",
               "echo \"=== [6/6] Deployment complete ===\"",
