@@ -2,7 +2,6 @@ name: Deploy to Production
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Pipeline Design:
-#
 #  CI passes → Approval Gate (production env) → SSH → deploy.sh → verify
 #
 # Key decisions:
