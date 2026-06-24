@@ -57,10 +57,12 @@ services:
         reservations:
           memory: 256M
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "10m"
-        max-file: "3"
+        awslogs-region: ${AWS_REGION:-ap-south-1}
+        awslogs-group: "/eventclick/prod/containers"
+        awslogs-stream-prefix: "postgres"
+        awslogs-create-group: "true"
 
   # ─── Redis ────────────────────────────────────────────────────────────────
   redis:
@@ -90,10 +92,12 @@ services:
         reservations:
           memory: 64M
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "5m"
-        max-file: "3"
+        awslogs-region: ${AWS_REGION:-ap-south-1}
+        awslogs-group: "/eventclick/prod/containers"
+        awslogs-stream-prefix: "redis"
+        awslogs-create-group: "true"
 
   # ─── Gotenberg (HTML → PDF) ──────────────────────────────────────────────
   # Required for report PDF generation
@@ -123,10 +127,12 @@ services:
         reservations:
           memory: 256M
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "5m"
-        max-file: "3"
+        awslogs-region: ${AWS_REGION:-ap-south-1}
+        awslogs-group: "/eventclick/prod/containers"
+        awslogs-stream-prefix: "gotenberg"
+        awslogs-create-group: "true"
 
   # ─── Database Migration (run-once init) ──────────────────────────────────
   # Runs Drizzle migrations before server starts, then exits
@@ -157,10 +163,12 @@ services:
         condition: service_healthy
     restart: "no"
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "5m"
-        max-file: "2"
+        awslogs-region: ${AWS_REGION:-ap-south-1}
+        awslogs-group: "/eventclick/prod/containers"
+        awslogs-stream-prefix: "migrate"
+        awslogs-create-group: "true"
 
   # ─── Backend API ─────────────────────────────────────────────────────────
   server:
@@ -232,10 +240,12 @@ services:
         reservations:
           memory: 192M
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "20m"
-        max-file: "5"
+        awslogs-region: ${AWS_REGION:-ap-south-1}
+        awslogs-group: "/eventclick/prod/containers"
+        awslogs-stream-prefix: "server"
+        awslogs-create-group: "true"
 
   # ─── Frontend (Nginx + Vite static build) ────────────────────────────────
   # Also acts as the reverse proxy for API + Gotenberg
@@ -269,10 +279,12 @@ services:
         reservations:
           memory: 32M
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "10m"
-        max-file: "3"
+        awslogs-region: ${AWS_REGION:-ap-south-1}
+        awslogs-group: "/eventclick/prod/containers"
+        awslogs-stream-prefix: "client"
+        awslogs-create-group: "true"
 
 volumes:
   pg_data_prod:
