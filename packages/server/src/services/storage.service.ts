@@ -33,8 +33,22 @@ const s3Presign = new S3Client({
 // SDK v3 injects flexible-checksums middleware that adds
 // x-amz-sdk-checksum-algorithm + x-amz-checksum-crc32 into the presigned URL.
 // Browsers/curl can't supply a valid CRC32 header, so the PUT 403s.
-// Remove the middleware so presigned URLs only sign Host + standard params.
-s3Presign.middlewareStack.remove("flexibleChecksumsMiddleware");
+// Remove it forcefully via middleware since the name can change in newer SDK versions.
+s3Presign.middlewareStack.add(
+  (next) => async (args: any) => {
+    const req = args.request;
+    if (req.headers) {
+      delete req.headers["x-amz-checksum-crc32"];
+      delete req.headers["x-amz-sdk-checksum-algorithm"];
+    }
+    if (req.query) {
+      delete req.query["x-amz-checksum-crc32"];
+      delete req.query["x-amz-sdk-checksum-algorithm"];
+    }
+    return next(args);
+  },
+  { step: "build", name: "removeChecksumHeaders" }
+);
 
 const EXT_BY_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
