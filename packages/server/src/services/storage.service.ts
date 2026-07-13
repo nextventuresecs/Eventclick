@@ -18,37 +18,8 @@ export const s3 = new S3Client({
   credentials,
 });
 
-// Presign client: signs URLs with the public endpoint so the browser's
-// Host header matches the signature. Never performs network I/O itself.
-// Checksum calc disabled — SDK v3 default adds CRC32 query params that
-// clients (browser / curl) can't supply without computing + sending them,
-// which causes presigned PUTs to fail with 403 on MinIO/R2.
-const s3Presign = new S3Client({
-  endpoint: env.S3_PUBLIC_ENDPOINT,
-  region: env.S3_REGION,
-  forcePathStyle: env.S3_FORCE_PATH_STYLE,
-  credentials,
-});
-
-// SDK v3 injects flexible-checksums middleware that adds
-// x-amz-sdk-checksum-algorithm + x-amz-checksum-crc32 into the presigned URL.
-// Browsers/curl can't supply a valid CRC32 header, so the PUT 403s.
-// Remove it forcefully via middleware since the name can change in newer SDK versions.
-s3Presign.middlewareStack.add(
-  (next) => async (args: any) => {
-    const req = args.request;
-    if (req.headers) {
-      delete req.headers["x-amz-checksum-crc32"];
-      delete req.headers["x-amz-sdk-checksum-algorithm"];
-    }
-    if (req.query) {
-      delete req.query["x-amz-checksum-crc32"];
-      delete req.query["x-amz-sdk-checksum-algorithm"];
-    }
-    return next(args);
-  },
-  { step: "build", name: "removeChecksumHeaders" }
-);
+// Removed s3Presign client because .r2.dev public endpoints DO NOT support PUT requests.
+// We must generate PUT presigned URLs using the main S3_ENDPOINT (which supports the S3 API).
 
 const EXT_BY_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -76,7 +47,11 @@ export const createPresignedPut = async (
     ContentType: contentType,
   });
   const expiresIn = 300;
-  const uploadUrl = await getSignedUrl(s3Presign, cmd, { expiresIn });
+  // Use unhoistableHeaders to officially strip the AWS SDK v3 checksum query parameters
+  const uploadUrl = await getSignedUrl(s3, cmd, { 
+    expiresIn,
+    unhoistableHeaders: new Set(["x-amz-sdk-checksum-algorithm", "x-amz-checksum-crc32"])
+  });
   return { uploadUrl, expiresIn };
 };
 
