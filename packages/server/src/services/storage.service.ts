@@ -19,31 +19,12 @@ export const s3 = new S3Client({
 });
 
 // Presign client: signs URLs using the main API endpoint.
-// We use a separate client so we can forcefully strip checksums via middleware.
 const s3Presign = new S3Client({
   endpoint: env.S3_ENDPOINT,
   region: env.S3_REGION,
   forcePathStyle: env.S3_FORCE_PATH_STYLE,
   credentials,
 });
-
-// SDK v3 injects flexible-checksums middleware that adds CRC32 headers/query params.
-// Browsers/curl can't supply a valid CRC32 header, so the PUT 403s on Cloudflare R2.
-s3Presign.middlewareStack.add(
-  (next) => async (args: any) => {
-    const req = args.request;
-    if (req.headers) {
-      delete req.headers["x-amz-checksum-crc32"];
-      delete req.headers["x-amz-sdk-checksum-algorithm"];
-    }
-    if (req.query) {
-      delete req.query["x-amz-checksum-crc32"];
-      delete req.query["x-amz-sdk-checksum-algorithm"];
-    }
-    return next(args);
-  },
-  { step: "build", name: "removeChecksumHeaders" }
-);
 
 const EXT_BY_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -70,6 +51,25 @@ export const createPresignedPut = async (
     Key: key,
     ContentType: contentType,
   });
+
+  // Attach middleware directly to the command so it absolutely runs during presigning.
+  // Use priority 'low' so it runs AFTER the flexibleChecksums middleware injects the bad headers!
+  cmd.middlewareStack.add(
+    (next) => async (args: any) => {
+      const req = args.request;
+      if (req.headers) {
+        delete req.headers["x-amz-checksum-crc32"];
+        delete req.headers["x-amz-sdk-checksum-algorithm"];
+      }
+      if (req.query) {
+        delete req.query["x-amz-checksum-crc32"];
+        delete req.query["x-amz-sdk-checksum-algorithm"];
+      }
+      return next(args);
+    },
+    { step: "build", priority: "low", name: "forceRemoveChecksums" }
+  );
+
   const expiresIn = 300;
   
   const uploadUrl = await getSignedUrl(s3Presign, cmd, { 
