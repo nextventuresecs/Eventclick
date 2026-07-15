@@ -2,7 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import ejs from "ejs";
 import path from "path";
 import { db } from "../db";
-import { eventRooms, organizations, attendanceEntries, activitySubmissions } from "../db/schema";
+import { eventRooms, organizations, attendanceEntries, activitySubmissions, activityPhotos } from "../db/schema";
 import { ApiError } from "../utils/errors";
 import { env } from "../config/env";
 import { assertRoomAccessForUser } from "./event-assignment.service";
@@ -88,11 +88,29 @@ export const generateVerificationReportPdf = async (
     .where(eq(attendanceEntries.roomId, roomId))
     .orderBy(attendanceEntries.submittedAt);
 
-  // 5. Fetch Activity Submissions
-  const submissions = await db
+  // 5. Fetch Activity Submissions and Photos
+  const submissionsData = await db
     .select()
     .from(activitySubmissions)
     .where(eq(activitySubmissions.roomId, roomId));
+
+  const allPhotos = await db
+    .select()
+    .from(activityPhotos)
+    .where(eq(activityPhotos.roomId, roomId));
+
+  const photosBySubmission = new Map<string, typeof allPhotos>();
+  for (const photo of allPhotos) {
+    if (!photosBySubmission.has(photo.submissionId)) {
+      photosBySubmission.set(photo.submissionId, []);
+    }
+    photosBySubmission.get(photo.submissionId)!.push(photo);
+  }
+
+  const submissions = submissionsData.map(s => ({
+    ...s,
+    photos: photosBySubmission.get(s.id) || []
+  }));
 
   // 6. Compile EJS Template
   const templatePath = path.join(__dirname, "../templates/report.ejs");

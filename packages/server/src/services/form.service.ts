@@ -7,7 +7,7 @@ import {
   type FormDefinitionRow,
 } from "../db/schema";
 import { ApiError } from "../utils/errors";
-import { assertRoomAccessForUser } from "./event-assignment.service";
+import { assertRoomAccessForUser, assertRoomAccessWithRoom } from "./event-assignment.service";
 
 const toFormDefinition = (row: FormDefinitionRow): FormDefinition => ({
   id: row.id,
@@ -44,11 +44,11 @@ export const getLatestFormDefinition = async (
   user: RoomAccessPrincipal,
 ): Promise<FormDefinition | null> => {
   await assertRoomInOrg(roomId, orgId);
-  await assertRoomAccessForUser({ ...user, organizationId: orgId }, orgId, roomId);
+  await assertRoomAccessWithRoom({ ...user, organizationId: orgId }, orgId, roomId);
   const [row] = await db
     .select()
     .from(formDefinitions)
-    .where(eq(formDefinitions.roomId, roomId))
+    .where(and(eq(formDefinitions.roomId, roomId), isNull(formDefinitions.deletedAt)))
     .orderBy(desc(formDefinitions.version))
     .limit(1);
   return row ? toFormDefinition(row) : null;
@@ -61,12 +61,12 @@ export const saveFormDefinition = async (
   fields: FormField[],
 ): Promise<FormDefinition> => {
   await assertRoomInOrg(roomId, orgId);
-  await assertRoomAccessForUser({ ...user, organizationId: orgId }, orgId, roomId);
+  await assertRoomAccessWithRoom({ ...user, organizationId: orgId }, orgId, roomId);
 
   const [latest] = await db
     .select({ version: formDefinitions.version })
     .from(formDefinitions)
-    .where(eq(formDefinitions.roomId, roomId))
+    .where(and(eq(formDefinitions.roomId, roomId), isNull(formDefinitions.deletedAt)))
     .orderBy(desc(formDefinitions.version))
     .limit(1);
 
@@ -83,5 +83,21 @@ export const saveFormDefinition = async (
     .returning();
 
   if (!row) throw ApiError.internal("Failed to save form definition");
+
+  // Keep only the 10 most recent versions (soft-delete older ones)
+  const minVersionToKeep = nextVersion - 9;
+  if (minVersionToKeep > 1) {
+    await db
+      .update(formDefinitions)
+      .set({ deletedAt: sql`now()` })
+      .where(
+        and(
+          eq(formDefinitions.roomId, roomId),
+          sql`${formDefinitions.version} < ${minVersionToKeep}`,
+          isNull(formDefinitions.deletedAt)
+        )
+      );
+  }
+
   return toFormDefinition(row);
 };

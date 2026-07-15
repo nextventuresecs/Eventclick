@@ -18,7 +18,7 @@ import {
 import { ApiError } from "../utils/errors";
 import { buildLiveAttendanceWindow, isWithinAttendanceWindow } from "./attendance-live-window.service";
 import { buildPublicUrl } from "./storage.service";
-import { assertRoomAccessForUser } from "./event-assignment.service";
+import { assertRoomAccessForUser, assertRoomAccessWithRoom } from "./event-assignment.service";
 import { env } from "../config/env";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -94,7 +94,7 @@ const assertRoomAccess = async (
   attendanceWindowAfter: number;
 }> => {
   const room = await getRoomInOrg(roomId, orgId);
-  await assertRoomAccessForUser({ ...user, organizationId: orgId }, orgId, roomId);
+  await assertRoomAccessWithRoom({ ...user, organizationId: orgId }, orgId, roomId);
   return room;
 };
 

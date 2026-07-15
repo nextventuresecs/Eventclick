@@ -316,12 +316,11 @@ export const listAssignedRoomIdsForUser = async (
 /** @deprecated use listAssignedRoomIdsForUser */
 export const listAssignedRoomIdsForEventAdmin = listAssignedRoomIdsForUser;
 
-export const assertRoomAccessForUser = async (
+export const assertRoomAccessWithRoom = async (
   user: UserPrincipal,
   orgId: string,
   roomId: string,
 ): Promise<void> => {
-  await requireRoomInOrg(roomId, orgId);
   if (!requiresRoomAssignment(user.role)) return;
 
   const [row] = await db
@@ -340,4 +339,13 @@ export const assertRoomAccessForUser = async (
   if (!canAccessRoomByAssignment(user.role, Boolean(row))) {
     throw ApiError.forbidden("You are not assigned to this room");
   }
+};
+
+export const assertRoomAccessForUser = async (
+  user: UserPrincipal,
+  orgId: string,
+  roomId: string,
+): Promise<void> => {
+  await requireRoomInOrg(roomId, orgId);
+  return assertRoomAccessWithRoom(user, orgId, roomId);
 };

@@ -1,7 +1,8 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { CreateOrgUserInput, OrgUserSummary, UserRole } from "@application/shared";
-import bcryptjs from "bcryptjs";
 import crypto from "crypto";
+import { hashPassword } from "./password.service";
+import { invalidateUserCache } from "./auth.service";
 import { db } from "../db";
 import { users, orgMembers, emailVerifications } from "../db/schema";
 import { ApiError } from "../utils/errors";
@@ -53,7 +54,7 @@ export const createOrgUser = async (
     throw ApiError.conflict("A user with this email already exists");
   }
 
-  const passwordHash = await bcryptjs.hash(password, 10);
+  const passwordHash = await hashPassword(password);
 
   const newUser = await db.transaction(async (tx) => {
     const [user] = await tx
@@ -99,6 +100,8 @@ export const createOrgUser = async (
     email: newUser.email,
     token: (newUser as any)._verificationToken,
   });
+
+  await invalidateUserCache(newUser.id, newUser.email);
 
   return toOrgUser(newUser);
 };

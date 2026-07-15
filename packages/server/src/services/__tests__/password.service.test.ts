@@ -10,10 +10,10 @@ vi.mock("../../config/env", () => ({
 import { hashPassword, verifyPassword } from "../password.service";
 
 describe("password.service", () => {
-  it("hashes a password into a bcrypt string", async () => {
+  it("hashes a password into an Argon2 string", async () => {
     const hash = await hashPassword("MyP@ssw0rd!");
     expect(typeof hash).toBe("string");
-    expect(hash).toMatch(/^\$2[aby]\$/); // bcrypt prefix
+    expect(hash).toMatch(/^\$argon2id\$/); // Argon2 prefix
     expect(hash).not.toBe("MyP@ssw0rd!");
   });
 

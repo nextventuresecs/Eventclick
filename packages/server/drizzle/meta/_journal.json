@@ -71,6 +71,13 @@
       "when": 1782138605525,
       "tag": "0009_thick_black_bolt",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784116583083,
+      "tag": "0010_nice_mentallo",
+      "breakpoints": true
     }
   ]
 }

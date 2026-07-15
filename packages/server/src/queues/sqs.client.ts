@@ -60,3 +60,41 @@ export async function enqueueEmail(payload: EmailJobPayload): Promise<void> {
     throw error;
   }
 }
+
+export interface PdfJobPayload {
+  roomId: string;
+  orgId: string;
+  userId: string;
+}
+
+export async function enqueuePdfJob(payload: PdfJobPayload): Promise<{ jobId: string }> {
+  const queueUrl = env.SQS_QUEUE_URL;
+
+  if (!queueUrl) {
+    logger.warn(
+      { payload, event: "sqs.fallback_pdf" },
+      "SQS Queue URL not configured. PDF jobs will not be processed locally unless worker is running."
+    );
+    return { jobId: "dev_pdf_job_" + Date.now() };
+  }
+
+  try {
+    const command = new SendMessageCommand({
+      QueueUrl: queueUrl,
+      MessageBody: JSON.stringify({ type: "generate_pdf", ...payload }),
+    });
+
+    const response = await sqsClient.send(command);
+    logger.info(
+      { messageId: response.MessageId, roomId: payload.roomId, event: "sqs.enqueue_pdf_success" },
+      "Successfully enqueued PDF task to AWS SQS"
+    );
+    return { jobId: response.MessageId! };
+  } catch (error) {
+    logger.error(
+      { error, roomId: payload.roomId, event: "sqs.enqueue_pdf_failed" },
+      "Failed to enqueue PDF task to AWS SQS"
+    );
+    throw error;
+  }
+}

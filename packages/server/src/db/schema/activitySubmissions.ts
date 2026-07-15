@@ -7,7 +7,6 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import type { ActivitySubmissionPhoto } from "@application/shared";
 import { eventRooms } from "./eventRooms";
 
 export const activitySubmissions = pgTable(
@@ -18,7 +17,6 @@ export const activitySubmissions = pgTable(
       .notNull()
       .references(() => eventRooms.id, { onDelete: "cascade" }),
     activityId: varchar("activity_id", { length: 64 }).notNull(),
-    photos: jsonb("photos").$type<ActivitySubmissionPhoto[]>().notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
