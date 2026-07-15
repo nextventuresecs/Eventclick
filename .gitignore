@@ -16,5 +16,4 @@ ROLE*.md
 .agents/
 *.pem
 *_Token*.txt
-*.sql
 scratch/
