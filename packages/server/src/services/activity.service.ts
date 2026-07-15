@@ -5,6 +5,7 @@ import type {
   SubmitActivityPhotoInput,
   ActivityPhotoUploadRequestInput,
   PhotoUploadResponse,
+  UserRole,
 } from "@application/shared";
 import { db } from "../db";
 import {
@@ -22,12 +23,21 @@ import {
 import { assertRoomAccessForUser, assertRoomAccessWithRoom } from "./event-assignment.service";
 
 /**
+ * Minimal principal shape required for room-access checks.
+ * Matches the pattern used by attendance.service.ts and form.service.ts.
+ */
+interface RoomAccessPrincipal {
+  id: string;
+  role: UserRole;
+}
+
+/**
  * Generates a presigned URL to upload a photo proof for a specific activity.
  */
 export const presignActivityPhoto = async (
   roomId: string,
   orgId: string,
-  user: any,
+  user: RoomAccessPrincipal,
   input: ActivityPhotoUploadRequestInput,
 ): Promise<PhotoUploadResponse> => {
   const [room] = await db
@@ -60,11 +70,16 @@ export const presignActivityPhoto = async (
 
 /**
  * Submits a completed photo proof, appending it to the activity's submissions.
+ *
+ * Uses an upsert (INSERT ... ON CONFLICT DO NOTHING) on the unique
+ * (room_id, activity_id) index to prevent duplicate submissions from
+ * concurrent requests. The photo-count check + insert is wrapped in a
+ * transaction to prevent overshooting the 50-photo limit.
  */
 export const submitActivityPhoto = async (
   roomId: string,
   orgId: string,
-  user: any,
+  user: RoomAccessPrincipal,
   input: SubmitActivityPhotoInput,
 ): Promise<ActivitySubmission> => {
   const [room] = await db
@@ -88,8 +103,20 @@ export const submitActivityPhoto = async (
     throw ApiError.badRequest(`Activity with ID "${input.activityId}" is not defined for this room`);
   }
 
-  // Check if a submission already exists for this activity in this room
-  const [existingSubRow] = await db
+  // Upsert: insert if not exists, do nothing on conflict.
+  // The unique index on (room_id, activity_id) prevents duplicates from concurrent requests.
+  await db
+    .insert(activitySubmissions)
+    .values({
+      roomId,
+      activityId: input.activityId,
+    })
+    .onConflictDoNothing({
+      target: [activitySubmissions.roomId, activitySubmissions.activityId],
+    });
+
+  // Re-select to get the canonical row (whether just inserted or already existing)
+  const [existingSub] = await db
     .select()
     .from(activitySubmissions)
     .where(
@@ -100,41 +127,32 @@ export const submitActivityPhoto = async (
     )
     .limit(1);
 
-  let existingSub = existingSubRow;
-  if (!existingSub) {
-    const [insertedRow] = await db
-      .insert(activitySubmissions)
-      .values({
-        roomId,
-        activityId: input.activityId,
-      })
-      .returning();
-    existingSub = insertedRow;
-  }
-
   if (!existingSub) {
     throw ApiError.internal("Failed to create activity submission");
   }
 
-  // Count existing photos to enforce 50-limit
-  const countResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(activityPhotos)
-    .where(eq(activityPhotos.submissionId, existingSub.id));
-  
-  const currentCount = countResult[0]?.count ?? 0;
-  
-  if (Number(currentCount) >= 50) {
-    throw ApiError.badRequest("Maximum of 50 photos allowed per activity");
-  }
+  // Wrap the photo-count-check + insert in a transaction to prevent
+  // concurrent requests from overshooting the 50-photo limit.
+  await db.transaction(async (tx) => {
+    const countResult = await tx
+      .select({ count: sql<number>`count(*)` })
+      .from(activityPhotos)
+      .where(eq(activityPhotos.submissionId, existingSub.id));
 
-  await db.insert(activityPhotos).values({
-    submissionId: existingSub.id,
-    roomId,
-    activityId: input.activityId,
-    photoKey: input.photoKey,
-    photoUrl: buildPublicUrl(input.photoKey),
-    submittedBy: user.id,
+    const currentCount = countResult[0]?.count ?? 0;
+
+    if (Number(currentCount) >= 50) {
+      throw ApiError.badRequest("Maximum of 50 photos allowed per activity");
+    }
+
+    await tx.insert(activityPhotos).values({
+      submissionId: existingSub.id,
+      roomId,
+      activityId: input.activityId,
+      photoKey: input.photoKey,
+      photoUrl: buildPublicUrl(input.photoKey),
+      submittedBy: user.id,
+    });
   });
 
   const allPhotos = await db
@@ -163,7 +181,7 @@ export const submitActivityPhoto = async (
 export const listRoomActivities = async (
   roomId: string,
   orgId: string,
-  user: any,
+  user: RoomAccessPrincipal,
 ) => {
   const [room] = await db
     .select()

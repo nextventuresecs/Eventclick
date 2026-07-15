@@ -5,6 +5,7 @@ import {
   timestamp,
   jsonb,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { eventRooms } from "./eventRooms";
@@ -21,6 +22,7 @@ export const activitySubmissions = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    uniqueIndex("activity_submissions_room_activity_uniq").on(t.roomId, t.activityId),
     index("activity_submissions_room_idx").on(t.roomId),
     index("activity_submissions_activity_idx").on(t.activityId),
   ],

@@ -1,11 +1,12 @@
 import { and, eq, isNull } from "drizzle-orm";
 import ejs from "ejs";
 import path from "path";
+import type { UserRole } from "@application/shared";
 import { db } from "../db";
 import { eventRooms, organizations, attendanceEntries, activitySubmissions, activityPhotos } from "../db/schema";
 import { ApiError } from "../utils/errors";
 import { env } from "../config/env";
-import { assertRoomAccessForUser } from "./event-assignment.service";
+import { assertRoomAccessWithRoom } from "./event-assignment.service";
 
 /**
  * Calculates human-readable fieldwork run-time.
@@ -44,7 +45,7 @@ const formatDuration = (start: Date | null, end: Date | null, status: string): s
 export const generateVerificationReportPdf = async (
   roomId: string,
   orgId: string,
-  user: any,
+  user: { id: string; role: UserRole; organizationId: string | null },
 ): Promise<Buffer> => {
   // 1. Fetch Room details
   const [room] = await db
@@ -67,8 +68,11 @@ export const generateVerificationReportPdf = async (
     throw ApiError.badRequest("Report can only be generated after the live session has ended");
   }
 
-  // 2. Assert User has permission to access the room
-  await assertRoomAccessForUser(user, orgId, roomId);
+  // 2. Assert User has permission to access the room.
+  //    We already verified the room exists above, so use assertRoomAccessWithRoom
+  //    (assignment check only) instead of assertRoomAccessForUser (which would
+  //    redundantly query eventRooms again via requireRoomInOrg).
+  await assertRoomAccessWithRoom(user, orgId, roomId);
 
   // 3. Fetch Organization details
   const [organization] = await db

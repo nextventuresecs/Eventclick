@@ -53,7 +53,7 @@ export const CreateRoom = () => {
     setActivityDefinitions(prev => [
       ...prev,
       {
-        id: `act_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        id: `act_${crypto.randomUUID()}`,
         title: "",
         description: "",
         min_photos: 1,
@@ -274,7 +274,7 @@ export const CreateRoom = () => {
                       type="button"
                       onClick={() => setActivityDefinitions([
                         {
-                          id: `act_${Date.now()}_1`,
+                          id: `act_${crypto.randomUUID()}`,
                           title: "Group photo with event banner",
                           description: "Take a wide shot showing the volunteer banner and multiple participants in the room.",
                           min_photos: 1,
@@ -289,7 +289,7 @@ export const CreateRoom = () => {
                       type="button"
                       onClick={() => setActivityDefinitions([
                         {
-                          id: `act_${Date.now()}_1`,
+                          id: `act_${crypto.randomUUID()}`,
                           title: "Physical registration logs",
                           description: "Clear close-up photograph of the paper attendee signup sheet containing signatures.",
                           min_photos: 2,

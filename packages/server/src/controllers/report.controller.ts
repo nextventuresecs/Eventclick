@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 import { ApiError } from "../utils/errors";
 import { generateVerificationReportPdf } from "../services/report.service";
-import { enqueuePdfJob } from "../queues/sqs.client";
+import { logger } from "../utils/logger";
 
 const requireOrgId = (organizationId: string | null): string => {
   if (!organizationId) throw ApiError.badRequest("User has no organization");
@@ -10,36 +10,29 @@ const requireOrgId = (organizationId: string | null): string => {
 
 /**
  * Downloads a fieldwork verification PDF report for a specific event room.
+ *
+ * Generates the report synchronously via Gotenberg and streams the resulting
+ * PDF buffer back as an `application/pdf` response.
  */
 export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const roomId = req.params.id as string;
 
-    const { jobId } = await enqueuePdfJob({
-      roomId,
-      orgId,
-      userId: req.user!.id,
-    });
+    logger.info(
+      { roomId, orgId, userId: req.user!.id },
+      "PDF report generation requested"
+    );
 
-    res.status(202).json({
-      jobId,
-      statusUrl: `/api/v1/rooms/${roomId}/report/status/${jobId}`
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+    const pdfBuffer = await generateVerificationReportPdf(roomId, orgId, req.user!);
 
-export const getReportStatus: RequestHandler = async (req, res, next) => {
-  try {
-    const { jobId } = req.params;
-    // In a full implementation, we'd look up the job status in Redis or Postgres.
-    // For now, return a placeholder status.
-    res.json({
-      jobId,
-      status: "processing"
-    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="Official-Event-Report-${roomId}.pdf"`
+    );
+    res.setHeader("Content-Length", pdfBuffer.length);
+    res.status(200).end(pdfBuffer);
   } catch (err) {
     next(err);
   }
