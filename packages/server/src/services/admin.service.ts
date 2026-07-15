@@ -1,9 +1,11 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { CreateOrgUserInput, OrgUserSummary, UserRole } from "@application/shared";
 import bcryptjs from "bcryptjs";
+import crypto from "crypto";
 import { db } from "../db";
-import { users, orgMembers } from "../db/schema";
+import { users, orgMembers, emailVerifications } from "../db/schema";
 import { ApiError } from "../utils/errors";
+import { enqueueEmail } from "./email.service";
 
 export type { CreateOrgUserInput };
 
@@ -76,7 +78,26 @@ export const createOrgUser = async (
       invitedBy: createdBy,
     });
 
-    return [user];
+    // Generate Email Verification Token
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await tx.insert(emailVerifications).values({
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+    });
+
+    (user as any)._verificationToken = token;
+
+    return user;
+  });
+
+  await enqueueEmail({
+    type: "verification",
+    email: newUser.email,
+    token: (newUser as any)._verificationToken,
   });
 
   return toOrgUser(newUser);
