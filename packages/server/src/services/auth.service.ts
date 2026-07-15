@@ -48,7 +48,7 @@ const toAuthUser = (u: User, orgName?: string | null): AuthUser => ({
 
 type UserWithOrg = User & { organizationName?: string | null };
 
-const invalidateUserCache = async (userId: string, email?: string): Promise<void> => {
+export const invalidateUserCache = async (userId: string, email?: string): Promise<void> => {
   await cacheDel(`user:${userId}`);
   if (email) {
     await cacheDel(`email:${email.toLowerCase().trim()}`);
@@ -141,15 +141,18 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
     throw ApiError.badRequest(`Password is too weak. ${pwdScore.feedback.warning || "Please choose a stronger password."}`);
   }
 
-  // Deep Email Validation
-  const emailValResult = await emailValidator({
-    email: input.email,
-    validateRegex: true,
-    validateMx: true,
-    validateTypo: true,
-    validateDisposable: true,
-    validateSMTP: false,
-  });
+  // Deep Email Validation with 5s timeout
+  const emailValResult = await Promise.race([
+    emailValidator({
+      email: input.email,
+      validateRegex: true,
+      validateMx: true,
+      validateTypo: true,
+      validateDisposable: true,
+      validateSMTP: false,
+    }),
+    new Promise<any>((resolve) => setTimeout(() => resolve({ valid: true, reason: "timeout" }), 5000))
+  ]);
 
   if (!emailValResult.valid) {
     logger.warn({ email: input.email, reason: emailValResult.reason }, "email validation failed during registration");

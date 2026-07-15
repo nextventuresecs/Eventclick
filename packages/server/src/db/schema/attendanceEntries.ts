@@ -34,6 +34,7 @@ export const attendanceEntries = pgTable(
     index("attendance_entries_room_idx").on(t.roomId),
     index("attendance_entries_form_idx").on(t.formDefinitionId),
     index("attendance_entries_submitted_at_idx").on(t.submittedAt),
+    index("attendance_entries_room_submitted_at_idx").on(t.roomId, t.submittedAt),
   ],
 );
 

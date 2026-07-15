@@ -42,7 +42,7 @@ import {
   presignActivityPhotoUrl,
   postActivityPhotoSubmission,
 } from "../controllers/activity.controller";
-import { downloadRoomReportPdf } from "../controllers/report.controller";
+import { downloadRoomReportPdf, getReportStatus } from "../controllers/report.controller";
 
 export const roomRouter = Router();
 
@@ -110,6 +110,7 @@ roomRouter.post(
 );
 roomRouter.get("/:id/attendance", canViewAttendance, listRoomAttendance);
 roomRouter.get("/:id/report/pdf", requireRole("ngo_admin"), downloadRoomReportPdf);
+roomRouter.get("/:id/report/status/:jobId", requireRole("ngo_admin"), getReportStatus);
 
 roomRouter.get("/:id/activities", canTakeAttendance, getActivitiesAndSubmissions);
 roomRouter.post(

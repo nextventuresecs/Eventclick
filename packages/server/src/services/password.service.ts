@@ -1,8 +1,7 @@
-import bcrypt from "bcryptjs";
-import { env } from "../config/env";
+import * as argon2 from "argon2";
 
 export const hashPassword = (plain: string): Promise<string> =>
-  bcrypt.hash(plain, env.BCRYPT_ROUNDS);
+  argon2.hash(plain);
 
 export const verifyPassword = (plain: string, hash: string): Promise<boolean> =>
-  bcrypt.compare(plain, hash);
+  argon2.verify(hash, plain);

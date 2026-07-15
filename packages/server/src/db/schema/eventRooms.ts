@@ -35,6 +35,8 @@ export const eventRooms = pgTable(
     index("event_rooms_org_idx").on(t.organizationId),
     index("event_rooms_status_idx").on(t.status),
     index("event_rooms_scheduled_start_idx").on(t.scheduledStart),
+    index("event_rooms_org_status_idx").on(t.organizationId, t.status),
+    index("event_rooms_org_created_at_idx").on(t.organizationId, t.createdAt),
   ],
 );
 

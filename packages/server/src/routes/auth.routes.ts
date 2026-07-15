@@ -8,15 +8,36 @@ import {
   ResetPasswordSchema,
   OnboardingSchema,
 } from "@application/shared";
+import RedisStore from "rate-limit-redis";
+import { redisClient } from "../config/redis";
+import { ApiError } from "../utils/errors";
 import { validate } from "../middleware/validate";
 import { requireAuth } from "../middleware/requireAuth";
 import * as authController from "../controllers/auth.controller";
+
+const createFailClosedStore = (prefix: string) =>
+  new RedisStore({
+    prefix,
+    sendCommand: async (...args: string[]) => {
+      if (!redisClient.isOpen) {
+        if (args[0] === "SCRIPT" && args[1] === "LOAD") return "dummy_sha_fallback";
+        throw ApiError.internal("Rate limiter unavailable");
+      }
+      try {
+        return await redisClient.sendCommand(args);
+      } catch (err) {
+        if (String(err).includes("NOSCRIPT")) throw err;
+        throw ApiError.internal("Rate limiter unavailable");
+      }
+    },
+  });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  store: createFailClosedStore("rl:auth:"),
   message: { error: "RATE_LIMITED", message: "Too many auth attempts — try again later" },
 });
 
@@ -25,6 +46,7 @@ const recoveryLimiter = rateLimit({
   limit: 5, // 5 requests per window
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  store: createFailClosedStore("rl:recovery:"),
   message: { error: "RATE_LIMITED", message: "Too many password recovery attempts — try again later" },
 });
 

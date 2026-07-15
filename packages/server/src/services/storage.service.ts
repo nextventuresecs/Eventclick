@@ -50,6 +50,7 @@ export const createPresignedPut = async (
     Bucket: env.S3_BUCKET,
     Key: key,
     ContentType: contentType,
+    CacheControl: "public, max-age=31536000, immutable",
   });
 
   // Attach middleware directly to the command so it absolutely runs during presigning.

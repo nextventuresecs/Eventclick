@@ -23,6 +23,7 @@ import {
 } from "../services/attendance-counts.service";
 import {
   assertRoomAccessForUser,
+  assertRoomAccessWithRoom,
   listAssignedRoomIdsForUser,
 } from "../services/event-assignment.service";
 
@@ -175,8 +176,6 @@ export const getRoom: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessForUser(req.user!, orgId, id);
-
     const [row] = await db
       .select()
       .from(eventRooms)
@@ -190,6 +189,8 @@ export const getRoom: RequestHandler = async (req, res, next) => {
       .limit(1);
 
     if (!row) throw ApiError.notFound("Room not found");
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
+
     res.json(toEventRoom(row));
   } catch (err) {
     next(err);
@@ -201,7 +202,7 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
     const input = req.body as UpdateRoomInput;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
 
     const patch: Partial<typeof eventRooms.$inferInsert> = { updatedAt: new Date() };
     if (input.title !== undefined) patch.title = input.title;
@@ -245,7 +246,7 @@ export const setYouTubeFallback: RequestHandler = async (req, res, next) => {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
     const { youtubeWatchUrl } = req.body as SetYouTubeFallbackInput;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
 
     const videoId = extractYouTubeVideoId(youtubeWatchUrl);
     if (!videoId) throw ApiError.badRequest("Could not extract YouTube video ID");
@@ -279,7 +280,7 @@ export const clearFallback: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
 
     const [row] = await db
       .update(eventRooms)
@@ -309,7 +310,7 @@ export const deleteRoom: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
 
     const [deleted] = await db
       .update(eventRooms)
@@ -339,7 +340,7 @@ export const getLiveToken: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
 
     const [user] = await db
       .select({ fullName: users.fullName })
@@ -365,7 +366,7 @@ export const startLive: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
 
     const [row] = await db
       .update(eventRooms)
@@ -390,7 +391,7 @@ export const stopLive: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
 
     await validateActivityQuotas(id, orgId);
 
@@ -417,7 +418,7 @@ export const startRoomRecording: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
 
     const recording = await livekitStartRecording(id);
     res.json(recording);
@@ -430,7 +431,7 @@ export const stopRoomRecording: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
 
     const { egressId } = req.body;
     if (!egressId) throw ApiError.badRequest("egressId is required to stop recording");
@@ -446,7 +447,7 @@ export const getPresence: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
     res.json(await getRoomPresence(id, orgId));
   } catch (err) {
     next(err);
@@ -457,7 +458,7 @@ export const getActiveRecording: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessForUser(req.user!, orgId, id);
+    await assertRoomAccessWithRoom(req.user!, orgId, id);
 
     const [recording] = await db
       .select()

@@ -22,6 +22,7 @@ export const formDefinitions = pgTable(
     fields: jsonb("fields").$type<FormField[]>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [
     index("form_definitions_room_idx").on(t.roomId),

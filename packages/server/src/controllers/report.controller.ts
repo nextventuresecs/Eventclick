@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { ApiError } from "../utils/errors";
 import { generateVerificationReportPdf } from "../services/report.service";
+import { enqueuePdfJob } from "../queues/sqs.client";
 
 const requireOrgId = (organizationId: string | null): string => {
   if (!organizationId) throw ApiError.badRequest("User has no organization");
@@ -15,17 +16,30 @@ export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
     const orgId = requireOrgId(req.user!.organizationId);
     const roomId = req.params.id as string;
 
-    const pdfBuffer = await generateVerificationReportPdf(roomId, orgId, req.user!);
+    const { jobId } = await enqueuePdfJob({
+      roomId,
+      orgId,
+      userId: req.user!.id,
+    });
 
-    // Configure headers for direct binary stream download
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="Official-Event-Report-${roomId}.pdf"`
-    );
-    res.setHeader("Content-Length", pdfBuffer.length);
+    res.status(202).json({
+      jobId,
+      statusUrl: `/api/v1/rooms/${roomId}/report/status/${jobId}`
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
-    res.end(pdfBuffer);
+export const getReportStatus: RequestHandler = async (req, res, next) => {
+  try {
+    const { jobId } = req.params;
+    // In a full implementation, we'd look up the job status in Redis or Postgres.
+    // For now, return a placeholder status.
+    res.json({
+      jobId,
+      status: "processing"
+    });
   } catch (err) {
     next(err);
   }
