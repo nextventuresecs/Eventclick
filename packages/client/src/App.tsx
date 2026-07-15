@@ -13,6 +13,7 @@ import { LoginPage } from "./pages/Login";
 import { RegisterPage } from "./pages/Register";
 import { ForgotPasswordPage } from "./pages/ForgotPassword";
 import { ResetPasswordPage } from "./pages/ResetPassword";
+import { VerifyEmailPage } from "./pages/VerifyEmail";
 import { OnboardingPage } from "./pages/Onboarding";
 import { DashboardLayout } from "./components/layouts/DashboardLayout";
 import { Dashboard } from "./pages/Dashboard";
@@ -187,6 +188,10 @@ const router = createBrowserRouter([
   {
     path: "watch/:token",
     element: <RoomWatch />,
+  },
+  {
+    path: "verify-email",
+    element: <VerifyEmailPage />,
   },
   {
     element: <AuthRoute />,

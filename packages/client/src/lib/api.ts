@@ -123,6 +123,7 @@ export const authApi = {
   refresh: () => refreshOnce(),
   forgotPassword: (email: string) => api.post<void>("/auth/forgot-password", { email }),
   resetPassword: (body: ResetPasswordInput) => api.post<void>("/auth/reset-password", body),
+  verifyEmail: (token: string) => api.post<AuthSuccess>("/auth/verify-email", { token }),
   completeOnboarding: (body: OnboardingInput) => api.post<AuthSuccess>("/auth/onboarding", body),
 };
 
