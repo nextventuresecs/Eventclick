@@ -21,6 +21,7 @@ COPY packages/shared ./packages/shared
 # Compile TypeScript → dist/
 RUN npm run build --workspace=packages/shared
 RUN npm run build --workspace=packages/server
+RUN cp -r packages/server/src/templates packages/server/dist/templates
 
 # ─── Stage 3: runner ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
