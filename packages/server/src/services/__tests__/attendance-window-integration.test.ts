@@ -17,6 +17,7 @@ vi.mock("../../config/env", () => ({
 // Mock the event-assignment policy
 vi.mock("../event-assignment.service", () => ({
   assertRoomAccessForUser: vi.fn().mockResolvedValue(undefined),
+  assertRoomAccessWithRoom: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock db
