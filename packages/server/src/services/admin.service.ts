@@ -55,7 +55,7 @@ export const createOrgUser = async (
 
   const passwordHash = await bcryptjs.hash(password, 10);
 
-  const [newUser] = await db.transaction(async (tx) => {
+  const newUser = await db.transaction(async (tx) => {
     const [user] = await tx
       .insert(users)
       .values({
