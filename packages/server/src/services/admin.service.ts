@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { db } from "../db";
 import { users, orgMembers, emailVerifications } from "../db/schema";
 import { ApiError } from "../utils/errors";
-import { enqueueEmail } from "./email.service";
+import { enqueueEmail } from "../queues/sqs.client";
 
 export type { CreateOrgUserInput };
 
