@@ -181,7 +181,7 @@ export const Dashboard = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {rooms.map((room) => (
-            <Card key={room.id} className="flex flex-col hover:border-primary/50 transition-colors group">
+            <Card key={room.id} className="flex flex-col hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group">
               <CardHeader className="pb-4">
                 <div className="flex justify-between items-start gap-4 mb-2">
                    {getStatusBadge(room.status)}
