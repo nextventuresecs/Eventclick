@@ -2,27 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Event Fieldwork Verification Report</title>
+  <title>Official Event Verification Report</title>
   <style>
-    /* Design Tokens */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap');
 
+    /* A4 page setup */
+    @page {
+      size: A4;
+      margin: 18mm 16mm 18mm 16mm;
+    }
+
     :root {
-      /* Colors */
-      --primary: hsl(239, 84%, 60%);
-      --primary-dark: hsl(239, 84%, 45%);
-      --primary-bg: hsl(239, 84%, 96%);
-      --slate-50: hsl(210, 40%, 98%);
-      --slate-100: hsl(210, 40%, 96%);
-      --slate-200: hsl(214, 32%, 91%);
-      --slate-300: hsl(212, 27%, 84%);
-      --slate-700: hsl(215, 25%, 27%);
-      --slate-800: hsl(215, 29%, 18%);
-      --slate-900: hsl(220, 39%, 10%);
-      --success: hsl(142, 72%, 29%);
-      --success-bg: hsl(142, 72%, 95%);
-      
-      /* Spacing Scale (4px base) */
+      --color-primary: hsl(220, 25%, 15%);
+      --color-primary-ink: hsl(220, 25%, 35%);
+      --color-accent: hsl(220, 85%, 55%);
+      --color-success: hsl(142, 70%, 29%);
+      --color-success-ink: hsl(142, 70%, 98%);
+      --color-surface: #ffffff;
+      --color-muted: hsl(220, 20%, 64%);
+      --color-rule: hsl(220, 20%, 88%);
+      --color-danger-ink: hsl(0, 70%, 45%);
+
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-display: 'Outfit', sans-serif;
+
       --space-1: 4px;
       --space-2: 8px;
       --space-3: 12px;
@@ -31,30 +34,20 @@
       --space-6: 24px;
       --space-8: 32px;
       --space-10: 40px;
-      --space-12: 48px;
-      
-      /* Typography Scale */
-      --text-xs: 11px;
-      --text-sm: 13px;
-      --text-base: 14px;
-      --text-lg: 16px;
+
+      --text-xs: 10px;
+      --text-sm: 12px;
+      --text-base: 13px;
+      --text-lg: 15px;
       --text-xl: 18px;
       --text-2xl: 22px;
-      --text-3xl: 28px;
-      
-      /* Line Heights */
+      --text-3xl: 26px;
+
       --leading-tight: 1.25;
       --leading-normal: 1.5;
-      --leading-relaxed: 1.625;
-      
-      /* Border Radius */
-      --radius-sm: 6px;
-      --radius-md: 8px;
-      --radius-lg: 12px;
-      
-      /* Shadows */
-      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-      --shadow-md: 0 2px 4px rgba(0,0,0,0.06);
+      --leading-relaxed: 1.65;
+
+      --radius: 6px;
     }
 
     * {
@@ -63,240 +56,195 @@
       padding: 0;
     }
 
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: var(--text-base);
-      color: var(--slate-800);
+    html, body {
       background: #ffffff;
+      color: var(--color-primary);
+      font-family: var(--font-body);
+      font-size: var(--text-base);
       line-height: var(--leading-normal);
       -webkit-font-smoothing: antialiased;
-      padding: var(--space-10);
     }
 
+    /* Typography */
     h1, h2, h3, h4 {
-      font-family: 'Outfit', sans-serif;
-      color: var(--slate-900);
+      font-family: var(--font-display);
       font-weight: 700;
       line-height: var(--leading-tight);
-      letter-spacing: -0.02em;
+      letter-spacing: -0.01em;
+      color: var(--color-primary);
     }
 
     h1 { font-size: var(--text-3xl); }
     h2 { font-size: var(--text-2xl); }
     h3 { font-size: var(--text-xl); }
 
-    /* Print Optimization */
-    @media print {
-      body {
-        padding: 0;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-      .page-break { page-break-before: always; }
-      .no-break { page-break-inside: avoid; }
+    p {
+      margin: 0;
     }
 
-    /* Top Bar */
-    .top-bar {
-      position: absolute;
-      top: 0;
-      left: 0;
+    ul, ol {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    table {
       width: 100%;
-      height: var(--space-2);
-      background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+      border-collapse: collapse;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
     }
 
     /* Layout */
-    .report-container {
-      max-width: 900px;
+    .page {
+      max-width: 210mm;
       margin: 0 auto;
-      position: relative;
+      padding: 6mm 0;
     }
 
     /* Header */
-    .header {
-      margin-bottom: var(--space-8);
-      padding-bottom: var(--space-6);
-      border-bottom: 2px solid var(--slate-100);
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      gap: var(--space-6);
-    }
-
-    .doc-badge {
-      display: inline-block;
-      font-size: var(--text-xs);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--primary);
-      background: var(--primary-bg);
-      padding: var(--space-1) var(--space-2);
-      border-radius: var(--radius-sm);
-      margin-bottom: var(--space-2);
-    }
-
-    .header-left h1 {
-      margin-bottom: var(--space-1);
-    }
-
-    .header-left p {
-      font-size: var(--text-sm);
-      color: var(--slate-700);
-      line-height: var(--leading-relaxed);
-    }
-
-    .header-right {
-      text-align: right;
-      flex-shrink: 0;
-    }
-
-    .ngo-name {
-      font-family: 'Outfit', sans-serif;
-      font-weight: 600;
-      font-size: var(--text-xl);
-      color: var(--slate-900);
-      margin-bottom: var(--space-1);
-    }
-
-    .gen-date {
-      font-size: var(--text-xs);
-      color: var(--slate-700);
-    }
-
-    /* Overview Grid */
-    .overview-grid {
+    .doc-header {
       display: grid;
-      grid-template-columns: 1.5fr 1fr;
+      grid-template-columns: 1fr auto;
       gap: var(--space-6);
-      margin-bottom: var(--space-8);
+      align-items: start;
+      padding-bottom: var(--space-5);
+      border-bottom: 1.5px solid var(--color-primary);
+      margin-bottom: var(--space-6);
+      page-break-inside: avoid;
     }
 
-    .overview-card {
-      background: var(--slate-50);
-      border: 1px solid var(--slate-200);
-      border-radius: var(--radius-lg);
-      padding: var(--space-5);
-    }
-
-    .overview-title {
+    .doc-meta {
       font-size: var(--text-xs);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--slate-700);
+      letter-spacing: 0.12em;
+      color: var(--color-muted);
+      font-weight: 600;
+      margin-bottom: var(--space-1);
+    }
+
+    .doc-title {
+      margin-bottom: var(--space-2);
+    }
+
+    .doc-subtitle {
+      color: var(--color-primary-ink);
+      max-width: 52ch;
+    }
+
+    .doc-controls {
+      min-width: 26mm;
+      text-align: right;
+      font-size: var(--text-xs);
+      line-height: 1.8;
+      color: var(--color-primary-ink);
+    }
+
+    .doc-controls strong {
+      color: var(--color-primary);
+    }
+
+    /* Summary */
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-4);
+      margin-bottom: var(--space-8);
+      page-break-inside: avoid;
+    }
+
+    .summary-card {
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius);
+      padding: var(--space-4) var(--space-5);
+      background: var(--color-surface);
+    }
+
+    .summary-card .label {
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-muted);
       font-weight: 600;
       margin-bottom: var(--space-2);
     }
 
-    .overview-card h2 {
-      margin-bottom: var(--space-2);
-      word-wrap: break-word;
+    .summary-card .value {
+      font-family: var(--font-display);
+      font-size: var(--text-2xl);
+      font-weight: 800;
+      line-height: 1;
+      color: var(--color-primary);
     }
 
-    .overview-card .desc {
-      font-size: var(--text-sm);
-      color: var(--slate-700);
-      line-height: var(--leading-relaxed);
-      white-space: pre-line;
-      max-width: 60ch;
+    .summary-card .value.accent {
+      color: var(--color-accent);
     }
 
-    .metadata-list {
-      list-style: none;
+    /* Sections */
+    .section {
+      margin-bottom: var(--space-8);
+      page-break-inside: avoid;
+    }
+
+    .section-header {
       display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-
-    .metadata-item {
-      display: flex;
-      justify-content: space-between;
       align-items: baseline;
       gap: var(--space-3);
-      padding: var(--space-2) 0;
-      font-size: var(--text-sm);
-      border-bottom: 1px dashed var(--slate-200);
+      margin-bottom: var(--space-4);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px solid var(--color-rule);
     }
 
-    .metadata-item:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
+    .section-header h3 {
+      flex: 1;
     }
 
-    .metadata-label {
-      color: var(--slate-700);
-      font-weight: 500;
-    }
-
-    .metadata-value {
+    .section-header .section-tag {
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-muted);
       font-weight: 600;
-      color: var(--slate-900);
-      text-align: right;
     }
 
-    /* Stats Grid */
-    .stats-grid {
+    .section-body {
+      display: grid;
+      gap: var(--space-4);
+    }
+
+    /* Meta rows */
+    .meta-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: var(--space-4);
-      margin-bottom: var(--space-10);
     }
 
-    .stat-card {
-      background: #ffffff;
-      border: 1px solid var(--slate-200);
-      border-radius: var(--radius-lg);
-      padding: var(--space-5);
-      text-align: center;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .stat-card .value {
-      font-family: 'Outfit', sans-serif;
-      font-size: var(--space-8);
-      font-weight: 800;
-      color: var(--primary);
-      line-height: 1;
-      margin-bottom: var(--space-2);
-    }
-
-    .stat-card .label {
+    .meta-item dt {
       font-size: var(--text-xs);
-      color: var(--slate-700);
-      font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      line-height: var(--leading-normal);
+      letter-spacing: 0.08em;
+      color: var(--color-muted);
+      font-weight: 600;
+      margin-bottom: var(--space-1);
     }
 
-    /* Section Title */
-    .section-title {
-      font-size: var(--text-xl);
-      margin-bottom: var(--space-4);
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      border-bottom: 2px solid var(--slate-100);
-      padding-bottom: var(--space-2);
+    .meta-item dd {
+      font-size: var(--text-sm);
+      font-weight: 500;
+      color: var(--color-primary);
     }
 
-    .section-title::before {
-      content: "";
-      width: var(--space-1);
-      height: var(--text-xl);
-      background: var(--primary);
-      border-radius: 2px;
-      flex-shrink: 0;
-    }
-
-    /* Activity Container */
-    .activity-container {
-      margin-bottom: var(--space-6);
-      border: 1px solid var(--slate-200);
-      border-radius: var(--radius-lg);
-      padding: var(--space-5);
-      background: #ffffff;
+    /* Activity items */
+    .activity {
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius);
+      padding: var(--space-4) var(--space-5);
+      background: var(--color-surface);
       page-break-inside: avoid;
     }
 
@@ -311,403 +259,398 @@
     .activity-title {
       font-size: var(--text-lg);
       font-weight: 600;
-      color: var(--slate-900);
+      color: var(--color-primary);
       line-height: var(--leading-tight);
+      margin-bottom: var(--space-1);
     }
 
     .activity-desc {
       font-size: var(--text-sm);
-      color: var(--slate-700);
-      line-height: var(--leading-relaxed);
-      margin-bottom: var(--space-4);
-      max-width: 70ch;
+      color: var(--color-primary-ink);
+      line-height: var(--leading-normal);
+      max-width: 68ch;
     }
 
-    .activity-badge {
+    .badge {
       font-size: var(--text-xs);
-      font-weight: 600;
+      font-weight: 700;
       padding: var(--space-1) var(--space-2);
       border-radius: 100px;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.06em;
       white-space: nowrap;
       flex-shrink: 0;
     }
 
     .badge-success {
-      background: var(--success-bg);
-      color: var(--success);
+      background: var(--color-success-ink);
+      color: var(--color-success);
     }
 
     .badge-neutral {
-      background: var(--slate-100);
-      color: var(--slate-700);
+      background: var(--color-rule);
+      color: var(--color-primary-ink);
     }
 
-    /* Photo Grid */
+    /* Photo grid */
     .photo-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: var(--space-3);
     }
 
-    .photo-card {
-      border: 1px solid var(--slate-200);
-      border-radius: var(--radius-md);
+    .photo {
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius);
       overflow: hidden;
-      background: var(--slate-50);
-      box-shadow: var(--shadow-sm);
+      background: var(--color-surface);
     }
 
-    .photo-wrapper {
+    .photo-figure {
       aspect-ratio: 4 / 3;
-      position: relative;
       background: #000;
       overflow: hidden;
+      position: relative;
     }
 
-    .photo-wrapper img {
+    .photo-figure img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      display: block;
     }
 
-    .photo-meta {
+    .photo-caption {
       padding: var(--space-2) var(--space-3);
-      background: #ffffff;
-      border-top: 1px solid var(--slate-200);
-    }
-
-    .photo-timestamp {
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-rule);
       font-size: var(--text-xs);
-      color: var(--slate-700);
+      color: var(--color-primary-ink);
       font-weight: 500;
     }
 
-    .no-photos {
-      padding: var(--space-8);
+    .empty-state {
+      padding: var(--space-6);
       text-align: center;
-      background: var(--slate-50);
-      border: 1px dashed var(--slate-200);
-      border-radius: var(--radius-md);
+      border: 1px dashed var(--color-rule);
+      border-radius: var(--radius);
+      background: var(--color-surface);
       font-size: var(--text-sm);
-      color: var(--slate-700);
+      color: var(--color-muted);
     }
 
-    /* Attendance Table */
-    .attendance-table-container {
-      margin-top: var(--space-5);
-      border: 1px solid var(--slate-200);
-      border-radius: var(--radius-lg);
+    /* Table */
+    .table-wrap {
+      border: 1px solid var(--color-rule);
+      border-radius: var(--radius);
       overflow: hidden;
-      box-shadow: var(--shadow-sm);
+      background: var(--color-surface);
     }
 
-    .attendance-table {
+    .table-wrap table {
       width: 100%;
-      border-collapse: collapse;
     }
 
-    .attendance-table th {
-      background: var(--slate-50);
-      padding: var(--space-3) var(--space-4);
+    .table-wrap thead th {
+      background: var(--color-primary);
+      color: #ffffff;
       font-size: var(--text-xs);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--slate-700);
-      border-bottom: 1px solid var(--slate-200);
+      letter-spacing: 0.08em;
       font-weight: 600;
       text-align: left;
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--color-primary);
     }
 
-    .attendance-table td {
-      padding: var(--space-4);
+    .table-wrap tbody td {
+      padding: var(--space-3) var(--space-4);
       font-size: var(--text-sm);
-      border-bottom: 1px solid var(--slate-100);
-      color: var(--slate-800);
-      vertical-align: middle;
+      color: var(--color-primary-ink);
+      border-bottom: 1px solid var(--color-rule);
+      vertical-align: top;
     }
 
-    .attendance-table tr:last-child td {
+    .table-wrap tbody tr:last-child td {
       border-bottom: none;
     }
 
-    .attendee-name {
+    .table-wrap tbody tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .attendee {
       font-weight: 600;
-      color: var(--slate-900);
+      color: var(--color-primary);
       margin-bottom: var(--space-1);
-      font-size: var(--text-base);
     }
 
-    .attendee-phone {
+    .attendee-contact {
       font-size: var(--text-xs);
-      color: var(--slate-700);
+      color: var(--color-muted);
     }
 
-    .attendee-img {
-      width: 40px;
-      height: 40px;
-      border-radius: var(--radius-sm);
-      object-fit: cover;
-      border: 1px solid var(--slate-200);
-      background: var(--slate-100);
-    }
-
-    .attendee-no-img {
-      width: 40px;
-      height: 40px;
-      border-radius: var(--radius-sm);
-      background: var(--slate-200);
-      color: var(--slate-700);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: var(--text-xs);
-      font-weight: 600;
-      border: 1px dashed var(--slate-300);
+      color: var(--color-primary-ink);
     }
 
-    .submitted-time {
-      font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
-      font-size: var(--text-xs);
-      color: var(--slate-700);
+    .table-empty {
+      padding: var(--space-6);
+      text-align: center;
+      color: var(--color-muted);
+      font-size: var(--text-sm);
     }
 
     /* Footer */
-    .footer {
+    .doc-footer {
       margin-top: var(--space-10);
-      padding-top: var(--space-5);
-      border-top: 1px solid var(--slate-200);
+      padding-top: var(--space-4);
+      border-top: 1.5px solid var(--color-primary);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: var(--space-4);
       font-size: var(--text-xs);
-      color: var(--slate-700);
+      color: var(--color-muted);
       page-break-inside: avoid;
     }
 
-    .verification-seal {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      color: var(--success);
-      font-weight: 600;
-    }
-
-    .verification-seal::before {
-      content: "✓";
+    .seal {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      background: var(--success);
-      color: #ffffff;
-      border-radius: 50%;
-      font-size: 10px;
+      gap: var(--space-2);
+      color: var(--color-success);
       font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: var(--text-xs);
+    }
+
+    .seal::before {
+      content: "";
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--color-success);
+      display: inline-block;
+      flex-shrink: 0;
+      box-shadow: inset 0 0 0 1.5px #ffffff;
+    }
+
+    /* Print helpers */
+    @media print {
+      .page {
+        padding: 0;
+      }
+      .section, .doc-header, .doc-footer, .activity, .table-wrap {
+        page-break-inside: avoid;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="top-bar"></div>
-  <div class="report-container">
-    
-    <header class="header">
-      <div class="header-left">
-        <span class="doc-badge">Verification Record</span>
-        <h1>Fieldwork Evidence Report</h1>
-        <p>Verification data logged during operational fieldwork session</p>
+  <div class="page">
+    <header class="doc-header">
+      <div>
+        <div class="doc-meta">Official Verification Record</div>
+        <h1 class="doc-title">Fieldwork Evidence Report</h1>
+        <p class="doc-subtitle">
+          Audit-ready summary of session attendance, task evidence, and operational metadata.
+        </p>
       </div>
-      <div class="header-right">
-        <div class="ngo-name"><%= organization.name %></div>
-        <div class="gen-date">Generated: <%= new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %></div>
+      <div class="doc-controls">
+        <div><strong>Organization</strong><br/><%= organization.name %></div>
+        <div style="margin-top:4px;"><strong>Generated</strong><br/><%= new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %></div>
       </div>
     </header>
 
-    <section class="overview-grid">
-      <div class="overview-card">
-        <div class="overview-title">Session Details</div>
-        <h2><%= room.title %></h2>
-        <% if (room.description) { %>
-          <p class="desc"><%= room.description %></p>
-        <% } else { %>
-          <p class="desc" style="font-style: italic; color: hsl(215, 20%, 60%);">No session description provided.</p>
-        <% } %>
+    <section class="section">
+      <div class="section-header">
+        <h3>Session Summary</h3>
+        <div class="section-tag">Overview</div>
       </div>
-      <div class="overview-card">
-        <div class="overview-title">Operations Log</div>
-        <ul class="metadata-list">
-          <li class="metadata-item">
-            <span class="metadata-label">Session ID</span>
-            <span class="metadata-value" style="font-family: monospace; font-size: var(--text-xs);"><%= room.id.substring(0, 8) %>...</span>
-          </li>
-          <li class="metadata-item">
-            <span class="metadata-label">Status</span>
-            <span class="metadata-value" style="text-transform: capitalize;"><%= room.status %></span>
-          </li>
-          <li class="metadata-item">
-            <span class="metadata-label">Start</span>
-            <span class="metadata-value">
-              <%= room.actualStart ? new Date(room.actualStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not started' %>
-            </span>
-          </li>
-          <li class="metadata-item">
-            <span class="metadata-label">End</span>
-            <span class="metadata-value">
-              <%= room.actualEnd ? new Date(room.actualEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : (room.status === 'live' ? 'In Progress' : 'N/A') %>
-            </span>
-          </li>
-        </ul>
-      </div>
-    </section>
-
-    <section class="stats-grid">
-      <div class="stat-card">
-        <div class="value"><%= attendanceCount %></div>
-        <div class="label">Beneficiaries Verified</div>
-      </div>
-      <div class="stat-card">
-        <div class="value">
-          <% 
-            let totalDefs = room.activityDefinitions ? room.activityDefinitions.length : 0;
-            let completedCount = 0;
-            if (totalDefs > 0 && activitySubmissions) {
-              room.activityDefinitions.forEach(def => {
-                let sub = activitySubmissions.find(s => s.activityId === def.id);
-                if (sub && sub.photos && sub.photos.length >= def.min_photos) {
-                  completedCount++;
-                }
-              });
-            }
-          %>
-          <%= completedCount %> / <%= totalDefs %>
+      <div class="summary">
+        <div class="summary-card">
+          <div class="label">Verified</div>
+          <div class="value accent"><%= attendanceCount %></div>
         </div>
-        <div class="label">Tasks Completed</div>
+        <div class="summary-card">
+          <div class="label">Tasks Completed</div>
+          <div class="value">
+            <% 
+              let totalDefs = room.activityDefinitions ? room.activityDefinitions.length : 0;
+              let completedCount = 0;
+              if (totalDefs > 0 && activitySubmissions) {
+                room.activityDefinitions.forEach(function(def) {
+                  let sub = activitySubmissions.find(function(s) { return s.activityId === def.id; });
+                  if (sub && sub.photos && sub.photos.length >= def.min_photos) {
+                    completedCount++;
+                  }
+                });
+              }
+            %>
+            <%= completedCount %>/<%= totalDefs %>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Run Time</div>
+          <div class="value"><%= formattedDuration %></div>
+        </div>
+        <div class="summary-card">
+          <div class="label">Status</div>
+          <div class="value" style="font-size: var(--text-xl); text-transform: capitalize;"><%= room.status %></div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="value"><%= formattedDuration %></div>
-        <div class="label">Field Run-Time</div>
+
+      <div class="meta-grid">
+        <div class="meta-item">
+          <dt>Session</dt>
+          <dd><%= room.title %></dd>
+        </div>
+        <div class="meta-item">
+          <dt>Scheduled Start</dt>
+          <dd><%= room.scheduledStart ? new Date(room.scheduledStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not scheduled' %></dd>
+        </div>
+        <div class="meta-item">
+          <dt>Scheduled End</dt>
+          <dd><%= room.scheduledEnd ? new Date(room.scheduledEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not scheduled' %></dd>
+        </div>
+        <div class="meta-item">
+          <dt>Actual Start</dt>
+          <dd><%= room.actualStart ? new Date(room.actualStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not started' %></dd>
+        </div>
+        <div class="meta-item">
+          <dt>Actual End</dt>
+          <dd><%= room.actualEnd ? new Date(room.actualEnd).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : (room.status === 'live' ? 'In Progress' : 'N/A') %></dd>
+        </div>
+        <div class="meta-item">
+          <dt>Record ID</dt>
+          <dd class="mono"><%= room.id %></dd>
+        </div>
       </div>
     </section>
 
-    <section class="no-break" style="margin-bottom: var(--space-8);">
-      <h3 class="section-title">Fieldwork Checklist & Task Evidence</h3>
-      <% if (room.activityDefinitions && room.activityDefinitions.length > 0) { %>
-        <% room.activityDefinitions.forEach(def => { 
-          let submission = activitySubmissions ? activitySubmissions.find(s => s.activityId === def.id) : null;
-          let photoList = submission ? submission.photos : [];
-          let isComplete = photoList.length >= def.min_photos;
-        %>
-          <div class="activity-container">
-            <div class="activity-header">
-              <div>
-                <div class="activity-title"><%= def.title %></div>
-                <% if (def.description) { %>
-                  <div class="activity-desc"><%= def.description %></div>
-                <% } %>
+    <section class="section">
+      <div class="section-header">
+        <h3>Fieldwork Checklist & Task Evidence</h3>
+        <div class="section-tag">Activities</div>
+      </div>
+      <div class="section-body">
+        <% if (room.activityDefinitions && room.activityDefinitions.length > 0) { %>
+          <% room.activityDefinitions.forEach(function(def) { 
+            let submission = activitySubmissions ? activitySubmissions.find(function(s) { return s.activityId === def.id; }) : null;
+            let photoList = submission ? submission.photos : [];
+            let isComplete = photoList.length >= def.min_photos;
+          %>
+            <article class="activity">
+              <div class="activity-header">
+                <div>
+                  <div class="activity-title"><%= def.title %></div>
+                  <% if (def.description) { %>
+                    <div class="activity-desc"><%= def.description %></div>
+                  <% } %>
+                </div>
+                <span class="badge <%= isComplete ? 'badge-success' : 'badge-neutral' %>">
+                  <%= isComplete ? 'Complete' : 'Pending' %> (<%= photoList.length %>/<%= def.min_photos %>)
+                </span>
               </div>
-              <span class="activity-badge <%= isComplete ? 'badge-success' : 'badge-neutral' %>">
-                <%= isComplete ? 'Complete' : 'Pending' %> (<%= photoList.length %>/<%= def.min_photos %>)
-              </span>
-            </div>
 
-            <% if (photoList.length > 0) { %>
-              <div class="photo-grid">
-                <% photoList.forEach(photo => { %>
-                  <div class="photo-card">
-                    <div class="photo-wrapper">
-                      <img src="<%= photo.url %>" alt="Task evidence">
-                    </div>
-                    <div class="photo-meta">
-                      <div class="photo-timestamp">
+              <% if (photoList.length > 0) { %>
+                <div class="photo-grid">
+                  <% photoList.forEach(function(photo) { %>
+                    <div class="photo">
+                      <div class="photo-figure">
+                        <img src="<%= photo.url %>" alt="Task evidence"/>
+                      </div>
+                      <div class="photo-caption">
                         <%= new Date(photo.uploadedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) %>
                       </div>
                     </div>
-                  </div>
-                <% }) %>
-              </div>
-            <% } else { %>
-              <div class="no-photos">No photographic evidence uploaded yet</div>
-            <% } %>
-          </div>
-        <% }) %>
-      <% } else { %>
-        <div class="no-photos">No field tasks configured for this session</div>
-      <% } %>
+                  <% }) %>
+                </div>
+              <% } else { %>
+                <div class="empty-state">No photographic evidence uploaded for this activity.</div>
+              <% } %>
+            </article>
+          <% }) %>
+        <% } else { %>
+          <div class="empty-state">No field tasks configured for this session.</div>
+        <% } %>
+      </div>
     </section>
 
-    <section class="page-break no-break">
-      <h3 class="section-title">Verified Beneficiary Register</h3>
-      <% if (attendanceEntries && attendanceEntries.length > 0) { %>
-        <div class="attendance-table-container">
-          <table class="attendance-table">
-            <thead>
-              <tr>
-                <th style="width: 25%;">Beneficiary</th>
-                <th style="width: 35%;">Form Data</th>
-                <th style="width: 15%;">Photo</th>
-                <th style="width: 15%;">Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% attendanceEntries.forEach(entry => { 
-                let name = entry.data.fullName || entry.data.name || entry.data.Name || entry.data.FullName || null;
-                let phone = entry.data.phone || entry.data.phoneNumber || entry.data.Phone || entry.data.Mobile || null;
-                
-                let details = [];
-                Object.keys(entry.data).forEach(k => {
-                  if (!['name', 'fullName', 'Name', 'FullName', 'phone', 'phoneNumber', 'Phone', 'Mobile'].includes(k)) {
-                    details.push(`${k}: ${entry.data[k]}`);
-                  }
-                });
-              %>
+    <section class="section">
+      <div class="section-header">
+        <h3>Verified Attendance Register</h3>
+        <div class="section-tag">Register</div>
+      </div>
+      <div class="section-body">
+        <% if (attendanceEntries && attendanceEntries.length > 0) { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
                 <tr>
-                  <td>
-                    <div class="attendee-name"><%= name || 'Anonymous' %></div>
-                    <% if (phone) { %>
-                      <div class="attendee-phone"><%= phone %></div>
-                    <% } %>
-                  </td>
-                  <td style="font-size: var(--text-xs); color: var(--slate-700);">
-                    <% if (details.length > 0) { %>
-                      <ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--space-1);">
-                        <% details.forEach(detail => { %>
-                          <li><%= detail %></li>
-                        <% }) %>
-                      </ul>
-                    <% } else { %>
-                      <span style="color: var(--slate-300); font-style: italic;">No additional data</span>
-                    <% } %>
-                  </td>
-                  <td>
-                    <% if (entry.photoUrl) { %>
-                      <img class="attendee-img" src="<%= entry.photoUrl %>" alt="Verification photo">
-                    <% } else { %>
-                      <div class="attendee-no-img">—</div>
-                    <% } %>
-                  </td>
-                  <td>
-                    <div class="submitted-time">
-                      <%= new Date(entry.submittedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
-                    </div>
-                  </td>
+                  <th style="width: 22%;">Beneficiary</th>
+                  <th style="width: 28%;">Contact</th>
+                  <th style="width: 30%;">Form Data</th>
+                  <th style="width: 10%;">Photo</th>
+                  <th style="width: 10%;">Time</th>
                 </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } else { %>
-        <div class="no-photos">No attendance records logged yet</div>
-      <% } %>
+              </thead>
+              <tbody>
+                <% attendanceEntries.forEach(function(entry) { 
+                  let name = entry.data.fullName || entry.data.name || entry.data.Name || entry.data.FullName || null;
+                  let phone = entry.data.phone || entry.data.phoneNumber || entry.data.Phone || entry.data.Mobile || null;
+                  let details = [];
+                  Object.keys(entry.data).forEach(function(k) {
+                    if (!['name', 'fullName', 'Name', 'FullName', 'phone', 'phoneNumber', 'Phone', 'Mobile'].includes(k)) {
+                      details.push(entry.data[k]);
+                    }
+                  });
+                %>
+                  <tr>
+                    <td>
+                      <div class="attendee"><%= name || 'Anonymous' %></div>
+                      <% if (phone) { %>
+                        <div class="attendee-contact"><%= phone %></div>
+                      <% } %>
+                    </td>
+                    <td class="mono">
+                      <% if (details.length > 0) { %>
+                        <%= details.join(' · ') %>
+                      <% } else { %>
+                        <span style="color: var(--color-rule);">—</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (entry.photoUrl) { %>
+                        <img src="<%= entry.photoUrl %>" alt="Verification photo" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--color-rule);"/>
+                      <% } else { %>
+                        <span class="mono" style="color: var(--color-rule);">—</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <div class="mono">
+                        <%= new Date(entry.submittedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) %>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div class="empty-state">No attendance records logged yet.</div>
+        <% } %>
     </section>
 
-    <footer class="footer">
-      <div><strong>Eventclick Verification Engine</strong> • Secure Audit Document</div>
-      <div class="verification-seal">Field Verification Certified</div>
+    <footer class="doc-footer">
+      <div>
+        <strong>Eventclick</strong> &nbsp;•&nbsp; Official Audit Document &nbsp;•&nbsp; Page <span class="mono">1</span>
+      </div>
+      <div class="seal">Field Verification Certified</div>
     </footer>
-
   </div>
 </body>
 </html>

@@ -72,18 +72,21 @@ export const RegisterPage = () => {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create your account</CardTitle>
-          <CardDescription>
-            Get started with Eventclick in minutes
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+      <div className="mb-6 text-center">
+        <img
+          src="/logo.png"
+          alt="Eventclick"
+          className="mx-auto h-10 w-auto object-contain mb-3"
+        />
+        <h1 className="text-2xl font-bold tracking-tight font-display">Create your account</h1>
+        <p className="text-sm text-muted-foreground mt-1">Set up your organization workspace</p>
+      </div>
+      <Card className="border-border bg-card">
+        <CardContent className="flex flex-col gap-5 pt-6">
           <GoogleSignInButton onToken={onGoogle} disabled={submitting} />
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-xs uppercase text-muted-foreground">or</span>
+            <span className="text-xs uppercase text-muted-foreground tracking-wide">or</span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
@@ -123,9 +126,7 @@ export const RegisterPage = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={submitting}
               />
-              <p className="text-xs text-muted-foreground">
-                Minimum 8 characters
-              </p>
+              <p className="text-xs text-muted-foreground">Minimum 8 characters</p>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="organizationName">Organization</Label>
@@ -135,9 +136,7 @@ export const RegisterPage = () => {
                 onChange={(e) => setOrganizationName(e.target.value)}
                 disabled={submitting}
               />
-              <p className="text-xs text-muted-foreground">
-                Add your NGO name to create the top-level NGO admin account.
-              </p>
+              <p className="text-xs text-muted-foreground">Create your organization workspace to get started.</p>
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -151,7 +150,7 @@ export const RegisterPage = () => {
           Already have an account?&nbsp;
           <Link
             to="/login"
-            className="font-medium text-primary hover:underline"
+            className="font-medium text-brand hover:underline"
           >
             Sign in
           </Link>

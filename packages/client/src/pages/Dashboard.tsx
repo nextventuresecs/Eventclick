@@ -1,14 +1,68 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { format } from "date-fns";
-import { Copy, Users, Clock, Plus, CalendarClock, FormInput, ClipboardList, Radio } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import {
+  Copy,
+  Users,
+  Clock,
+  Plus,
+  CalendarClock,
+  FormInput,
+  ClipboardList,
+  Radio,
+  ShieldCheck,
+  Activity,
+  FileCheck,
+} from "lucide-react";
 import { ROLE_LABELS, hasRolePermission, type EventRoom } from "@application/shared";
 import { roomsApi, ApiClientError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const pill = (status: EventRoom["status"]) => {
+  const styles: Record<EventRoom["status"], string> = {
+    scheduled: "border border-brand/20 bg-brand/10 text-brand",
+    live: "border border-accent/25 bg-accent/10 text-accent",
+    ended: "border border-border bg-muted text-muted-foreground",
+    cancelled: "border border-destructive/20 bg-destructive/10 text-destructive",
+  };
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${status === "live" ? "bg-accent" : "bg-current opacity-70"}`} />
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  );
+};
+
+const MetricCard = ({
+  title,
+  value,
+  sub,
+  icon: Icon,
+}: {
+  title: string;
+  value: string | number;
+  sub?: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) => (
+  <Card className="border-border bg-card">
+    <CardContent className="p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
+          <p className="text-2xl font-bold tracking-tight text-card-foreground font-display">{value}</p>
+          {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+        </div>
+        <div className="rounded-lg bg-muted p-2 text-brand">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 export const Dashboard = () => {
   const { user } = useAuth();
@@ -16,6 +70,7 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+
   const canManageRooms = user ? hasRolePermission(user.role, "manage_rooms") : false;
   const canCreateAttendanceForm = user
     ? hasRolePermission(user.role, "create_attendance_form")
@@ -55,20 +110,8 @@ export const Dashboard = () => {
     );
   };
 
-  const getStatusBadge = (status: EventRoom["status"]) => {
-    const styles = {
-      scheduled: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-      live: "bg-green-500/10 text-green-500 border-green-500/20 animate-pulse",
-      ended: "bg-muted text-muted-foreground border-border",
-      cancelled: "bg-destructive/10 text-destructive border-destructive/20"
-    };
-
-    return (
-      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${styles[status]}`}>
-        {status.toUpperCase()}
-      </span>
-    );
-  };
+  const verifiedAttendees = rooms.reduce((sum, r) => sum + (r.attendanceCount ?? 0), 0);
+  const liveRooms = rooms.filter((r) => r.status === "live").length;
 
   if (loading) {
     return (
@@ -80,28 +123,21 @@ export const Dashboard = () => {
           </div>
           <Skeleton className="h-10 w-36 shrink-0" />
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="p-5">
+              <Skeleton className="h-4 w-24 mb-3" />
+              <Skeleton className="h-8 w-16" />
+            </Card>
+          ))}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="flex flex-col">
-              <CardHeader className="pb-4">
-                <div className="flex justify-between items-start gap-4 mb-2">
-                  <Skeleton className="h-5 w-20 rounded-full" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-full mt-2" />
-                <Skeleton className="h-4 w-2/3" />
-              </CardHeader>
-              <CardContent className="pb-4 flex-1 space-y-3">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-4 w-32" />
-              </CardContent>
-              <CardFooter className="pt-4 border-t border-border gap-2">
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-8 w-20" />
-                <Skeleton className="h-8 w-16 ml-auto" />
-              </CardFooter>
+            <Card key={i} className="p-6">
+              <Skeleton className="h-5 w-20 rounded-full mb-3" />
+              <Skeleton className="h-6 w-3/4 mb-2" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3" />
             </Card>
           ))}
         </div>
@@ -122,11 +158,14 @@ export const Dashboard = () => {
 
   if (user && !user.organizationId) {
     return (
-      <Card className="mx-auto max-w-2xl border-dashed">
+      <Card className="mx-auto max-w-2xl border-border bg-muted/40">
         <CardContent className="space-y-3 p-8 text-center">
+          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
           <CardTitle>{ROLE_LABELS[user.role]} account created</CardTitle>
           <CardDescription>
-            Your account is ready, but it still needs an NGO assignment before event access becomes
+            Your account is ready, but it still needs an organization assignment before event access becomes
             available.
           </CardDescription>
         </CardContent>
@@ -138,24 +177,31 @@ export const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">
+          <h2 className="text-3xl font-bold tracking-tight font-display text-foreground">
             {canManageRooms ? "Event Rooms" : "Assigned Event Rooms"}
           </h2>
           <p className="text-muted-foreground mt-1">
             {canManageRooms
-              ? `Manage live sessions, forms, and attendance for ${user?.organizationName || "your NGO"} events.`
-              : `Access event rooms and record attendance for ${user?.organizationName || "your NGO"}.`}
+              ? `Manage live sessions, forms, and attendance for ${user?.organizationName || "your organization"} events.`
+              : `Access event rooms and record attendance for ${user?.organizationName || "your organization"}.`}
           </p>
         </div>
         {canManageRooms && (
           <Link
             to="/rooms/create"
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 h-10 text-sm font-medium text-primary-foreground hover:opacity-90 transition-colors shrink-0"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 h-10 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
             Create Room
           </Link>
         )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard title="Total Rooms" value={rooms.length} sub={`${liveRooms} live now`} icon={Activity} />
+        <MetricCard title="Verified" value={verifiedAttendees} sub="Across all rooms" icon={Users} />
+        <MetricCard title="Reports" value={rooms.filter((r) => r.status === "ended").length} sub="Available to export" icon={FileCheck} />
+        <MetricCard title="Organization" value={user?.organizationName?.split(" ")[0] ?? "—"} sub={user?.organizationName ?? ""} icon={ShieldCheck} />
       </div>
 
       {rooms.length === 0 ? (
@@ -167,12 +213,12 @@ export const Dashboard = () => {
           <CardDescription className="mb-6 max-w-md">
             {canManageRooms
               ? "Get started by creating your first event room. You'll be able to invite attendees and host your session."
-              : "Once your NGO admin assigns you to an event, it will appear here for live viewing and attendance collection."}
+              : "Once your admin assigns you to an event, it will appear here for live viewing and attendance collection."}
           </CardDescription>
           {canManageRooms && (
             <Link
               to="/rooms/create"
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 h-10 text-sm font-medium text-primary-foreground hover:opacity-90 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 h-10 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-colors shadow-sm"
             >
               Create your first room
             </Link>
@@ -181,39 +227,36 @@ export const Dashboard = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {rooms.map((room) => (
-            <Card key={room.id} className="flex flex-col hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group">
-              <CardHeader className="pb-4">
-                <div className="flex justify-between items-start gap-4 mb-2">
-                   {getStatusBadge(room.status)}
-                   <span className="text-xs text-muted-foreground">
-                     {format(new Date(room.createdAt), 'MMM d, yyyy')}
-                   </span>
+            <Card key={room.id} className="flex flex-col border-border bg-card hover:border-brand/40 hover:shadow-lg hover:shadow-brand/5 transition-all duration-300 group">
+              <CardContent className="pt-6 pb-4 flex-1">
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  {pill(room.status)}
+                  <span className="text-xs text-muted-foreground font-medium">
+                    {formatDistanceToNow(new Date(room.createdAt), { addSuffix: true })}
+                  </span>
                 </div>
-                <CardTitle className="line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                <h3 className="text-base font-semibold leading-tight text-card-foreground group-hover:text-brand transition-colors mb-1">
                   {room.title}
-                </CardTitle>
+                </h3>
                 {room.description && (
-                  <CardDescription className="line-clamp-2 mt-2">
-                    {room.description}
-                  </CardDescription>
+                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{room.description}</p>
                 )}
-              </CardHeader>
-              <CardContent className="pb-4 flex-1">
-                <div className="space-y-3 text-sm text-muted-foreground">
+
+                <div className="mt-4 space-y-2 text-sm text-muted-foreground">
                   {canViewRecords && (
                     <Link
                       to={`/rooms/${room.id}/attendance/records`}
-                      className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 py-3 text-sm font-bold text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-sm group/rec"
+                      className="flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-all shadow-sm"
                     >
-                      <Users className="w-4 h-4 group-hover/rec:scale-110 transition-transform" />
+                      <Users className="w-4 h-4" />
                       <span>View Records</span>
-                      <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1.5 text-[10px] group-hover/rec:bg-primary-foreground group-hover/rec:text-primary transition-colors">
+                      <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[10px]">
                         {room.attendanceCount ?? 0}
                       </span>
                     </Link>
                   )}
 
-                  <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground border-t border-border/50">
+                  <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground border-t border-border/60">
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" />
                       <span>{format(new Date(room.scheduledStart), 'MMM d, h:mm a')}</span>
@@ -227,47 +270,46 @@ export const Dashboard = () => {
                   </div>
                 </div>
                </CardContent>
-               <CardFooter className="pt-4 border-t border-border flex flex-wrap gap-2">
-                 {canTakeAttendance && (
-                   <Link
-                     to={`/rooms/${room.id}/attendance`}
-                     className="inline-flex items-center gap-1.5 rounded-md bg-primary py-1.5 px-3 h-8 text-xs font-bold text-primary-foreground hover:opacity-90 transition-all shadow-sm shadow-primary/10 group/att"
-                   >
-                     <ClipboardList className="w-3 h-3 group-hover/att:scale-110 transition-transform" />
-                     <span>{canCreateAttendanceForm ? "Take Attendance" : "Record Attendance"}</span>
-                   </Link>
-                 )}
-                 {canViewLiveSession && (
-                   <Link
-                     to={`/rooms/${room.id}/live`}
-                     className="inline-flex items-center gap-1 rounded-md border border-border px-2 h-8 text-xs font-medium hover:bg-muted transition-colors"
-                   >
-                     <Radio className="w-3 h-3" />
-                     Live
-                   </Link>
-                 )}
-                 {canCreateAttendanceForm && (
-                   <Link
-                     to={`/rooms/${room.id}/form-builder`}
-                     className="inline-flex items-center gap-1 rounded-md border border-border px-2 h-8 text-xs font-medium hover:bg-muted transition-colors"
-                   >
-                     <FormInput className="w-3 h-3" />
-                     Form
-                   </Link>
-                 )}
-                 {canShareLiveLink && (
-                   <Button
-                     variant="outline"
-                     size="sm"
-                     className="ml-auto h-8 px-2.5 gap-1.5 text-xs font-medium"
-                     onClick={() => copyToClipboard(room.shareUrl)}
-                   >
-                     <Copy className="w-3 h-3" />
-                     Copy
-                   </Button>
-                 )}
-               </CardFooter>
-
+               <div className="px-6 py-4 border-t border-border flex flex-wrap gap-2">
+                  {canTakeAttendance && (
+                    <Link
+                      to={`/rooms/${room.id}/attendance`}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-primary py-1.5 px-3 h-8 text-xs font-bold text-primary-foreground hover:opacity-90 transition-all shadow-sm shadow-primary/10"
+                    >
+                      <ClipboardList className="w-3.5 h-3.5" />
+                      <span>{canCreateAttendanceForm ? "Take Attendance" : "Record Attendance"}</span>
+                    </Link>
+                  )}
+                  {canViewLiveSession && (
+                    <Link
+                      to={`/rooms/${room.id}/live`}
+                      className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 h-8 text-xs font-medium hover:bg-muted transition-colors"
+                    >
+                      <Radio className="w-3.5 h-3.5" />
+                      Live
+                    </Link>
+                  )}
+                  {canCreateAttendanceForm && (
+                    <Link
+                      to={`/rooms/${room.id}/form-builder`}
+                      className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 h-8 text-xs font-medium hover:bg-muted transition-colors"
+                    >
+                      <FormInput className="w-3.5 h-3.5" />
+                      Form
+                    </Link>
+                  )}
+                  {canShareLiveLink && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto h-8 px-2.5 gap-1.5 text-xs font-medium border-border"
+                      onClick={() => copyToClipboard(room.shareUrl)}
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copy
+                    </Button>
+                  )}
+                </div>
             </Card>
           ))}
         </div>

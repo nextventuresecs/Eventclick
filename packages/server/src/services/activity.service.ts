@@ -196,7 +196,7 @@ export const listRoomActivities = async (
     .limit(1);
 
   if (!room) throw ApiError.notFound("Room not found");
-  await assertRoomAccessWithRoom({ ...user, organizationId: orgId }, orgId, roomId);
+  await assertRoomAccessForUser({ ...user, organizationId: orgId }, orgId, roomId);
 
   const submissions = await db
     .select()
@@ -242,6 +242,7 @@ export const listRoomActivities = async (
 export const validateActivityQuotas = async (
   roomId: string,
   orgId: string,
+  user: { id: string; role: UserRole; organizationId: string | null },
 ): Promise<void> => {
   const [room] = await db
     .select()
@@ -256,6 +257,7 @@ export const validateActivityQuotas = async (
     .limit(1);
 
   if (!room) throw ApiError.notFound("Room not found");
+  await assertRoomAccessForUser({ ...user, organizationId: orgId }, orgId, roomId);
 
   if (!room.activityDefinitions || room.activityDefinitions.length === 0) {
     return;

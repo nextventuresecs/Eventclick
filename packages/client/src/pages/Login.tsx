@@ -66,16 +66,21 @@ export const LoginPage = () => {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
-          <CardDescription>Sign in to your Eventclick account</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+      <div className="mb-6 text-center">
+        <img
+          src="/logo.png"
+          alt="Eventclick"
+          className="mx-auto h-10 w-auto object-contain mb-3"
+        />
+        <h1 className="text-2xl font-bold tracking-tight font-display">Welcome back</h1>
+        <p className="text-sm text-muted-foreground mt-1">Sign in to your organization workspace</p>
+      </div>
+      <Card className="border-border bg-card">
+        <CardContent className="flex flex-col gap-5 pt-6">
           <GoogleSignInButton onToken={onGoogle} disabled={submitting} />
           <div className="flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-xs uppercase text-muted-foreground">or</span>
+            <span className="text-xs uppercase text-muted-foreground tracking-wide">or</span>
             <div className="h-px flex-1 bg-border" />
           </div>
 
@@ -97,7 +102,7 @@ export const LoginPage = () => {
                 <Label htmlFor="password">Password</Label>
                 <Link
                   to="/forgot-password"
-                  className="text-xs font-medium text-primary hover:underline"
+                  className="text-xs font-medium text-brand hover:underline"
                 >
                   Forgot password?
                 </Link>
@@ -124,7 +129,7 @@ export const LoginPage = () => {
           Don't have an account?&nbsp;
           <Link
             to="/register"
-            className="font-medium text-primary hover:underline"
+            className="font-medium text-brand hover:underline"
           >
             Create one
           </Link>

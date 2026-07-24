@@ -215,7 +215,7 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
     if (input.activityDefinitions !== undefined) patch.activityDefinitions = input.activityDefinitions;
     if (input.status !== undefined) {
       if (input.status === "ended") {
-        await validateActivityQuotas(id, orgId);
+        await validateActivityQuotas(id, orgId, req.user!);
       }
       patch.status = input.status;
       if (input.status === "live") patch.actualStart = new Date();
@@ -391,9 +391,9 @@ export const stopLive: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessWithRoom(req.user!, orgId, id);
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
-    await validateActivityQuotas(id, orgId);
+    await validateActivityQuotas(id, orgId, req.user!);
 
     const [row] = await db
       .update(eventRooms)
@@ -458,7 +458,7 @@ export const getActiveRecording: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessWithRoom(req.user!, orgId, id);
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const [recording] = await db
       .select()
