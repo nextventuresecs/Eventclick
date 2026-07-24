@@ -204,6 +204,41 @@ fi
 
 log "Server health check passed ✅"
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Smoke test — verify the deep health endpoint responds correctly from outside
+# the container (confirms secrets are loaded and all dependencies are reachable)
+# ═══════════════════════════════════════════════════════════════════════════
+log "Running deep health smoke test..."
+SMOKE_OK=false
+for i in $(seq 1 5); do
+  SMOKE_RESP=$(curl -sf http://localhost:4000/api/v1/health/deep 2>/dev/null || true)
+  if [[ -n "$SMOKE_RESP" ]]; then
+    SMOKE_OK=true
+    break
+  fi
+  info "Smoke test attempt ${i}/5 — no response, waiting 3s..."
+  sleep 3
+done
+
+if [[ "$SMOKE_OK" != "true" ]]; then
+  err "Deep health smoke test failed — server is not responding correctly"
+  # Show the raw output for debugging
+  curl -v http://localhost:4000/api/v1/health/deep 2>&1 | tee -a "$DEPLOY_LOG" || true
+  warn "Rolling back to previous version..."
+  if [[ "$PREV_SERVER_IMAGE" != "none" ]]; then
+    docker compose -f "$COMPOSE_FILE" stop server
+    git reset --hard HEAD~1
+    docker compose -f "$COMPOSE_FILE" up -d --no-deps --build server
+    warn "Rollback complete. Previous version restored."
+    warn "Check the deploy log: ${DEPLOY_LOG}"
+  else
+    err "No previous image to rollback to!"
+  fi
+  exit 1
+fi
+
+log "Deep health smoke test passed ✅"
+
 # Restart the client
 log "Restarting client..."
 docker compose -f "$COMPOSE_FILE" up -d --no-deps client
