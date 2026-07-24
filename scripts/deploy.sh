@@ -9,11 +9,12 @@
 #
 # What this does:
 #   1. Pull latest code (or checkout tag)
-#   2. Build Docker images
-#   3. Run database migrations (via init container)
-#   4. Rolling restart of services
-#   5. Health check verification
-#   6. Rollback on failure
+#   2. Start infrastructure (postgres, redis, gotenberg)
+#   3. Pull Docker images from registry (or build locally)
+#   4. Run database migrations
+#   5. Rolling restart of services
+#   6. Health check verification
+#   7. Rollback on failure
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -121,21 +122,30 @@ info "Previous server image: ${PREV_SERVER_IMAGE:0:12}"
 info "Previous client image: ${PREV_CLIENT_IMAGE:0:12}"
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 2. Build Docker images (skipped when images pre-pulled from ghcr.io)
+# 1. Start Infrastructure
 # ═══════════════════════════════════════════════════════════════════════════
-if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
+log "Starting infrastructure services..."
+docker compose -f "$COMPOSE_FILE" up -d postgres redis gotenberg
+sleep 5
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 2. Pull/Build Docker Images
+# ═══════════════════════════════════════════════════════════════════════════
+if [[ "${SKIP_BUILD:-1}" != "0" ]]; then
+  log "pulling Docker images..."
+  docker compose -f "$COMPOSE_FILE" pull && docker compose -f "$COMPOSE_FILE" up -d --no-deps client server
+  log "Docker images pulled & restarted ✅"
+else
   log "Building Docker images..."
   docker compose -f "$COMPOSE_FILE" build --no-cache server client
   log "Docker images built ✅"
-else
-  warn "SKIP_BUILD=1 — using pre-pulled images (ghcr.io)"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 3. Run database migrations
 # ═══════════════════════════════════════════════════════════════════════════
 log "Running database migrations..."
-docker compose -f "$COMPOSE_FILE" up migrate --build --abort-on-container-exit
+docker compose -f "$COMPOSE_FILE" up migrate --pull --abort-on-container-exit
 MIGRATE_EXIT=$?
 if [[ $MIGRATE_EXIT -ne 0 ]]; then
   err "Database migration failed with exit code ${MIGRATE_EXIT}!"
@@ -148,10 +158,6 @@ log "Migrations complete ✅"
 # 4. Rolling restart
 # ═══════════════════════════════════════════════════════════════════════════
 log "Starting rolling restart..."
-
-# Start infrastructure first (postgres, redis, gotenberg should already be running)
-docker compose -f "$COMPOSE_FILE" up -d postgres redis gotenberg
-sleep 5
 
 # Restart the server
 log "Restarting server..."
@@ -187,7 +193,7 @@ if [[ "$HEALTHY" != "true" ]]; then
     # git reset --hard moves HEAD back cleanly (no dirty working tree)
     # git checkout HEAD~1 -- was leaving repo in dirty state, breaking next deploy
     git reset --hard HEAD~1
-    docker compose -f "$COMPOSE_FILE" up -d --no-deps --build server
+    docker compose -f "$COMPOSE_FILE" up -d --no-deps server
     warn "Rollback complete. Previous version restored."
     warn "Check the deploy log: ${DEPLOY_LOG}"
   else
