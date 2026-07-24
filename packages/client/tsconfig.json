@@ -2,16 +2,15 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "outDir": "dist",
-    "rootDir": ".",
     // "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@application/shared": ["../shared/src/index.ts"]
     },
     "types": ["node", "vite/client"],
     "moduleResolution": "bundler",
     "module": "ESNext"
   },
-  "include": ["src", "vite.config.ts"],
+  "include": ["src", "vite.config.ts", "../shared/src"],
   "exclude": ["node_modules", "dist"]
 }
