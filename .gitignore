@@ -18,3 +18,4 @@ ROLE*.md
 *_Token*.txt
 scratch/
 .agents/
+.gstack/
