@@ -86,6 +86,26 @@ export const DashboardLayout = () => {
     return location.pathname === path || (path !== "/dashboard" && location.pathname.startsWith(path));
   };
 
+  const NavItem = ({ item }: { item: { name: string; path: string; icon: React.ComponentType<{ className?: string }> } }) => {
+    const active = isActive(item.path);
+    return (
+      <Link
+        to={item.path}
+        title={isCollapsed ? item.name : undefined}
+        className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-all duration-150 ease-out ${
+          isCollapsed ? "justify-center" : ""
+        } ${
+          active
+            ? "bg-[var(--gradient-brand)] text-white shadow-sm border-l-2 border-[var(--color-secondary)]"
+            : "text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)]"
+        }`}
+      >
+        <item.icon className="w-5 h-5 shrink-0" />
+        {!isCollapsed && <span>{item.name}</span>}
+      </Link>
+    );
+  };
+
   return (
     <div className="flex min-h-screen bg-[var(--color-bg)]">
       <aside
@@ -126,26 +146,9 @@ export const DashboardLayout = () => {
             <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-gray-400)] px-3 mb-2">
               {isCollapsed ? "" : "Menu"}
             </p>
-            {navItems.map((item) => {
-              const active = isActive(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  title={isCollapsed ? item.name : undefined}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${
-                    isCollapsed ? "justify-center" : ""
-                  } ${
-                    active
-                      ? "bg-[var(--gradient-brand)] text-white shadow-sm border-l-2 border-[var(--color-secondary)]"
-                      : "text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)]"
-                  }`}
-                >
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  {!isCollapsed && <span>{item.name}</span>}
-                </Link>
-              );
-            })}
+            {navItems.map((item) => (
+              <NavItem key={item.path} item={item} />
+            ))}
           </div>
 
           <div className="border-t border-[var(--color-gray-200)]" />
@@ -154,33 +157,16 @@ export const DashboardLayout = () => {
             <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-gray-400)] px-3 mb-2">
               {isCollapsed ? "" : "Tools"}
             </p>
-            {toolsItems.map((item) => {
-              const active = isActive(item.path);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  title={isCollapsed ? item.name : undefined}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${
-                    isCollapsed ? "justify-center" : ""
-                  } ${
-                    active
-                      ? "bg-[var(--gradient-brand)] text-white shadow-sm border-l-2 border-[var(--color-secondary)]"
-                      : "text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)]"
-                  }`}
-                >
-                  <item.icon className="w-5 h-5 shrink-0" />
-                  {!isCollapsed && <span>{item.name}</span>}
-                </Link>
-              );
-            })}
+            {toolsItems.map((item) => (
+              <NavItem key={item.path} item={item} />
+            ))}
           </div>
         </nav>
 
         <div className="mt-auto border-t border-[var(--color-gray-200)]">
           {!isCollapsed ? (
             <div className="p-4 space-y-3">
-              <div className="rounded-xl bg-[var(--color-ink)] text-white p-3">
+              <div className="rounded-xl bg-[var(--color-ink)] text-white p-3 shadow-lg">
                 <div className="flex items-center gap-3">
                   {user?.photoUrl ? (
                     <img
@@ -214,24 +200,24 @@ export const DashboardLayout = () => {
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--color-gray-400)] px-3 mb-2">
                   Account
                 </p>
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)] transition-colors text-left">
+                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)] transition-all duration-150 ease-out text-left">
                   <UserCircle className="w-4 h-4 shrink-0" />
                   <span>Profile</span>
                 </button>
-                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)] transition-colors text-left">
+                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)] transition-all duration-150 ease-out text-left">
                   <Settings2 className="w-4 h-4 shrink-0" />
                   <span>Settings</span>
                 </button>
                 <div>
                   <button
                     onClick={() => setAccountOpen(!accountOpen)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)] transition-colors text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)] transition-all duration-150 ease-out text-left"
                   >
                     <div className="flex items-center gap-3">
                       <HelpCircle className="w-4 h-4 shrink-0" />
                       <span>Help</span>
                     </div>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${accountOpen ? "rotate-180" : ""}`} />
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-150 ease-out ${accountOpen ? "rotate-180" : ""}`} />
                   </button>
                   {accountOpen && (
                     <div className="ml-4 mt-1 space-y-0.5 border-l border-[var(--color-gray-200)] pl-3">
@@ -239,7 +225,7 @@ export const DashboardLayout = () => {
                         <Link
                           key={item.path}
                           to={item.path}
-                          className="flex items-center gap-3 px-3 py-1.5 rounded-md text-xs font-medium text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)] transition-colors"
+                          className="flex items-center gap-3 px-3 py-1.5 rounded-md text-xs font-medium text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)] transition-all duration-150 ease-out"
                         >
                           <item.icon className="w-3.5 h-3.5 shrink-0" />
                           <span>{item.name}</span>
@@ -252,7 +238,7 @@ export const DashboardLayout = () => {
 
               <Button
                 variant="outline"
-                className="w-full justify-start border-[var(--color-gray-200)] text-[var(--color-gray-500)] hover:text-[var(--color-error)] hover:border-[var(--color-error)] hover:bg-[var(--color-status-cancelled-bg)]"
+                className="w-full justify-start border-[var(--color-gray-200)] text-[var(--color-gray-500)] hover:text-[var(--color-error)] hover:border-[var(--color-error)] hover:bg-[var(--color-status-cancelled-bg)] transition-all duration-150 ease-out"
                 onClick={logout}
               >
                 <LogOut className="w-4 h-4 mr-2 shrink-0" />
@@ -276,7 +262,7 @@ export const DashboardLayout = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="w-9 h-9 text-[var(--color-gray-400)] hover:text-[var(--color-error)] hover:bg-[var(--color-status-cancelled-bg)]"
+                  className="w-9 h-9 text-[var(--color-gray-400)] hover:text-[var(--color-error)] hover:bg-[var(--color-status-cancelled-bg)] transition-all duration-150 ease-out"
                   onClick={logout}
                   title="Sign out"
                 >

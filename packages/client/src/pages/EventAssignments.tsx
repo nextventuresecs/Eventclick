@@ -96,7 +96,7 @@ export const EventAssignments = () => {
 
   if (!canManageUsers) {
     return (
-      <Card className="border border-[var(--color-gray-200)]">
+      <Card className="card-static">
         <CardContent className="p-6 text-sm text-[var(--color-gray-500)]">
           You do not have access to assignment management.
         </CardContent>
@@ -121,7 +121,7 @@ export const EventAssignments = () => {
         </Card>
       )}
 
-      <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl">
+      <Card className="card-static rounded-2xl">
         <CardContent className="p-4 space-y-4">
           <div className="grid gap-3 md:grid-cols-3">
             <select
@@ -148,7 +148,7 @@ export const EventAssignments = () => {
                 </option>
               ))}
             </select>
-            <Button disabled={pending || !selectedUserId || !selectedRoomId} onClick={assign} className="bg-[var(--color-secondary)] text-white shadow-sm">
+            <Button disabled={pending || !selectedUserId || !selectedRoomId} onClick={assign} className="bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out">
               <Plus className="w-4 h-4 mr-1" />
               Assign
             </Button>
@@ -156,14 +156,14 @@ export const EventAssignments = () => {
         </CardContent>
       </Card>
 
-      <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl">
+      <Card className="card-static rounded-2xl">
         <CardContent className="p-4">
           <div className="space-y-3">
             {assignments.length === 0 ? (
               <p className="text-sm text-[var(--color-gray-400)]">No assignments yet.</p>
             ) : (
               assignments.map((assignment) => (
-                <Card key={assignment.id} className="border border-[var(--color-gray-200)] bg-[var(--color-gray-50)] shadow-none rounded-xl">
+                <Card key={assignment.id} className="card-static rounded-xl">
                   <CardContent className="p-3 flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>

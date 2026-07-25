@@ -105,7 +105,7 @@ export const Reports = () => {
             placeholder="Search reports..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 border-[var(--color-gray-200)] bg-[var(--color-gray-50)]"
+            className="pl-9 border-[var(--color-gray-200)] bg-[var(--color-gray-50)] input-premium"
           />
         </div>
       </div>
@@ -120,7 +120,7 @@ export const Reports = () => {
           </Card>
         ) : (
           filtered.map((room) => (
-            <Card key={room.id} className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl hover:shadow-md transition-shadow">
+            <Card key={room.id} className="card-base rounded-2xl">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   {pill(room.status)}
@@ -135,7 +135,7 @@ export const Reports = () => {
                 <Button
                   onClick={() => download(room)}
                   disabled={generating[room.id]}
-                  className="w-full bg-[var(--color-secondary)] text-white shadow-sm hover:opacity-90"
+                  className="w-full bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out"
                 >
                   {generating[room.id] ? "Generating..." : "Download report"}
                 </Button>

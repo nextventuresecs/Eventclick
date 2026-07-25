@@ -60,7 +60,7 @@ const MetricCard = ({
 }) => {
   const isPrimary = variant === "primary";
   return (
-    <Card className={`border-0 shadow-sm ${isPrimary ? "bg-[var(--gradient-primary-tile)] text-white" : "bg-[var(--color-surface)] border border-[var(--color-gray-200)]"}`}>
+    <Card className={`card-static ${isPrimary ? "bg-[var(--gradient-primary-tile)] text-white" : ""}`}>
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -96,7 +96,7 @@ const MiniCalendar = ({ rooms }: { rooms: EventRoom[] }) => {
   const startWeekDay = firstDay.getDay();
 
   return (
-    <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl">
+    <Card className="card-static rounded-2xl">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-semibold font-display text-[var(--color-gray-900)]">{format(today, "MMMM yyyy")}</h4>
@@ -154,7 +154,7 @@ const MiniCalendar = ({ rooms }: { rooms: EventRoom[] }) => {
 const MapCard = ({ rooms }: { rooms: EventRoom[] }) => {
   const activeRooms = rooms.filter((r) => r.status === "live" || r.status === "scheduled").slice(0, 6);
   return (
-    <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl h-full">
+    <Card className="card-static rounded-2xl h-full">
       <CardContent className="p-4 h-full flex flex-col">
         <h4 className="text-sm font-semibold font-display text-[var(--color-gray-900)] mb-3">Event Locations</h4>
         <div className="flex-1 bg-[var(--color-gray-100)] rounded-xl relative overflow-hidden min-h-[180px]">
@@ -322,7 +322,7 @@ export const Dashboard = () => {
         {canManageRooms && (
           <Link
             to="/rooms/create"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--gradient-brand)] px-4 h-10 text-sm font-semibold text-white hover:opacity-90 transition-colors shadow-sm"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--gradient-brand)] px-4 h-10 text-sm font-semibold text-white hover:opacity-90 transition-all duration-150 ease-out shadow-sm"
           >
             <Plus className="w-4 h-4" />
             Create Room
@@ -362,7 +362,7 @@ export const Dashboard = () => {
                   .filter((r) => r.status === "live" || r.status === "scheduled")
                   .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
                   .map((room) => (
-                    <Card key={room.id} className={`border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl hover:shadow-md transition-shadow border-l-4 ${room.status === "live" ? "border-l-[var(--color-status-live)]" : room.status === "scheduled" ? "border-l-[var(--color-status-scheduled)]" : room.status === "ended" ? "border-l-[var(--color-status-ended)]" : "border-l-[var(--color-status-cancelled)]"}`}>
+                    <Card key={room.id} className={`card-base rounded-2xl border-l-4 ${room.status === "live" ? "border-l-[var(--color-status-live)]" : room.status === "scheduled" ? "border-l-[var(--color-status-scheduled)]" : room.status === "ended" ? "border-l-[var(--color-status-ended)]" : "border-l-[var(--color-status-cancelled)]"}`}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           {pill(room.status)}
@@ -431,9 +431,9 @@ export const Dashboard = () => {
 
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--color-gray-400)] mb-3">Members</h3>
-            <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl overflow-hidden">
+            <Card className="card-static rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
+                <table className="w-full text-sm text-left table-base">
                   <thead className="bg-[var(--color-gray-50)] text-[var(--color-gray-400)] text-xs uppercase">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Member</th>

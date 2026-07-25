@@ -119,19 +119,19 @@ export const CreateRoom = () => {
       <div className="flex items-center gap-4">
         <Link
           to="/dashboard"
-          className="inline-flex items-center justify-center w-10 h-10 rounded-md text-foreground hover:bg-muted transition-colors shrink-0 -ml-2"
+          className="inline-flex items-center justify-center w-10 h-10 rounded-lg text-foreground hover:bg-muted transition-colors shrink-0 -ml-2"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Create New Room</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-2xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Create New Room</h2>
+          <p className="text-sm text-muted-foreground">
             Set up a new event or webinar room for {user?.organizationName || "your organization"}.
           </p>
         </div>
       </div>
 
-      <Card>
+      <Card className="card-static rounded-2xl">
         <form onSubmit={onSubmit}>
           <CardContent className="space-y-6 pt-6">
             <div className="space-y-2">
@@ -143,6 +143,7 @@ export const CreateRoom = () => {
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={submitting}
                 required
+                className="input-premium"
               />
             </div>
             
@@ -172,7 +173,7 @@ export const CreateRoom = () => {
                     onChange={(e) => setScheduledStart(e.target.value)}
                     disabled={submitting}
                     required
-                    className="pl-10"
+                    className="pl-10 input-premium"
                   />
                 </div>
               </div>
@@ -189,7 +190,7 @@ export const CreateRoom = () => {
                     onChange={(e) => setScheduledEnd(e.target.value)}
                     disabled={submitting}
                     required
-                    className="pl-10"
+                    className="pl-10 input-premium"
                   />
                 </div>
               </div>
@@ -207,6 +208,7 @@ export const CreateRoom = () => {
                   value={attendanceWindowBefore}
                   onChange={(e) => setAttendanceWindowBefore(e.target.value)}
                   disabled={submitting}
+                  className="input-premium"
                 />
                 <p className="text-xs text-muted-foreground">
                   Minutes before start time that attendance can be taken (default 15).
@@ -222,6 +224,7 @@ export const CreateRoom = () => {
                   value={attendanceWindowAfter}
                   onChange={(e) => setAttendanceWindowAfter(e.target.value)}
                   disabled={submitting}
+                  className="input-premium"
                 />
                 <p className="text-xs text-muted-foreground">
                   Minutes after event ends that attendance can still be taken (default 30).
@@ -241,6 +244,7 @@ export const CreateRoom = () => {
                 value={maxParticipants}
                 onChange={(e) => setMaxParticipants(e.target.value)}
                 disabled={submitting}
+                className="input-premium"
               />
             </div>
 
@@ -414,7 +418,7 @@ export const CreateRoom = () => {
             >
               Cancel
             </Link>
-            <Button type="submit" disabled={submitting} className="min-w-[120px]">
+            <Button type="submit" disabled={submitting} className="bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out min-w-[120px]">
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

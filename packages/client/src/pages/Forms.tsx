@@ -81,7 +81,7 @@ export const Forms = () => {
             placeholder="Search forms..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 border-[var(--color-gray-200)] bg-[var(--color-gray-50)]"
+            className="pl-9 border-[var(--color-gray-200)] bg-[var(--color-gray-50)] input-premium"
           />
         </div>
       </div>
@@ -96,7 +96,7 @@ export const Forms = () => {
           </Card>
         ) : (
           filtered.map((room) => (
-            <Card key={room.id} className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl hover:shadow-md transition-shadow">
+            <Card key={room.id} className="card-base rounded-2xl">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   {pill(room.status)}
@@ -110,7 +110,7 @@ export const Forms = () => {
                 </CardDescription>
                 <Link
                   to={`/rooms/${room.id}/attendance/records`}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 h-9 text-sm font-semibold text-white hover:opacity-90 transition-colors shadow-sm w-full"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--gradient-brand)] px-4 h-9 text-sm font-semibold text-white hover:opacity-90 transition-all duration-150 ease-out shadow-sm w-full"
                 >
                   View records
                 </Link>

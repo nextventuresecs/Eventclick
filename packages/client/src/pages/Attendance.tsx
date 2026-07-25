@@ -659,13 +659,13 @@ export const Attendance = () => {
           </div>
         )}
         {lastSubmitted && !error && (
-          <div className="p-3 rounded-md bg-emerald-500/10 text-emerald-700 text-sm border border-emerald-500/20 flex items-center gap-2">
+          <div className="p-3 rounded-md bg-[var(--color-status-live-bg)] text-[var(--color-status-live)] text-sm border border-[var(--color-status-live)]/20 flex items-center gap-2">
             <Check className="w-4 h-4" />
             Submitted at {lastSubmitted}
           </div>
         )}
 
-        <Button type="submit" disabled={submitting || !windowCheck?.isAllowed} className="w-full" size="lg">
+        <Button type="submit" disabled={submitting || !windowCheck?.isAllowed} className="w-full bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out" size="lg">
           {submitting ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />

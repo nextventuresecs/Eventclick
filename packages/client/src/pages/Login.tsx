@@ -67,26 +67,28 @@ export const LoginPage = () => {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
       <div className="mb-6 text-center">
-        <img
-          src="/only_icon.png"
-          alt="Eventclick"
-          className="mx-auto h-10 w-auto object-contain mb-3"
-        />
-        <h1 className="text-2xl font-bold tracking-tight font-display">Welcome back</h1>
-        <p className="text-sm text-muted-foreground mt-1">Sign in to your organization workspace</p>
+        <div className="mx-auto h-12 w-12 rounded-xl bg-[var(--gradient-brand)] flex items-center justify-center mb-3 shadow-sm">
+          <img
+            src="/only_icon.png"
+            alt="Eventclick"
+            className="h-6 w-6 object-contain"
+          />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Welcome back</h1>
+        <p className="text-sm text-[var(--color-gray-400)] mt-1">Sign in to your organization workspace</p>
       </div>
-      <Card className="border-border bg-card">
+      <Card className="card-static rounded-2xl">
         <CardContent className="flex flex-col gap-5 pt-6">
           <GoogleSignInButton onToken={onGoogle} disabled={submitting} />
           <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs uppercase text-muted-foreground tracking-wide">or</span>
-            <div className="h-px flex-1 bg-border" />
+            <div className="h-px flex-1 bg-[var(--color-gray-200)]" />
+            <span className="text-xs uppercase text-[var(--color-gray-400)] tracking-wide">or</span>
+            <div className="h-px flex-1 bg-[var(--color-gray-200)]" />
           </div>
 
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-[var(--color-gray-600)]">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -95,14 +97,15 @@ export const LoginPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={submitting}
+                className="input-premium"
               />
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium text-[var(--color-gray-600)]">Password</Label>
                 <Link
                   to="/forgot-password"
-                  className="text-xs font-medium text-brand hover:underline"
+                  className="text-xs font-medium text-[var(--color-primary)] hover:underline"
                 >
                   Forgot password?
                 </Link>
@@ -115,21 +118,22 @@ export const LoginPage = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={submitting}
+                className="input-premium"
               />
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
 
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting} className="bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out">
               {submitting ? "Signing in…" : "Sign in"}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="justify-center text-sm text-muted-foreground">
+        <CardFooter className="justify-center text-sm text-[var(--color-gray-400)]">
           Don't have an account?&nbsp;
           <Link
             to="/register"
-            className="font-medium text-brand hover:underline"
+            className="font-medium text-[var(--color-primary)] hover:underline"
           >
             Create one
           </Link>

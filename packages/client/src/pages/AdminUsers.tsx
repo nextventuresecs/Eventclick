@@ -73,7 +73,7 @@ export const AdminUsers = () => {
 
   if (!canManageUsers) {
     return (
-      <Card className="border border-[var(--color-gray-200)]">
+      <Card className="card-static">
         <CardContent className="p-6 text-sm text-[var(--color-gray-500)]">
           Access denied. Only NGO Admins can manage users.
         </CardContent>
@@ -99,11 +99,11 @@ export const AdminUsers = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/admin/event-assignments")} className="border-[var(--color-gray-200)] text-[var(--color-gray-600)]">
+          <Button variant="outline" onClick={() => navigate("/admin/event-assignments")} className="border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out">
             <LinkIcon className="w-4 h-4 mr-1" />
             Event Assignments
           </Button>
-          <Button onClick={() => setShowCreateModal(true)} className="bg-[var(--color-secondary)] text-white shadow-sm">
+          <Button onClick={() => setShowCreateModal(true)} className="bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out">
             <Users className="w-4 h-4 mr-1" />
             Add user
           </Button>
@@ -118,7 +118,7 @@ export const AdminUsers = () => {
         </Card>
       )}
 
-      <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl">
+      <Card className="card-static rounded-2xl">
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <div className="relative flex-1 min-w-[200px]">
@@ -127,23 +127,23 @@ export const AdminUsers = () => {
                 placeholder="Search users..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 border-[var(--color-gray-200)] bg-[var(--color-gray-50)]"
+                className="pl-9 border-[var(--color-gray-200)] bg-[var(--color-gray-50)] input-premium"
               />
             </div>
             <div className="flex gap-2">
-              <Button variant={roleFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("all")} className={roleFilter !== "all" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>All</Button>
-              <Button variant={roleFilter === "event_admin" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("event_admin")} className={roleFilter !== "event_admin" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>Event Admin</Button>
-              <Button variant={roleFilter === "volunteer" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("volunteer")} className={roleFilter !== "volunteer" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>Volunteer</Button>
+              <Button variant={roleFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("all")} className={roleFilter !== "all" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>All</Button>
+              <Button variant={roleFilter === "event_admin" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("event_admin")} className={roleFilter !== "event_admin" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>Event Admin</Button>
+              <Button variant={roleFilter === "volunteer" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("volunteer")} className={roleFilter !== "volunteer" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>Volunteer</Button>
             </div>
             <div className="flex gap-2">
-              <Button variant={statusFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("all")} className={statusFilter !== "all" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>All</Button>
-              <Button variant={statusFilter === "active" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("active")} className={statusFilter !== "active" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>Active</Button>
-              <Button variant={statusFilter === "inactive" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("inactive")} className={statusFilter !== "inactive" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>Inactive</Button>
+              <Button variant={statusFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("all")} className={statusFilter !== "all" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>All</Button>
+              <Button variant={statusFilter === "active" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("active")} className={statusFilter !== "active" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>Active</Button>
+              <Button variant={statusFilter === "inactive" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("inactive")} className={statusFilter !== "inactive" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>Inactive</Button>
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left table-base">
               <thead className="bg-[var(--color-gray-50)] text-[var(--color-gray-400)] text-xs uppercase">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Member</th>
