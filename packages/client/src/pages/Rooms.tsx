@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { format, formatDistanceToNow } from "date-fns";
 import {
   CalendarClock,
-  CheckCircle,
   Clock,
   Copy,
   FileText,
@@ -14,7 +13,6 @@ import {
   Users,
   ClipboardList,
   XCircle,
-  Trash2,
 } from "lucide-react";
 import { hasRolePermission, type EventRoom } from "@application/shared";
 import { roomsApi, ApiClientError } from "@/lib/api";
@@ -53,7 +51,6 @@ const statusPill = (status: EventRoom["status"]) => {
 const RoomCard = ({ room }: { room: EventRoom }) => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const meta = STATUS_META[room.status];
 
   return (
     <Card className="card-static rounded-2xl border-l-[3px] transition-all duration-150 ease-out hover:shadow-md hover:-translate-y-0.5"
