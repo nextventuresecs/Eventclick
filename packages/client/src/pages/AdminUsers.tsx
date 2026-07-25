@@ -304,7 +304,7 @@ const CreateUserModal = ({
               <Button variant="outline" onClick={onClose} disabled={loading} className="border-[var(--color-gray-200)] text-[var(--color-gray-600)]">
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading} className="bg-[var(--color-secondary)] text-white shadow-sm">
+              <Button type="submit" disabled={loading}>
                 {loading ? "Creating..." : "Create User"}
               </Button>
             </div>
