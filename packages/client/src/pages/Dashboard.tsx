@@ -59,7 +59,7 @@ const MetricCard = ({
 }) => {
   const isPrimary = variant === "primary";
   return (
-    <Card className={`card-static ${isPrimary ? "bg-[var(--gradient-primary-tile)] text-white" : ""}`}>
+    <Card className={`card-static ${isPrimary ? "bg-brand-gradient-tile text-white" : ""}`}>
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
@@ -95,25 +95,25 @@ const MiniCalendar = ({ rooms }: { rooms: EventRoom[] }) => {
   const startWeekDay = firstDay.getDay();
 
   return (
-    <Card className="card-static rounded-2xl">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-semibold font-display text-[var(--color-gray-900)]">{format(today, "MMMM yyyy")}</h4>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-[var(--color-gray-400)]">
-              <ChevronLeft className="h-4 w-4" />
+    <Card className="card-static rounded-2xl overflow-hidden">
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-xs font-semibold font-display text-[var(--color-gray-900)]">{format(today, "MMM yyyy")}</h4>
+          <div className="flex gap-0.5">
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-[var(--color-gray-400)]">
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-[var(--color-gray-400)]">
-              <ChevronRight className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-[var(--color-gray-400)]">
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-[var(--color-gray-400)] mb-1">
+        <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] font-medium text-[var(--color-gray-400)] mb-0.5">
           {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-            <div key={i}>{d}</div>
+            <div key={i} className="py-0.5">{d}</div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5">
           {Array.from({ length: startWeekDay }).map((_, i) => (
             <div key={`empty-${i}`} />
           ))}
@@ -125,17 +125,17 @@ const MiniCalendar = ({ rooms }: { rooms: EventRoom[] }) => {
             return (
               <div
                 key={key}
-                className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-medium relative ${
+                className={`aspect-square flex flex-col items-center justify-center rounded-md text-[10px] font-medium ${
                   isTodayDate ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-gray-700)]"
                 }`}
               >
                 <span>{format(day, "d")}</span>
                 {hasEvent && (
-                  <span className="flex gap-0.5 mt-0.5">
-                    {events.slice(0, 3).map((_, idx) => (
+                  <span className="flex gap-px mt-px">
+                    {events.slice(0, 2).map((_, idx) => (
                       <span
                         key={idx}
-                        className="h-1 w-1 rounded-full"
+                        className="h-0.5 w-0.5 rounded-full"
                         style={{ backgroundColor: isTodayDate ? "white" : "var(--color-secondary)" }}
                       />
                     ))}
@@ -153,28 +153,27 @@ const MiniCalendar = ({ rooms }: { rooms: EventRoom[] }) => {
 const MapCard = ({ rooms }: { rooms: EventRoom[] }) => {
   const activeRooms = rooms.filter((r) => r.status === "live" || r.status === "scheduled").slice(0, 4);
   return (
-    <Card className="card-static rounded-2xl">
-      <CardContent className="p-4">
-        <h4 className="text-sm font-semibold font-display text-[var(--color-gray-900)] mb-3">Event Locations</h4>
-        <div className="h-[220px] bg-[var(--color-gray-100)] rounded-xl relative overflow-hidden">
+    <Card className="card-static rounded-2xl overflow-hidden">
+      <CardContent className="p-3">
+        <h4 className="text-xs font-semibold font-display text-[var(--color-gray-900)] mb-2">Event Locations</h4>
+        <div className="h-[140px] bg-[var(--color-gray-100)] rounded-xl relative overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <MapPin className="w-8 h-8 text-[var(--color-primary)] mx-auto" />
-              <p className="text-xs font-medium text-[var(--color-gray-500)]">Map view requires venue data</p>
-              <p className="text-[10px] text-[var(--color-gray-400)]">Add address fields to event rooms to enable pins</p>
+            <div className="text-center space-y-1">
+              <MapPin className="w-6 h-6 text-[var(--color-primary)] mx-auto" />
+              <p className="text-[10px] font-medium text-[var(--color-gray-500)]">No venue data yet</p>
             </div>
           </div>
           {activeRooms.map((room, idx) => (
             <div
               key={room.id}
-              className="absolute bg-[var(--color-surface)] border border-[var(--color-gray-200)] rounded-lg shadow-sm p-2 w-36 text-xs"
+              className="absolute bg-[var(--color-surface)] border border-[var(--color-gray-200)] rounded-md shadow-sm p-1.5 w-28 text-[10px]"
               style={{
-                top: `${25 + (idx % 2) * 35}%`,
-                left: `${10 + (idx % 2) * 48}%`,
+                top: `${20 + (idx % 2) * 40}%`,
+                left: `${8 + (idx % 2) * 50}%`,
               }}
             >
-              <p className="font-semibold text-[var(--color-gray-900)] truncate">{room.title}</p>
-              <p className="text-[var(--color-gray-400)] capitalize">{room.status}</p>
+              <p className="font-semibold text-[var(--color-gray-900)] truncate leading-tight">{room.title}</p>
+              <p className="text-[var(--color-gray-400)] capitalize leading-tight">{room.status}</p>
             </div>
           ))}
         </div>
@@ -329,7 +328,7 @@ export const Dashboard = () => {
                       : "Once your admin assigns you to an event, it will appear here for live viewing and attendance collection."}
                   </CardDescription>
                   {canManageRooms && (
-                    <Link to="/rooms/create" className="inline-flex items-center justify-center gap-2 rounded-xl px-4 h-10 text-sm font-semibold bg-[var(--gradient-brand)] text-white shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.98] transition-all">
+                    <Link to="/rooms/create" className="inline-flex items-center justify-center gap-2 rounded-xl px-4 h-10 text-sm font-semibold bg-brand-gradient text-white shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.98] transition-all">
                       Create your first room
                     </Link>
                   )}

@@ -157,7 +157,7 @@ export const AdminUsers = () => {
                   <tr key={u.id} className="hover:bg-[var(--color-gray-50)] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center text-xs font-bold uppercase">
+                        <div className="h-8 w-8 rounded-full bg-[rgba(64,34,145,0.1)] text-[var(--color-primary)] flex items-center justify-center text-xs font-bold uppercase">
                           {u.fullName.charAt(0)}
                         </div>
                         <div>

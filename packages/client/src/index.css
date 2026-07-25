@@ -208,3 +208,18 @@ h1, h2, h3, h4 {
   background: rgba(64, 34, 145, 0.08);
   color: var(--color-primary);
 }
+
+.bg-brand-gradient {
+  background: var(--gradient-brand);
+}
+
+.bg-brand-gradient-tile {
+  background: var(--gradient-primary-tile);
+}
+
+.text-brand-gradient {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

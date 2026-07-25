@@ -73,7 +73,7 @@ export const RegisterPage = () => {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
       <div className="mb-6 text-center">
-        <div className="mx-auto h-12 w-12 rounded-xl bg-[var(--gradient-brand)] flex items-center justify-center mb-3 shadow-sm">
+        <div className="mx-auto h-12 w-12 rounded-xl bg-brand-gradient flex items-center justify-center mb-3 shadow-sm">
           <img
             src="/only_icon.png"
             alt="Eventclick"
