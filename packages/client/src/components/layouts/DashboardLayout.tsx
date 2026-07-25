@@ -160,7 +160,7 @@ export const DashboardLayout = () => {
                     isCollapsed ? "justify-center" : ""
                   } ${
                     active
-                      ? "bg-[var(--gradient-brand)] text-white shadow-md border-l-2 border-[var(--color-secondary)]"
+                      ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-sm"
                       : "text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)]"
                   }`}
                 >
@@ -186,17 +186,17 @@ export const DashboardLayout = () => {
                     key={item.path}
                     to={item.path}
                     title={isCollapsed ? item.name : undefined}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-xl font-medium transition-all duration-150 ease-out ${
-                      isCollapsed ? "justify-center" : ""
-                    } ${
-                      active
-                        ? "bg-[var(--gradient-brand)] text-white shadow-md border-l-2 border-[var(--color-secondary)]"
-                        : "text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)]"
-                    }`}
-                  >
-                    <item.icon className="w-5 h-5 shrink-0" />
-                    {!isCollapsed && <span>{item.name}</span>}
-                  </Link>
+                  className={`flex items-center gap-3 px-3 py-2 rounded-xl font-medium transition-all duration-150 ease-out ${
+                    isCollapsed ? "justify-center" : ""
+                  } ${
+                    active
+                      ? "bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-sm"
+                      : "text-[var(--color-gray-500)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)]"
+                  }`}
+                >
+                  <item.icon className="w-5 h-5 shrink-0" />
+                  {!isCollapsed && <span>{item.name}</span>}
+                </Link>
                 );
               })}
             </div>

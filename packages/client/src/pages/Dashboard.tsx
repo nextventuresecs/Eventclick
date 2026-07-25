@@ -339,7 +339,12 @@ export const Dashboard = () => {
                   .filter((r) => r.status === "live" || r.status === "scheduled")
                   .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
                   .map((room) => (
-                    <Card key={room.id} className={`card-base rounded-2xl border-l-4 ${room.status === "live" ? "border-l-[var(--color-status-live)]" : room.status === "scheduled" ? "border-l-[var(--color-status-scheduled)]" : room.status === "ended" ? "border-l-[var(--color-status-ended)]" : "border-l-[var(--color-status-cancelled)]"}`}>
+                    <Card key={room.id} className={`card-static rounded-2xl border-l-[3px] transition-all duration-150 ease-out hover:shadow-md hover:-translate-y-0.5 ${
+                  room.status === "live" ? "border-l-[var(--color-status-live)]" :
+                  room.status === "scheduled" ? "border-l-[var(--color-status-scheduled)]" :
+                  room.status === "ended" ? "border-l-[var(--color-status-ended)]" :
+                  "border-l-[var(--color-status-cancelled)]"
+                }`}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           {pill(room.status)}
