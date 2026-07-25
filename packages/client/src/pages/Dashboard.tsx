@@ -305,7 +305,7 @@ export const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard title="Total Rooms" value={rooms.length} sub={`${liveRooms} live, ${scheduledRooms} scheduled`} icon={Activity} variant="primary" />
         <MetricCard title="Verified members" value={verifiedAttendees} sub="Across all rooms" icon={Users} />
@@ -314,7 +314,7 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-5">
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--color-gray-400)] mb-3">Live & Upcoming</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -453,7 +453,7 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <MiniCalendar rooms={rooms} />
           <MapCard rooms={rooms} />
         </div>

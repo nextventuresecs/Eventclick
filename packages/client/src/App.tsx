@@ -17,6 +17,7 @@ import { VerifyEmailPage } from "./pages/VerifyEmail";
 import { OnboardingPage } from "./pages/Onboarding";
 import { DashboardLayout } from "./components/layouts/DashboardLayout";
 import { Dashboard } from "./pages/Dashboard";
+import { Rooms } from "./pages/Rooms";
 import { CreateRoom } from "./pages/CreateRoom";
 import { RoomFormBuilder } from "./pages/RoomFormBuilder";
 import { Attendance } from "./pages/Attendance";
@@ -212,6 +213,7 @@ const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { path: "dashboard", element: <Dashboard /> },
+          { path: "rooms", element: <Rooms /> },
           {
             element: <PermissionRoute permission="manage_rooms" />,
             children: [{ path: "rooms/create", element: <CreateRoom /> }],

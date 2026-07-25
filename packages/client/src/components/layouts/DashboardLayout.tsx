@@ -66,6 +66,7 @@ const HelpDropdown = () => {
 
 const MENU_ITEMS = [
   { name: "Dashboard", path: "/dashboard", icon: Home },
+  { name: "Rooms", path: "/rooms", icon: FileText },
   { name: "Create Room", path: "/rooms/create", icon: PlusCircle },
   { name: "Users", path: "/admin/users", icon: Users, permission: "manage_users" },
   { name: "Event Assignments", path: "/admin/event-assignments", icon: UserCog, permission: "manage_users" },
@@ -132,6 +133,7 @@ export const DashboardLayout = () => {
     .slice(0, 2) || "?";
 
   const isActive = (path: string) => {
+    if (path === "/rooms") return location.pathname === "/rooms";
     return location.pathname === path || (path !== "/dashboard" && location.pathname.startsWith(path));
   };
 
@@ -139,6 +141,7 @@ export const DashboardLayout = () => {
     const all = [...navItems, ...toolsItems];
     const found = all.find((item) => isActive(item.path));
     if (found && found.path !== "/dashboard") return found.name;
+    if (location.pathname === "/rooms/create") return "Create Room";
     if (location.pathname.startsWith("/rooms/")) return "Room Details";
     if (location.pathname.startsWith("/admin/event-assignments")) return "Event Assignments";
     return "Dashboard";
@@ -159,9 +162,7 @@ export const DashboardLayout = () => {
         <div className="h-14 flex items-center justify-between px-4 border-b border-[var(--color-gray-200)] shrink-0">
           {!isCollapsed && (
             <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-lg bg-brand-gradient flex items-center justify-center shadow-sm">
-                <img src="/only_icon.png" alt="Eventclick" className="h-5 w-5 object-contain" />
-              </div>
+              <img src="/only_icon.png" alt="Eventclick" className="h-8 w-8 object-contain" />
               <div className="font-display font-bold text-base leading-none tracking-tight">
                 <span className="text-[var(--color-primary)]">Event</span>
                 <span className="text-[var(--color-secondary)]">Click</span>
@@ -169,8 +170,8 @@ export const DashboardLayout = () => {
             </div>
           )}
           {isCollapsed && (
-            <div className="mx-auto h-9 w-9 rounded-lg bg-brand-gradient flex items-center justify-center shadow-sm">
-              <img src="/only_icon.png" alt="Eventclick" className="h-5 w-5 object-contain" />
+            <div className="mx-auto">
+              <img src="/only_icon.png" alt="Eventclick" className="h-8 w-8 object-contain" />
             </div>
           )}
           <button
