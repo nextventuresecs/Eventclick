@@ -122,6 +122,7 @@ export interface AuthUser {
   role: UserRole;
   organizationId: string | null;
   organizationName?: string | null;
+  photoUrl?: string | null;
   emailVerified: boolean;
 }
 

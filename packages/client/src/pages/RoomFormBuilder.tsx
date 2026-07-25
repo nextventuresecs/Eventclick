@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowLeft, GripVertical, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, GripVertical, Loader2, Plus, Trash2 } from "lucide-react";
 import {
   FIELD_TYPES,
   FormDefinitionSchema,
@@ -126,10 +126,14 @@ const FieldRow = ({ field, onChange, onRemove }: FieldRowProps) => {
         )}
 
         {field.type === "date" && (
-          <div className="rounded-md bg-primary/5 border border-primary/10 p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-semibold text-primary/80 flex items-center gap-1">💡 Date Picker Guidance</p>
+          <div className="rounded-lg border border-[var(--color-gray-300)] bg-[var(--color-gray-100)] p-4 text-sm text-[var(--color-gray-600)] space-y-2">
+            <p className="font-semibold text-[var(--color-primary)] flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Date Picker Guidance
+            </p>
             <p>
-              Volunteers will select dates from a native calendar popup. Dates are stored/submitted in standard <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono">YYYY-MM-DD</code> format.
+              Volunteers will select dates from a native calendar popup. Dates are stored/submitted in standard{' '}
+              <code className="bg-[var(--color-surface)] px-1.5 py-0.5 rounded border border-[var(--color-gray-300)] text-xs font-mono text-[var(--color-gray-900)]">YYYY-MM-DD</code> format.
             </p>
           </div>
         )}

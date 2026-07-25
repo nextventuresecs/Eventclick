@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Loader2, Plus, Trash2, Sparkles, ClipboardList } from "lucide-react";
+import { ArrowLeft, Calendar, Loader2, Plus, Trash2, Sparkles, ClipboardList } from "lucide-react";
 import { roomsApi, ApiClientError } from "@/lib/api";
 import { CreateRoomSchema, hasRolePermission } from "@application/shared";
 import { useAuth } from "@/hooks/useAuth";
@@ -162,6 +162,9 @@ export const CreateRoom = () => {
               <div className="space-y-2">
                 <Label htmlFor="scheduledStart">Start Time <span className="text-destructive">*</span></Label>
                 <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-gray-600)]">
+                    <Calendar className="w-4 h-4" />
+                  </div>
                   <Input
                     id="scheduledStart"
                     type="datetime-local"
@@ -169,12 +172,16 @@ export const CreateRoom = () => {
                     onChange={(e) => setScheduledStart(e.target.value)}
                     disabled={submitting}
                     required
+                    className="pl-10"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="scheduledEnd">End Time <span className="text-destructive">*</span></Label>
                 <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-gray-600)]">
+                    <Calendar className="w-4 h-4" />
+                  </div>
                   <Input
                     id="scheduledEnd"
                     type="datetime-local"
@@ -182,6 +189,7 @@ export const CreateRoom = () => {
                     onChange={(e) => setScheduledEnd(e.target.value)}
                     disabled={submitting}
                     required
+                    className="pl-10"
                   />
                 </div>
               </div>

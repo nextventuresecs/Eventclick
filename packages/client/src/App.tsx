@@ -25,6 +25,8 @@ import { RoomLive } from "./pages/RoomLive";
 import { RoomWatch } from "./pages/RoomWatch";
 import { AdminUsers } from "./pages/AdminUsers";
 import { EventAssignments } from "./pages/EventAssignments";
+import { Forms } from "./pages/Forms";
+import { Reports } from "./pages/Reports";
 
 const ConnectionError = () => {
   const { retryAuth } = useAuth();
@@ -218,6 +220,13 @@ const router = createBrowserRouter([
             element: <PermissionRoute permission="create_attendance_form" />,
             children: [
               { path: "rooms/:id/form-builder", element: <RoomFormBuilder /> },
+            ],
+          },
+          { path: "forms", element: <Forms /> },
+          {
+            element: <PermissionRoute permission="view_reports" />,
+            children: [
+              { path: "reports", element: <Reports /> },
             ],
           },
           {

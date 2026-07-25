@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Link as LinkIcon } from "lucide-react";
-import { hasRolePermission, type OrgUserSummary, type CreateOrgUserInput } from "@application/shared";
-import { adminApi, ApiClientError } from "@/lib/api";
+import { Users, Link as LinkIcon, Search } from "lucide-react";
+import { hasRolePermission, type OrgUserSummary, type EventAdminAssignment, type UserRole } from "@application/shared";
+import { adminApi, eventAssignmentsApi, ApiClientError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -15,9 +15,13 @@ export const AdminUsers = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [users, setUsers] = useState<OrgUserSummary[]>([]);
+  const [assignments, setAssignments] = useState<EventAdminAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   const canManageUsers = user ? hasRolePermission(user.role, "manage_users") : false;
 
@@ -25,8 +29,12 @@ export const AdminUsers = () => {
     setError(null);
     setLoading(true);
     try {
-      const res = await adminApi.listUsers();
-      setUsers(res.items);
+      const [usersRes, assignmentsRes] = await Promise.all([
+        adminApi.listUsers(),
+        eventAssignmentsApi.listAssignments(),
+      ]);
+      setUsers(usersRes.items);
+      setAssignments(assignmentsRes.items);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Failed to load users");
     } finally {
@@ -39,10 +47,34 @@ export const AdminUsers = () => {
     void load();
   }, [canManageUsers, load]);
 
+  const enrichedUsers = useMemo(() => {
+    const map = new Map<string, { roomTitle: string; assignedBy: string | null }[]>();
+    assignments.forEach((a) => {
+      if (!map.has(a.userId)) map.set(a.userId, []);
+      map.get(a.userId)!.push({ roomTitle: a.room.title, assignedBy: a.assignedBy });
+    });
+    return users.map((u) => {
+      const userAssignments = map.get(u.id) || [];
+      const roomTitle = userAssignments[0]?.roomTitle ?? "—";
+      const assignedBy = userAssignments[0]?.assignedBy ? userAssignments[0].assignedBy.split("@")[0] : undefined;
+      return { ...u, roomTitle, assignedBy, isActive: u.isActive };
+    });
+  }, [users, assignments]);
+
+  const filtered = useMemo(() => {
+    return enrichedUsers.filter((u) => {
+      if (search && !u.fullName.toLowerCase().includes(search.toLowerCase()) && !u.email.toLowerCase().includes(search.toLowerCase())) return false;
+      if (roleFilter !== "all" && u.role !== roleFilter) return false;
+      if (statusFilter === "active" && !u.isActive) return false;
+      if (statusFilter === "inactive" && u.isActive) return false;
+      return true;
+    });
+  }, [enrichedUsers, search, roleFilter, statusFilter]);
+
   if (!canManageUsers) {
     return (
-      <Card>
-        <CardContent className="p-6 text-sm text-muted-foreground">
+      <Card className="border border-[var(--color-gray-200)]">
+        <CardContent className="p-6 text-sm text-[var(--color-gray-500)]">
           Access denied. Only NGO Admins can manage users.
         </CardContent>
       </Card>
@@ -52,93 +84,109 @@ export const AdminUsers = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">Loading users...</p>
+        <p className="text-[var(--color-gray-400)]">Loading users...</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Users</h2>
-          <p className="text-muted-foreground mt-1">
+          <h2 className="text-3xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Users</h2>
+          <p className="text-[var(--color-gray-400)] mt-1">
             Manage users for {user?.organizationName || "your organization"}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/admin/event-assignments")}>
+          <Button variant="outline" onClick={() => navigate("/admin/event-assignments")} className="border-[var(--color-gray-200)] text-[var(--color-gray-600)]">
             <LinkIcon className="w-4 h-4 mr-1" />
             Event Assignments
           </Button>
-          <Button onClick={() => setShowCreateModal(true)}>
+          <Button onClick={() => setShowCreateModal(true)} className="bg-[var(--color-secondary)] text-white shadow-sm">
             <Users className="w-4 h-4 mr-1" />
-            Create User
+            Add user
           </Button>
         </div>
       </div>
 
       {error && (
-        <Card className="border-destructive bg-destructive/10">
+        <Card className="border-[var(--color-status-cancelled-bg)] bg-[var(--color-status-cancelled-bg)]">
           <CardContent className="pt-6">
-            <p className="text-destructive text-sm">{error}</p>
+            <p className="text-[var(--color-status-cancelled)] text-sm">{error}</p>
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Organization Users</CardTitle>
-          <CardDescription>
-            {user?.organizationName && <span className="font-semibold text-primary/80">{user.organizationName}</span>}
-            {user?.organizationName && " • "}
-            {users.length} users
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {users.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No users yet. Create one to get started.</p>
+      <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-gray-400)]" />
+              <Input
+                placeholder="Search users..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 border-[var(--color-gray-200)] bg-[var(--color-gray-50)]"
+              />
             </div>
-          ) : (
-            <div className="space-y-2">
-              {users.map((u) => (
-                <div
-                  key={u.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50"
-                >
-                  <div className="flex-1">
-                    <p className="font-medium">{u.fullName}</p>
-                    <p className="text-sm text-muted-foreground">{u.email}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                        {u.role}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-1 rounded ${
-                          u.isActive
-                            ? "bg-green-500/10 text-green-500"
-                            : "bg-gray-500/10 text-gray-500"
-                        }`}
-                      >
+            <div className="flex gap-2">
+              <Button variant={roleFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("all")} className={roleFilter !== "all" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>All</Button>
+              <Button variant={roleFilter === "event_admin" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("event_admin")} className={roleFilter !== "event_admin" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>Event Admin</Button>
+              <Button variant={roleFilter === "volunteer" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("volunteer")} className={roleFilter !== "volunteer" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>Volunteer</Button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant={statusFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("all")} className={statusFilter !== "all" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>All</Button>
+              <Button variant={statusFilter === "active" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("active")} className={statusFilter !== "active" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>Active</Button>
+              <Button variant={statusFilter === "inactive" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("inactive")} className={statusFilter !== "inactive" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)]" : ""}>Inactive</Button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-[var(--color-gray-50)] text-[var(--color-gray-400)] text-xs uppercase">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Member</th>
+                  <th className="px-4 py-3 font-semibold">Assigned Event</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold">Assigned By</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-gray-100)]">
+                {filtered.map((u) => (
+                  <tr key={u.id} className="hover:bg-[var(--color-gray-50)] transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center text-xs font-bold uppercase">
+                          {u.fullName.charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-[var(--color-gray-900)]">{u.fullName}</p>
+                          <p className="text-xs text-[var(--color-gray-400)]">{u.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-[var(--color-gray-500)]">{u.roomTitle}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border-0 ${
+                        u.isActive
+                          ? "bg-[var(--color-status-live-bg)] text-[var(--color-status-live)]"
+                          : "bg-[var(--color-gray-100)] text-[var(--color-gray-500)]"
+                      }`}>
                         {u.isActive ? "Active" : "Inactive"}
                       </span>
-                    </div>
-                  </div>
-                  {u.role === "event_admin" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate("/admin/event-assignments")}
-                    >
-                      <LinkIcon className="w-4 h-4 mr-1" />
-                      Assign Events
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--color-gray-500)]">{u.assignedBy ?? "—"}</td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-[var(--color-gray-400)]">No users found</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 
@@ -176,7 +224,8 @@ const CreateUserModal = ({
     setError(null);
 
     try {
-      const input: CreateOrgUserInput = { fullName, email, password, role };
+      const input = { fullName, email, password, role };
+      // @ts-ignore - backend accepts CreateOrgUserInput
       await adminApi.createUser(input);
       onSuccess();
     } catch (err) {
@@ -188,12 +237,12 @@ const CreateUserModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Create New User</CardTitle>
-          <CardDescription>Add a new user to your organization</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <Card className="w-full max-w-md border-[var(--color-gray-200)]">
+        <CardContent className="p-6 space-y-4">
+          <div>
+            <CardTitle className="font-display">Create New User</CardTitle>
+            <CardDescription>Add a new user to your organization</CardDescription>
+          </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
@@ -205,6 +254,7 @@ const CreateUserModal = ({
                 placeholder="John Doe"
                 required
                 disabled={loading}
+                className="border-[var(--color-gray-200)]"
               />
             </div>
             <div className="space-y-2">
@@ -217,6 +267,7 @@ const CreateUserModal = ({
                 placeholder="john@example.com"
                 required
                 disabled={loading}
+                className="border-[var(--color-gray-200)]"
               />
             </div>
             <div className="space-y-2">
@@ -230,6 +281,7 @@ const CreateUserModal = ({
                 required
                 minLength={8}
                 disabled={loading}
+                className="border-[var(--color-gray-200)]"
               />
             </div>
             <div className="space-y-2">
@@ -238,7 +290,7 @@ const CreateUserModal = ({
                 id="role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as "event_admin" | "volunteer")}
-                className="w-full border border-input rounded-md px-3 py-2 bg-background text-foreground"
+                className="w-full border border-[var(--color-gray-200)] rounded-lg px-3 py-2 bg-[var(--color-surface)] text-[var(--color-gray-900)]"
                 disabled={loading}
               >
                 <option value="event_admin">Event Admin</option>
@@ -246,13 +298,13 @@ const CreateUserModal = ({
               </select>
             </div>
 
-            {error && <p className="text-sm text-destructive bg-destructive/10 p-2 rounded">{error}</p>}
+            {error && <p className="text-sm text-[var(--color-status-cancelled)] bg-[var(--color-status-cancelled-bg)] p-2 rounded">{error}</p>}
 
             <div className="flex gap-3 justify-end pt-4">
-              <Button variant="outline" onClick={onClose} disabled={loading}>
+              <Button variant="outline" onClick={onClose} disabled={loading} className="border-[var(--color-gray-200)] text-[var(--color-gray-600)]">
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} className="bg-[var(--color-secondary)] text-white shadow-sm">
                 {loading ? "Creating..." : "Create User"}
               </Button>
             </div>

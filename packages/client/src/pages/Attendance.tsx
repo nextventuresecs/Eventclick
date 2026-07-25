@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Camera, Check, Clock, Loader2, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, Clock, Loader2, RefreshCw, X } from "lucide-react";
 import { ROLE_LABELS, type FormField, type FormDefinition, type EventRoom } from "@application/shared";
 import {
   ApiClientError,
@@ -512,15 +512,21 @@ export const Attendance = () => {
               />
             )}
             {f.type === "date" && (
-              <Input
-                id={f.id}
-                type="date"
-                value={(data[f.id] as string) ?? ""}
-                onChange={(e) => setFieldValue(f.id, e.target.value)}
-                placeholder={f.placeholder}
-                required={f.required}
-                disabled={submitting || !windowCheck?.isAllowed}
-              />
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-gray-600)]">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <Input
+                  id={f.id}
+                  type="date"
+                  value={(data[f.id] as string) ?? ""}
+                  onChange={(e) => setFieldValue(f.id, e.target.value)}
+                  placeholder={f.placeholder}
+                  required={f.required}
+                  disabled={submitting || !windowCheck?.isAllowed}
+                  className="pl-10"
+                />
+              </div>
             )}
             {f.type === "select" && (
               <select

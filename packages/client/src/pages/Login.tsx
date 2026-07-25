@@ -68,7 +68,7 @@ export const LoginPage = () => {
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
       <div className="mb-6 text-center">
         <img
-          src="/logo.png"
+          src="/only_icon.png"
           alt="Eventclick"
           className="mx-auto h-10 w-auto object-contain mb-3"
         />

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus, RefreshCcw } from "lucide-react";
 import { hasRolePermission, type EventAdminAssignment, type EventRoom, type OrgUserSummary } from "@application/shared";
 import { ApiClientError, eventAssignmentsApi, roomsApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 
 export const EventAssignments = () => {
   const { user } = useAuth();
@@ -95,8 +96,8 @@ export const EventAssignments = () => {
 
   if (!canManageUsers) {
     return (
-      <Card>
-        <CardContent className="p-6 text-sm text-muted-foreground">
+      <Card className="border border-[var(--color-gray-200)]">
+        <CardContent className="p-6 text-sm text-[var(--color-gray-500)]">
           You do not have access to assignment management.
         </CardContent>
       </Card>
@@ -105,18 +106,26 @@ export const EventAssignments = () => {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Assign Users to Rooms</CardTitle>
-          <CardDescription>
-            Select a user in {user?.organizationName || "your organization"} and assign them to an event room. Users only see rooms they are assigned to.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && <p className="text-sm text-destructive">{error}</p>}
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Event Assignments</h2>
+        <p className="text-[var(--color-gray-400)] mt-1">
+          Manage live sessions and assign team members for {user?.organizationName || "your organization"}
+        </p>
+      </div>
+
+      {error && (
+        <Card className="border-[var(--color-status-cancelled-bg)] bg-[var(--color-status-cancelled-bg)]">
+          <CardContent className="pt-6">
+            <p className="text-[var(--color-status-cancelled)] text-sm">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl">
+        <CardContent className="p-4 space-y-4">
           <div className="grid gap-3 md:grid-cols-3">
             <select
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 rounded-lg border border-[var(--color-gray-200)] bg-[var(--color-gray-50)] px-3 text-sm text-[var(--color-gray-900)]"
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
             >
@@ -128,7 +137,7 @@ export const EventAssignments = () => {
               ))}
             </select>
             <select
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 rounded-lg border border-[var(--color-gray-200)] bg-[var(--color-gray-50)] px-3 text-sm text-[var(--color-gray-900)]"
               value={selectedRoomId}
               onChange={(e) => setSelectedRoomId(e.target.value)}
             >
@@ -139,71 +148,80 @@ export const EventAssignments = () => {
                 </option>
               ))}
             </select>
-            <Button disabled={pending || !selectedUserId || !selectedRoomId} onClick={assign}>
+            <Button disabled={pending || !selectedUserId || !selectedRoomId} onClick={assign} className="bg-[var(--color-secondary)] text-white shadow-sm">
+              <Plus className="w-4 h-4 mr-1" />
               Assign
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Assignments</CardTitle>
-          <CardDescription>Update room mapping or revoke access.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {assignments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No assignments yet.</p>
-          ) : (
-            assignments.map((assignment) => (
-              <div
-                key={assignment.id}
-                className="grid gap-2 rounded-md border border-border p-3 md:grid-cols-[minmax(0,1fr)_220px_auto_auto]"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{assignment.user.fullName}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {assignment.user.email} • {assignment.user.role}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Status: {assignment.revokedAt ? "revoked" : "active"}
-                  </p>
-                </div>
-                <select
-                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-                  value={assignmentRoomDrafts[assignment.id] ?? assignment.roomId}
-                  onChange={(e) =>
-                    setAssignmentRoomDrafts((prev) => ({ ...prev, [assignment.id]: e.target.value }))
-                  }
-                  disabled={pending}
-                >
-                  {!rooms.some((room) => room.id === assignment.roomId) && (
-                    <option value={assignment.roomId}>{assignment.room.title} (archived)</option>
-                  )}
-                  {rooms.map((room) => (
-                    <option key={room.id} value={room.id}>
-                      {room.title}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  variant="outline"
-                  disabled={pending}
-                  onClick={() => updateRoom(assignment.id)}
-                >
-                  Update
-                </Button>
-                <Button
-                  variant="outline"
-                  className="text-destructive"
-                  disabled={pending || Boolean(assignment.revokedAt)}
-                  onClick={() => revoke(assignment.id)}
-                >
-                  Revoke
-                </Button>
-              </div>
-            ))
-          )}
+      <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl">
+        <CardContent className="p-4">
+          <div className="space-y-3">
+            {assignments.length === 0 ? (
+              <p className="text-sm text-[var(--color-gray-400)]">No assignments yet.</p>
+            ) : (
+              assignments.map((assignment) => (
+                <Card key={assignment.id} className="border border-[var(--color-gray-200)] bg-[var(--color-gray-50)] shadow-none rounded-xl">
+                  <CardContent className="p-3 flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--color-gray-900)]">{assignment.user.fullName}</p>
+                        <p className="text-xs text-[var(--color-gray-400)]">
+                          {assignment.user.email} • {assignment.user.role}
+                        </p>
+                        <p className="text-xs text-[var(--color-gray-400)] mt-1">
+                          Room: <span className="font-medium text-[var(--color-gray-700)]">{assignment.room.title}</span>
+                        </p>
+                        <p className="text-xs text-[var(--color-gray-400)]">
+                          Status: {assignment.revokedAt ? "revoked" : "active"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <select
+                          className="h-9 rounded-lg border border-[var(--color-gray-200)] bg-[var(--color-surface)] px-2 text-xs text-[var(--color-gray-700)]"
+                          value={assignmentRoomDrafts[assignment.id] ?? assignment.roomId}
+                          onChange={(e) =>
+                            setAssignmentRoomDrafts((prev) => ({ ...prev, [assignment.id]: e.target.value }))
+                          }
+                          disabled={pending}
+                        >
+                          {!rooms.some((room) => room.id === assignment.roomId) && (
+                            <option value={assignment.roomId}>{assignment.room.title} (archived)</option>
+                          )}
+                          {rooms.map((room) => (
+                            <option key={room.id} value={room.id}>
+                              {room.title}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => updateRoom(assignment.id)}
+                          className="border-[var(--color-gray-200)] text-[var(--color-gray-600)]"
+                        >
+                          <RefreshCcw className="w-4 h-4 mr-1" />
+                          Update
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-[var(--color-status-cancelled)] border-[var(--color-status-cancelled-bg)] hover:bg-[var(--color-status-cancelled-bg)]"
+                          disabled={pending || Boolean(assignment.revokedAt)}
+                          onClick={() => revoke(assignment.id)}
+                        >
+                          Revoke
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

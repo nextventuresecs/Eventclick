@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from "date-fns";
 import {
   Copy,
   Users,
@@ -13,9 +13,13 @@ import {
   ShieldCheck,
   Activity,
   FileCheck,
+  MapPin,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { ROLE_LABELS, hasRolePermission, type EventRoom } from "@application/shared";
-import { roomsApi, ApiClientError } from "@/lib/api";
+import { ROLE_LABELS, hasRolePermission, type EventRoom, type EventAdminAssignment, type OrgUserSummary } from "@application/shared";
+import { roomsApi, eventAssignmentsApi, ApiClientError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { Button } from "@/components/ui/button";
@@ -23,15 +27,19 @@ import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/c
 import { Skeleton } from "@/components/ui/skeleton";
 
 const pill = (status: EventRoom["status"]) => {
-  const styles: Record<EventRoom["status"], string> = {
-    scheduled: "border border-brand/20 bg-brand/10 text-brand",
-    live: "border border-accent/25 bg-accent/10 text-accent",
-    ended: "border border-border bg-muted text-muted-foreground",
-    cancelled: "border border-destructive/20 bg-destructive/10 text-destructive",
+  const styles: Record<EventRoom["status"], { bg: string; text: string; border?: string }> = {
+    live: { bg: "var(--color-status-live-bg)", text: "var(--color-status-live)" },
+    scheduled: { bg: "var(--color-status-scheduled-bg)", text: "var(--color-status-scheduled)" },
+    ended: { bg: "var(--color-status-ended-bg)", text: "var(--color-status-ended)" },
+    cancelled: { bg: "var(--color-status-cancelled-bg)", text: "var(--color-status-cancelled)" },
   };
+  const s = styles[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${styles[status]}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${status === "live" ? "bg-accent" : "bg-current opacity-70"}`} />
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border-0"
+      style={{ backgroundColor: s.bg, color: s.text }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
@@ -42,46 +50,151 @@ const MetricCard = ({
   value,
   sub,
   icon: Icon,
+  variant = "default",
 }: {
   title: string;
   value: string | number;
   sub?: string;
   icon: React.ComponentType<{ className?: string }>;
-}) => (
-  <Card className="border-border bg-card">
-    <CardContent className="p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold tracking-tight text-card-foreground font-display">{value}</p>
-          {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+  variant?: "default" | "primary";
+}) => {
+  const isPrimary = variant === "primary";
+  return (
+    <Card className={`border-0 shadow-sm ${isPrimary ? "bg-[var(--gradient-primary-tile)] text-white" : "bg-[var(--color-surface)] border border-[var(--color-gray-200)]"}`}>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <p className={`text-xs font-semibold uppercase tracking-wide ${isPrimary ? "text-white/70" : "text-[var(--color-gray-400)]"}`}>{title}</p>
+            <p className={`text-2xl font-bold tracking-tight font-display tabular-nums ${isPrimary ? "text-white" : "text-[var(--color-gray-900)]"}`}>{value}</p>
+            {sub && <p className={`text-xs ${isPrimary ? "text-white/70" : "text-[var(--color-gray-400)]"}`}>{sub}</p>}
+          </div>
+          <div className={`rounded-lg p-2 ${isPrimary ? "bg-white/10 text-white" : "bg-[var(--color-gray-100)] text-[var(--color-primary)]"}`}>
+            <Icon className="h-5 w-5" />
+          </div>
         </div>
-        <div className="rounded-lg bg-muted p-2 text-brand">
-          <Icon className="h-5 w-5" />
+      </CardContent>
+    </Card>
+  );
+};
+
+const MiniCalendar = ({ rooms }: { rooms: EventRoom[] }) => {
+  const today = new Date();
+  const firstDay = useMemo(() => startOfMonth(today), [today]);
+  const lastDay = useMemo(() => endOfMonth(today), [today]);
+  const days = useMemo(() => eachDayOfInterval({ start: firstDay, end: lastDay }), [firstDay, lastDay]);
+
+  const eventDays = useMemo(() => {
+    const map = new Map<string, EventRoom[]>();
+    rooms.forEach((r) => {
+      const d = format(new Date(r.scheduledStart), "yyyy-MM-dd");
+      if (!map.has(d)) map.set(d, []);
+      map.get(d)!.push(r);
+    });
+    return map;
+  }, [rooms]);
+
+  const startWeekDay = firstDay.getDay();
+
+  return (
+    <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-sm font-semibold font-display text-[var(--color-gray-900)]">{format(today, "MMMM yyyy")}</h4>
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-[var(--color-gray-400)]">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-[var(--color-gray-400)]">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+        <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-[var(--color-gray-400)] mb-1">
+          {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+            <div key={i}>{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: startWeekDay }).map((_, i) => (
+            <div key={`empty-${i}`} />
+          ))}
+          {days.map((day) => {
+            const key = format(day, "yyyy-MM-dd");
+            const events = eventDays.get(key) || [];
+            const hasEvent = events.length > 0;
+            const isTodayDate = isToday(day);
+            return (
+              <div
+                key={key}
+                className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-medium relative ${
+                  isTodayDate ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-gray-700)]"
+                }`}
+              >
+                <span>{format(day, "d")}</span>
+                {hasEvent && (
+                  <span className="flex gap-0.5 mt-0.5">
+                    {events.slice(0, 3).map((_, idx) => (
+                      <span
+                        key={idx}
+                        className="h-1 w-1 rounded-full"
+                        style={{ backgroundColor: isTodayDate ? "white" : "var(--color-secondary)" }}
+                      />
+                    ))}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const MapCard = ({ rooms }: { rooms: EventRoom[] }) => {
+  const activeRooms = rooms.filter((r) => r.status === "live" || r.status === "scheduled").slice(0, 6);
+  return (
+    <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl h-full">
+      <CardContent className="p-4 h-full flex flex-col">
+        <h4 className="text-sm font-semibold font-display text-[var(--color-gray-900)] mb-3">Event Locations</h4>
+        <div className="flex-1 bg-[var(--color-gray-100)] rounded-xl relative overflow-hidden min-h-[180px]">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center space-y-2">
+              <MapPin className="w-8 h-8 text-[var(--color-primary)] mx-auto" />
+              <p className="text-xs font-medium text-[var(--color-gray-500)]">Map view requires venue data</p>
+              <p className="text-[10px] text-[var(--color-gray-400)]">Add address fields to event rooms to enable pins</p>
+            </div>
+          </div>
+          {activeRooms.map((room, idx) => (
+            <div
+              key={room.id}
+              className="absolute bg-[var(--color-surface)] border border-[var(--color-gray-200)] rounded-lg shadow-sm p-2 w-40 text-xs"
+              style={{
+                top: `${20 + (idx % 3) * 30}%`,
+                left: `${15 + (idx % 2) * 45}%`,
+              }}
+            >
+              <p className="font-semibold text-[var(--color-gray-900)] truncate">{room.title}</p>
+              <p className="text-[var(--color-gray-400)] capitalize">{room.status}</p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 export const Dashboard = () => {
   const { user } = useAuth();
   const [rooms, setRooms] = useState<EventRoom[]>([]);
+  const [assignments, setAssignments] = useState<EventAdminAssignment[]>([]);
+  const [allUsers, setAllUsers] = useState<OrgUserSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const canManageRooms = user ? hasRolePermission(user.role, "manage_rooms") : false;
-  const canCreateAttendanceForm = user
-    ? hasRolePermission(user.role, "create_attendance_form")
-    : false;
   const canViewReports = user ? hasRolePermission(user.role, "view_reports") : false;
-  const canViewRecords = user
-    ? hasRolePermission(user.role, "view_reports") || hasRolePermission(user.role, "take_attendance")
-    : false;
-  const canViewLiveSession = user ? hasRolePermission(user.role, "view_live_session") : false;
-  const canShareLiveLink = user ? hasRolePermission(user.role, "share_live_link") : false;
-  const canTakeAttendance = user ? hasRolePermission(user.role, "take_attendance") : false;
 
   useEffect(() => {
     if (user && !user.organizationId) {
@@ -90,28 +203,48 @@ export const Dashboard = () => {
       return;
     }
 
-    const fetchRooms = async () => {
+    const fetchData = async () => {
       try {
-        const { items } = await roomsApi.list();
-        setRooms(items);
+        const [roomsRes, assignmentsRes, usersRes] = await Promise.all([
+          roomsApi.list(),
+          eventAssignmentsApi.listAssignments(),
+          eventAssignmentsApi.listUsers(),
+        ]);
+        setRooms(roomsRes.items);
+        setAssignments(assignmentsRes.items);
+        setAllUsers(usersRes.items);
       } catch (err) {
-        setError(err instanceof ApiClientError ? err.message : "Failed to load rooms");
+        setError(err instanceof ApiClientError ? err.message : "Failed to load dashboard data");
       } finally {
         setLoading(false);
       }
     };
-    fetchRooms();
+    void fetchData();
   }, [user]);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(
-      () => toast("Link copied to clipboard!", "success"),
-      () => toast("Failed to copy link.", "error"),
-    );
-  };
+  const verifiedAttendees = useMemo(() => rooms.reduce((sum, r) => sum + (r.attendanceCount ?? 0), 0), [rooms]);
+  const liveRooms = useMemo(() => rooms.filter((r) => r.status === "live").length, [rooms]);
+  const scheduledRooms = useMemo(() => rooms.filter((r) => r.status === "scheduled").length, [rooms]);
 
-  const verifiedAttendees = rooms.reduce((sum, r) => sum + (r.attendanceCount ?? 0), 0);
-  const liveRooms = rooms.filter((r) => r.status === "live").length;
+  const assignedRoomIds = useMemo(() => new Set(assignments.map((a) => a.roomId)), [assignments]);
+  const visibleRooms = useMemo(
+    () => (canManageRooms ? rooms : rooms.filter((r) => assignedRoomIds.has(r.id))),
+    [rooms, canManageRooms, assignedRoomIds]
+  );
+
+  const memberRows = useMemo(() => {
+    const rows = allUsers
+      .filter((u) => u.role !== "ngo_admin")
+      .map((u) => {
+        const userAssignments = assignments.filter((a) => a.userId === u.id);
+        const roomNames = userAssignments.map((a) => {
+          const room = rooms.find((r) => r.id === a.roomId);
+          return room?.title ?? "—";
+        });
+        return { ...u, assignedEvents: roomNames.join(", ") || "—" };
+      });
+    return rows.slice(0, 8);
+  }, [allUsers, assignments, rooms]);
 
   if (loading) {
     return (
@@ -131,15 +264,15 @@ export const Dashboard = () => {
             </Card>
           ))}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="p-6">
-              <Skeleton className="h-5 w-20 rounded-full mb-3" />
-              <Skeleton className="h-6 w-3/4 mb-2" />
-              <Skeleton className="h-4 w-full mb-2" />
-              <Skeleton className="h-4 w-2/3" />
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 p-6">
+            <Skeleton className="h-5 w-40 mb-4" />
+            <Skeleton className="h-32 w-full" />
+          </Card>
+          <Card className="p-6">
+            <Skeleton className="h-5 w-32 mb-4" />
+            <Skeleton className="h-48 w-full" />
+          </Card>
         </div>
       </div>
     );
@@ -147,9 +280,9 @@ export const Dashboard = () => {
 
   if (error) {
     return (
-      <Card className="border-destructive/50">
+      <Card className="border border-[var(--color-status-cancelled-bg)]">
         <CardContent className="p-6 text-center">
-          <p className="text-destructive mb-4">{error}</p>
+          <p className="text-[var(--color-status-cancelled)] mb-4">{error}</p>
           <Button onClick={() => window.location.reload()} variant="outline">Try Again</Button>
         </CardContent>
       </Card>
@@ -158,12 +291,12 @@ export const Dashboard = () => {
 
   if (user && !user.organizationId) {
     return (
-      <Card className="mx-auto max-w-2xl border-border bg-muted/40">
+      <Card className="mx-auto max-w-2xl border border-[var(--color-gray-200)] bg-[var(--color-gray-50)] shadow-sm">
         <CardContent className="space-y-3 p-8 text-center">
-          <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
+          <div className="mx-auto w-12 h-12 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)] mb-2">
             <ShieldCheck className="w-6 h-6" />
           </div>
-          <CardTitle>{ROLE_LABELS[user.role]} account created</CardTitle>
+          <CardTitle className="font-display">{ROLE_LABELS[user.role]} account created</CardTitle>
           <CardDescription>
             Your account is ready, but it still needs an organization assignment before event access becomes
             available.
@@ -177,19 +310,19 @@ export const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight font-display text-foreground">
+          <h2 className="text-3xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">
             {canManageRooms ? "Event Rooms" : "Assigned Event Rooms"}
           </h2>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-[var(--color-gray-400)] mt-1">
             {canManageRooms
-              ? `Manage live sessions, forms, and attendance for ${user?.organizationName || "your organization"} events.`
-              : `Access event rooms and record attendance for ${user?.organizationName || "your organization"}.`}
+              ? `Data summary for ${user?.organizationName || "your organization"}`
+              : `Access your assigned events for ${user?.organizationName || "your organization"}`}
           </p>
         </div>
         {canManageRooms && (
           <Link
             to="/rooms/create"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 h-10 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-colors shadow-sm"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--gradient-brand)] px-4 h-10 text-sm font-semibold text-white hover:opacity-90 transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" />
             Create Room
@@ -198,122 +331,152 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Total Rooms" value={rooms.length} sub={`${liveRooms} live now`} icon={Activity} />
-        <MetricCard title="Verified" value={verifiedAttendees} sub="Across all rooms" icon={Users} />
-        <MetricCard title="Reports" value={rooms.filter((r) => r.status === "ended").length} sub="Available to export" icon={FileCheck} />
-        <MetricCard title="Organization" value={user?.organizationName?.split(" ")[0] ?? "—"} sub={user?.organizationName ?? ""} icon={ShieldCheck} />
+        <MetricCard title="Total Rooms" value={rooms.length} sub={`${liveRooms} live, ${scheduledRooms} scheduled`} icon={Activity} variant="primary" />
+        <MetricCard title="Verified members" value={verifiedAttendees} sub="Across all rooms" icon={Users} />
+        <MetricCard title="Available reports" value={rooms.filter((r) => r.status === "ended").length} sub="Ready to export" icon={FileCheck} />
+        <MetricCard title="Total attendees" value={verifiedAttendees} sub="Verified attendance" icon={ClipboardList} />
       </div>
 
-      {rooms.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-16 text-center border-dashed">
-          <CalendarClock className="w-12 h-12 text-muted-foreground mb-4" />
-          <CardTitle className="mb-2">
-            {canManageRooms ? "No event rooms yet" : "No assigned event rooms yet"}
-          </CardTitle>
-          <CardDescription className="mb-6 max-w-md">
-            {canManageRooms
-              ? "Get started by creating your first event room. You'll be able to invite attendees and host your session."
-              : "Once your admin assigns you to an event, it will appear here for live viewing and attendance collection."}
-          </CardDescription>
-          {canManageRooms && (
-            <Link
-              to="/rooms/create"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 h-10 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-colors shadow-sm"
-            >
-              Create your first room
-            </Link>
-          )}
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rooms.map((room) => (
-            <Card key={room.id} className="flex flex-col border-border bg-card hover:border-brand/40 hover:shadow-lg hover:shadow-brand/5 transition-all duration-300 group">
-              <CardContent className="pt-6 pb-4 flex-1">
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  {pill(room.status)}
-                  <span className="text-xs text-muted-foreground font-medium">
-                    {formatDistanceToNow(new Date(room.createdAt), { addSuffix: true })}
-                  </span>
-                </div>
-                <h3 className="text-base font-semibold leading-tight text-card-foreground group-hover:text-brand transition-colors mb-1">
-                  {room.title}
-                </h3>
-                {room.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{room.description}</p>
-                )}
-
-                <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-                  {canViewRecords && (
-                    <Link
-                      to={`/rooms/${room.id}/attendance/records`}
-                      className="flex items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-bold text-primary-foreground hover:opacity-90 transition-all shadow-sm"
-                    >
-                      <Users className="w-4 h-4" />
-                      <span>View Records</span>
-                      <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[10px]">
-                        {room.attendanceCount ?? 0}
-                      </span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--color-gray-400)] mb-3">Live & Upcoming</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {visibleRooms.length === 0 ? (
+                <Card className="col-span-full flex flex-col items-center justify-center py-16 text-center border border-dashed border-[var(--color-gray-200)]">
+                  <CalendarClock className="w-12 h-12 text-[var(--color-gray-300)] mb-4" />
+                  <CardTitle className="mb-2">{canManageRooms ? "No event rooms yet" : "No assigned event rooms yet"}</CardTitle>
+                  <CardDescription className="mb-6 max-w-md">
+                    {canManageRooms
+                      ? "Get started by creating your first event room. You'll be able to invite attendees and host your session."
+                      : "Once your admin assigns you to an event, it will appear here for live viewing and attendance collection."}
+                  </CardDescription>
+                  {canManageRooms && (
+                    <Link to="/rooms/create" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-secondary)] px-4 h-10 text-sm font-semibold text-white hover:opacity-90 transition-colors shadow-sm">
+                      Create your first room
                     </Link>
                   )}
+                </Card>
+              ) : (
+                visibleRooms
+                  .filter((r) => r.status === "live" || r.status === "scheduled")
+                  .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
+                  .map((room) => (
+                    <Card key={room.id} className={`border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl hover:shadow-md transition-shadow border-l-4 ${room.status === "live" ? "border-l-[var(--color-status-live)]" : room.status === "scheduled" ? "border-l-[var(--color-status-scheduled)]" : room.status === "ended" ? "border-l-[var(--color-status-ended)]" : "border-l-[var(--color-status-cancelled)]"}`}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          {pill(room.status)}
+                          <span className="text-xs text-[var(--color-gray-400)] font-medium">
+                            {formatDistanceToNow(new Date(room.createdAt), { addSuffix: true })}
+                          </span>
+                        </div>
+                        <h4 className="text-base font-semibold leading-tight text-[var(--color-gray-900)] mb-1">{room.title}</h4>
+                        {room.description && (
+                          <p className="text-sm text-[var(--color-gray-400)] line-clamp-2 mt-1">{room.description}</p>
+                        )}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {hasRolePermission(user?.role ?? "volunteer", "take_attendance") && (
+                            <Link
+                              to={`/rooms/${room.id}/attendance`}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] py-2 px-3 text-xs font-bold text-white hover:opacity-90 transition-all shadow-sm"
+                            >
+                              <ClipboardList className="w-3.5 h-3.5" />
+                              <span>{hasRolePermission(user?.role ?? "volunteer", "create_attendance_form") ? "Take Attendance" : "Record Attendance"}</span>
+                            </Link>
+                          )}
+                          {hasRolePermission(user?.role ?? "volunteer", "view_live_session") && (
+                            <Link
+                              to={`/rooms/${room.id}/live`}
+                              className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-gray-200)] px-3 h-8 text-xs font-medium hover:bg-[var(--color-gray-100)] transition-colors text-[var(--color-gray-600)]"
+                            >
+                              <Radio className="w-3.5 h-3.5" />
+                              Live
+                            </Link>
+                          )}
+                          {hasRolePermission(user?.role ?? "volunteer", "share_live_link") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-3 gap-1.5 text-xs font-medium border-[var(--color-gray-200)] text-[var(--color-gray-600)]"
+                              onClick={() => {
+                                navigator.clipboard.writeText(room.shareUrl).then(
+                                  () => toast("Link copied to clipboard!", "success"),
+                                  () => toast("Failed to copy link.", "error")
+                                );
+                              }}
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                              Copy
+                            </Button>
+                          )}
+                        </div>
+                        <div className="mt-3 pt-2 flex items-center justify-between text-xs text-[var(--color-gray-400)] border-t border-[var(--color-gray-100)]">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{format(new Date(room.scheduledStart), 'MMM d, h:mm a')}</span>
+                          </div>
+                          {room.maxParticipants && (
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5" />
+                              <span>Max {room.maxParticipants}</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+              )}
+            </div>
+          </div>
 
-                  <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground border-t border-border/60">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>{format(new Date(room.scheduledStart), 'MMM d, h:mm a')}</span>
-                    </div>
-                    {room.maxParticipants && (
-                      <div className="flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5" />
-                        <span>Max {room.maxParticipants}</span>
-                      </div>
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--color-gray-400)] mb-3">Members</h3>
+            <Card className="border border-[var(--color-gray-200)] bg-[var(--color-surface)] shadow-sm rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-[var(--color-gray-50)] text-[var(--color-gray-400)] text-xs uppercase">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Member</th>
+                      <th className="px-4 py-3 font-semibold">Assigned Event</th>
+                      <th className="px-4 py-3 font-semibold">Role</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--color-gray-100)]">
+                    {memberRows.map((m) => (
+                      <tr key={m.id} className="hover:bg-[var(--color-gray-50)] transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center text-xs font-bold uppercase">
+                              {m.fullName.charAt(0)}
+                            </div>
+                            <span className="font-medium text-[var(--color-gray-900)]">{m.fullName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-[var(--color-gray-500)]">{m.assignedEvents}</td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center rounded-full bg-[var(--color-gray-100)] px-2.5 py-1 text-xs font-semibold text-[var(--color-gray-600)]">
+                            {ROLE_LABELS[m.role]}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {memberRows.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="px-4 py-8 text-center text-[var(--color-gray-400)]">No members found</td>
+                      </tr>
                     )}
-                  </div>
-                </div>
-               </CardContent>
-               <div className="px-6 py-4 border-t border-border flex flex-wrap gap-2">
-                  {canTakeAttendance && (
-                    <Link
-                      to={`/rooms/${room.id}/attendance`}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-primary py-1.5 px-3 h-8 text-xs font-bold text-primary-foreground hover:opacity-90 transition-all shadow-sm shadow-primary/10"
-                    >
-                      <ClipboardList className="w-3.5 h-3.5" />
-                      <span>{canCreateAttendanceForm ? "Take Attendance" : "Record Attendance"}</span>
-                    </Link>
-                  )}
-                  {canViewLiveSession && (
-                    <Link
-                      to={`/rooms/${room.id}/live`}
-                      className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 h-8 text-xs font-medium hover:bg-muted transition-colors"
-                    >
-                      <Radio className="w-3.5 h-3.5" />
-                      Live
-                    </Link>
-                  )}
-                  {canCreateAttendanceForm && (
-                    <Link
-                      to={`/rooms/${room.id}/form-builder`}
-                      className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 h-8 text-xs font-medium hover:bg-muted transition-colors"
-                    >
-                      <FormInput className="w-3.5 h-3.5" />
-                      Form
-                    </Link>
-                  )}
-                  {canShareLiveLink && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="ml-auto h-8 px-2.5 gap-1.5 text-xs font-medium border-border"
-                      onClick={() => copyToClipboard(room.shareUrl)}
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      Copy
-                    </Button>
-                  )}
-                </div>
+                  </tbody>
+                </table>
+              </div>
             </Card>
-          ))}
+          </div>
         </div>
-      )}
+
+        <div className="space-y-6">
+          <MiniCalendar rooms={rooms} />
+          <MapCard rooms={rooms} />
+        </div>
+      </div>
     </div>
   );
 };
