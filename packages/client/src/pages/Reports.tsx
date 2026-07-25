@@ -135,7 +135,7 @@ export const Reports = () => {
                 <Button
                   onClick={() => download(room)}
                   disabled={generating[room.id]}
-                  className="w-full bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out"
+                  className="w-full"
                 >
                   {generating[room.id] ? "Generating..." : "Download report"}
                 </Button>

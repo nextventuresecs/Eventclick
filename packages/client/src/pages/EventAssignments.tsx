@@ -148,7 +148,7 @@ export const EventAssignments = () => {
                 </option>
               ))}
             </select>
-            <Button disabled={pending || !selectedUserId || !selectedRoomId} onClick={assign} className="bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out">
+            <Button disabled={pending || !selectedUserId || !selectedRoomId} onClick={assign}>
               <Plus className="w-4 h-4 mr-1" />
               Assign
             </Button>

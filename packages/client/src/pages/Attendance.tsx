@@ -665,7 +665,7 @@ export const Attendance = () => {
           </div>
         )}
 
-        <Button type="submit" disabled={submitting || !windowCheck?.isAllowed} className="w-full bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out" size="lg">
+        <Button type="submit" disabled={submitting || !windowCheck?.isAllowed} className="w-full" size="lg">
           {submitting ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />

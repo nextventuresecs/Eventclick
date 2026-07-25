@@ -103,7 +103,7 @@ export const AdminUsers = () => {
             <LinkIcon className="w-4 h-4 mr-1" />
             Event Assignments
           </Button>
-          <Button onClick={() => setShowCreateModal(true)} className="bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out">
+          <Button onClick={() => setShowCreateModal(true)}>
             <Users className="w-4 h-4 mr-1" />
             Add user
           </Button>

@@ -163,3 +163,48 @@ h1, h2, h3, h4 {
   box-shadow: var(--shadow-focus);
   outline: none;
 }
+
+.nav-item-active {
+  background: rgba(64, 34, 145, 0.08);
+  color: var(--color-primary);
+  box-shadow: 0 1px 2px rgba(64, 34, 145, 0.06);
+}
+
+.nav-item-inactive {
+  color: var(--color-gray-500);
+}
+
+.nav-item-inactive:hover {
+  background: var(--color-gray-100);
+  color: var(--color-gray-900);
+}
+
+.role-card-active {
+  border-color: var(--color-primary);
+  background: rgba(64, 34, 145, 0.04);
+  box-shadow: 0 4px 6px rgba(64, 34, 145, 0.06), 0 0 0 1px var(--color-primary);
+}
+
+.role-card-inactive {
+  border-color: var(--color-border);
+}
+
+.role-card-inactive:hover {
+  border-color: rgba(64, 34, 145, 0.4);
+  background: rgba(64, 34, 145, 0.02);
+}
+
+.role-icon-active {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+.role-icon-inactive {
+  background: var(--color-muted);
+  color: var(--color-muted-foreground);
+}
+
+.role-icon-inactive:hover {
+  background: rgba(64, 34, 145, 0.08);
+  color: var(--color-primary);
+}

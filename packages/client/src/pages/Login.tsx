@@ -124,7 +124,7 @@ export const LoginPage = () => {
 
             {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
 
-            <Button type="submit" disabled={submitting} className="bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out">
+            <Button type="submit" disabled={submitting} className="w-full">
               {submitting ? "Signing in…" : "Sign in"}
             </Button>
           </form>

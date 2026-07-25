@@ -418,7 +418,7 @@ export const CreateRoom = () => {
             >
               Cancel
             </Link>
-            <Button type="submit" disabled={submitting} className="bg-[var(--gradient-brand)] text-white shadow-sm hover:opacity-90 transition-all duration-150 ease-out min-w-[120px]">
+            <Button type="submit" disabled={submitting} className="min-w-[120px]">
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
