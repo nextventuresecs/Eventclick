@@ -5,7 +5,6 @@ import {
   Copy,
   Users,
   Clock,
-  Plus,
   CalendarClock,
   FormInput,
   ClipboardList,
@@ -308,28 +307,6 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">
-            {canManageRooms ? "Event Rooms" : "Assigned Event Rooms"}
-          </h2>
-          <p className="text-[var(--color-gray-400)] mt-1">
-            {canManageRooms
-              ? `Data summary for ${user?.organizationName || "your organization"}`
-              : `Access your assigned events for ${user?.organizationName || "your organization"}`}
-          </p>
-        </div>
-        {canManageRooms && (
-          <Link
-            to="/rooms/create"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--gradient-brand)] px-4 h-10 text-sm font-semibold text-white hover:opacity-90 transition-all duration-150 ease-out shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Create Room
-          </Link>
-        )}
-      </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard title="Total Rooms" value={rooms.length} sub={`${liveRooms} live, ${scheduledRooms} scheduled`} icon={Activity} variant="primary" />
         <MetricCard title="Verified members" value={verifiedAttendees} sub="Across all rooms" icon={Users} />
