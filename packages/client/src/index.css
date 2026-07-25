@@ -90,6 +90,10 @@ h1, h2, h3, h4 {
   letter-spacing: -0.01em;
 }
 
+.font-display {
+  font-family: var(--font-display);
+}
+
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }

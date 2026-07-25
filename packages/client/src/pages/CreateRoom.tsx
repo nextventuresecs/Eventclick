@@ -295,7 +295,7 @@ export const CreateRoom = () => {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-background border border-border hover:bg-muted/50 rounded-full transition-colors"
                     >
                       <Sparkles className="w-3 h-3 text-yellow-500" />
-                      📸 Banner & Group Photo (1 proof)
+                      Banner & Group Photo (1 proof)
                     </button>
                     <button
                       type="button"
@@ -310,7 +310,7 @@ export const CreateRoom = () => {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-background border border-border hover:bg-muted/50 rounded-full transition-colors"
                     >
                       <Sparkles className="w-3 h-3 text-yellow-500" />
-                      📝 Attendee Logs (2 proofs)
+                      Attendee Logs (2 proofs)
                     </button>
                   </div>
                 </div>

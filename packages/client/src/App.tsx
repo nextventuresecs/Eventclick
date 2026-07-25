@@ -33,7 +33,7 @@ const ConnectionError = () => {
   return (
     <div className="flex min-h-screen items-center justify-center p-8">
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-4">Connection Lost</h2>
+        <h2 className="text-2xl font-bold tracking-tight font-display mb-4">Connection Lost</h2>
         <p className="text-muted-foreground mb-6">
           Unable to verify your session.
         </p>
@@ -85,7 +85,7 @@ const ProtectedRoute = () => {
 const AccessDenied = ({ permission }: { permission: RolePermission }) => (
   <div className="mx-auto flex min-h-[50vh] max-w-lg items-center justify-center p-6">
     <div className="space-y-3 text-center">
-      <h2 className="text-2xl font-semibold">Access limited</h2>
+      <h2 className="text-2xl font-semibold tracking-tight font-display">Access limited</h2>
       <p className="text-sm text-muted-foreground">
         Your role does not allow this action yet (
         {permission.replaceAll("_", " ")}).

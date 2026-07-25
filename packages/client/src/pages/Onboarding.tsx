@@ -70,12 +70,8 @@ export const OnboardingPage = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-6 bg-radial-[circle_at_top_right,_var(--color-primary)_0%,_transparent_40%] md:bg-radial-[circle_at_top_right,_var(--color-primary)_0%,_transparent_35%]">
-      {/* Sleek blurred decorative glass circles */}
-      <div className="absolute top-1/4 left-1/4 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-[80px]" />
-      <div className="absolute bottom-1/4 right-1/4 h-72 w-72 translate-x-1/2 rounded-full bg-primary/5 blur-[100px]" />
-
-      <Card className="relative z-10 w-full max-w-xl border-[var(--color-border)]/80 bg-[var(--color-card)]/85 backdrop-blur-md shadow-2xl transition-all duration-300 hover:shadow-[var(--color-primary)]/5">
+    <div className="relative flex min-h-screen items-center justify-center p-6">
+      <Card className="relative z-10 w-full max-w-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl">
         <CardHeader className="text-center pb-2">
           <CardTitle className="text-3xl font-extrabold tracking-tight font-display text-[var(--color-gray-900)]">
             Welcome to Eventclick
@@ -203,7 +199,7 @@ export const OnboardingPage = () => {
           )}
 
           {error && (
-            <p className="text-sm text-destructive text-center font-medium animate-bounce">
+            <p className="text-sm text-destructive text-center font-medium">
               {error}
             </p>
           )}

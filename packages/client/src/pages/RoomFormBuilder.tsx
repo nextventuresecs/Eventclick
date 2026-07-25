@@ -108,7 +108,7 @@ const FieldRow = ({ field, onChange, onRemove }: FieldRowProps) => {
         {/* Dynamic type-specific helper guidance */}
         {field.type === "select" && (
           <div className="rounded-md bg-primary/5 border border-primary/10 p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-semibold text-primary/80 flex items-center gap-1">💡 Dropdown (Select) Guidance</p>
+            <p className="font-semibold text-primary/80 flex items-center gap-1">Dropdown (Select) Guidance</p>
             <p>
               Volunteers will see a select menu dropdown. Input options below separated by commas.
               Empty inputs or trailing/leading spaces will be automatically cleaned up.
@@ -118,7 +118,7 @@ const FieldRow = ({ field, onChange, onRemove }: FieldRowProps) => {
 
         {field.type === "checkbox" && (
           <div className="rounded-md bg-primary/5 border border-primary/10 p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-semibold text-primary/80 flex items-center gap-1">💡 Checkbox (Toggle) Guidance</p>
+            <p className="font-semibold text-primary/80 flex items-center gap-1">Checkbox (Toggle) Guidance</p>
             <p>
               Volunteers will see a binary Yes/No checkbox. Use the <strong>Description / Helper Text</strong> field below to specify what checking this box means (e.g. <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono">Checked means yes, unchecked means no</code>).
             </p>
@@ -306,7 +306,7 @@ export const RoomFormBuilder = () => {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold tracking-tight">Attendance Form</h2>
+          <h2 className="text-2xl font-bold tracking-tight font-display">Attendance Form</h2>
           <p className="text-muted-foreground text-sm">
             {version ? `Current version: v${version}` : "No form yet — build one below."}
           </p>

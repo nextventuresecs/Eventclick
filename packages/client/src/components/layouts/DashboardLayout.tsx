@@ -321,8 +321,8 @@ export const DashboardLayout = () => {
           </div>
         </div>
 
-        <div className="fixed bottom-4 left-4 right-4 h-16 bg-[var(--color-surface)]/95 backdrop-blur-md border border-[var(--color-gray-200)] rounded-2xl shadow-lg flex items-center justify-around px-6 md:hidden z-40">
-          {navItems.map((item) => {
+        <div className="fixed bottom-4 left-4 right-4 h-16 bg-[var(--color-surface)]/95 backdrop-blur-md border border-[var(--color-gray-200)] rounded-2xl shadow-lg flex items-center justify-around px-2 md:hidden z-40">
+          {[...navItems, ...toolsItems].map((item) => {
             const active = isActive(item.path);
             return (
               <Link
@@ -335,7 +335,7 @@ export const DashboardLayout = () => {
                 }`}
                 title={item.name}
               >
-                <item.icon className="w-6 h-6" />
+                <item.icon className="w-5 h-5" />
               </Link>
             );
           })}
