@@ -9,6 +9,7 @@ import {
   UserCog,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Bell,
   CalendarDays,
   UserCircle,
@@ -16,7 +17,6 @@ import {
   HelpCircle,
   FileInput,
   FileText,
-  ChevronDown,
   Building2,
   Download,
   Shield,
@@ -25,6 +25,44 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+
+const HelpDropdown = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-[var(--color-gray-400)] hover:text-[var(--color-gray-700)] hover:bg-[var(--color-gray-100)] transition-colors cursor-pointer"
+        title="Help & more"
+      >
+        <ChevronRight className="w-3.5 h-3.5" />
+      </button>
+      {open && (
+        <div className="absolute left-full top-0 ml-1 w-52 bg-[var(--color-surface)] border border-[var(--color-gray-200)] rounded-xl shadow-xl py-1.5 z-50">
+          {HELP_ITEMS.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--color-gray-600)] hover:bg-[var(--color-gray-50)] hover:text-[var(--color-gray-900)] transition-colors"
+            >
+              <item.icon className="w-4 h-4" /> {item.name}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const MENU_ITEMS = [
   { name: "Dashboard", path: "/dashboard", icon: Home },
@@ -199,44 +237,72 @@ export const DashboardLayout = () => {
           )}
         </nav>
 
-        <div className="border-t border-[var(--color-gray-200)] p-3 space-y-2 shrink-0">
-          {!isCollapsed ? (
-            <div className="rounded-xl bg-[var(--color-ink)] text-white p-3 shadow-lg">
-              <div className="flex items-center gap-3">
-                {user?.photoUrl ? (
-                  <img
-                    src={user.photoUrl}
-                    alt={user.fullName}
-                    className="w-10 h-10 rounded-full object-cover border-2 border-white/20 shrink-0"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-sm border border-white/20 shrink-0">
-                    {initials}
+        <div className="border-t border-[var(--color-gray-200)] p-3 space-y-2 shrink-0 relative" ref={profileRef}>
+          <button
+            onClick={() => setProfileOpen((prev) => !prev)}
+            className={`w-full text-left rounded-xl p-3 transition-all duration-150 cursor-pointer ${
+              profileOpen ? "bg-[var(--color-gray-100)]" : "hover:bg-[var(--color-gray-50)]"
+            }`}
+          >
+            {!isCollapsed ? (
+              <div className="rounded-xl bg-[var(--color-ink)] text-white p-3 shadow-lg">
+                <div className="flex items-center gap-3">
+                  {user?.photoUrl ? (
+                    <img src={user.photoUrl} alt={user.fullName} className="w-10 h-10 rounded-full object-cover border-2 border-white/20 shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-sm border border-white/20 shrink-0">{initials}</div>
+                  )}
+                  <div className="flex-1 overflow-hidden">
+                    <p className="text-sm font-semibold truncate text-white">{user?.fullName || "User"}</p>
+                    <p className="text-xs text-white/70 truncate font-medium">{user ? ROLE_LABELS[user.role] : "Unknown role"}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <Building2 className="w-3 h-3 text-white/70 shrink-0" />
+                      <p className="text-[10px] text-white/70 truncate">{user?.organizationName || "Organization"}</p>
+                    </div>
                   </div>
-                )}
-                <div className="flex-1 overflow-hidden">
-                  <p className="text-sm font-semibold truncate text-white">{user?.fullName || "User"}</p>
-                  <p className="text-xs text-white/70 truncate font-medium">{user ? ROLE_LABELS[user.role] : "Unknown role"}</p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <Building2 className="w-3 h-3 text-white/70 shrink-0" />
-                    <p className="text-[10px] text-white/70 truncate">{user?.organizationName || "Organization"}</p>
-                  </div>
+                  <ChevronUp className="w-4 h-4 text-white/50 shrink-0" />
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              {user?.photoUrl ? (
-                <img
-                  src={user.photoUrl}
-                  alt={user.fullName}
-                  className="w-9 h-9 rounded-full object-cover border-2 border-[var(--color-primary)]"
-                />
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold text-xs shadow-sm">
-                  {initials}
+            ) : (
+              <div className="flex justify-center">
+                {user?.photoUrl ? (
+                  <img src={user.photoUrl} alt={user.fullName} className="w-9 h-9 rounded-full object-cover border-2 border-[var(--color-primary)]" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-white font-bold text-xs shadow-sm">{initials}</div>
+                )}
+              </div>
+            )}
+          </button>
+
+          {profileOpen && (
+            <div className={`absolute bottom-full mb-2 w-64 bg-[var(--color-surface)] border border-[var(--color-gray-200)] rounded-xl shadow-xl py-1.5 z-50 ${
+              isCollapsed ? "left-full ml-2" : "left-3 right-3"
+            }`}>
+              <div className="px-4 py-2.5 border-b border-[var(--color-gray-100)]">
+                <p className="text-sm font-semibold text-[var(--color-gray-900)] truncate">{user?.fullName || "User"}</p>
+                <p className="text-xs text-[var(--color-gray-400)] truncate">{user?.email || ""}</p>
+              </div>
+              <div className="py-1">
+                <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--color-gray-600)] hover:bg-[var(--color-gray-50)] hover:text-[var(--color-gray-900)] transition-colors">
+                  <UserCircle className="w-4 h-4" /> Profile
+                </Link>
+                <Link to="/settings" className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--color-gray-600)] hover:bg-[var(--color-gray-50)] hover:text-[var(--color-gray-900)] transition-colors">
+                  <Settings2 className="w-4 h-4" /> Settings
+                </Link>
+              </div>
+              <div className="border-t border-[var(--color-gray-100)]">
+                <div className="py-1 flex items-center justify-between pr-2">
+                  <Link to="/help" className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--color-gray-600)] hover:bg-[var(--color-gray-50)] hover:text-[var(--color-gray-900)] transition-colors">
+                    <HelpCircle className="w-4 h-4" /> Help
+                  </Link>
+                  <HelpDropdown />
                 </div>
-              )}
+              </div>
+              <div className="border-t border-[var(--color-gray-100)]">
+                <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-[var(--color-error)] hover:bg-[var(--color-status-cancelled-bg)] transition-colors">
+                  <LogOut className="w-4 h-4" /> Logout
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -270,51 +336,6 @@ export const DashboardLayout = () => {
                 </Button>
               </Link>
             )}
-
-            <div className="relative" ref={profileRef}>
-              <button
-                onClick={() => setProfileOpen((prev) => !prev)}
-                className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-[var(--color-gray-100)] transition-colors"
-              >
-                {user?.photoUrl ? (
-                  <img
-                    src={user.photoUrl}
-                    alt={user.fullName}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-[var(--color-gray-200)] flex items-center justify-center text-[var(--color-gray-700)] text-xs font-bold">
-                    {initials}
-                  </div>
-                )}
-                <ChevronDown className={`w-4 h-4 text-[var(--color-gray-400)] transition-transform duration-150 ${profileOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {profileOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-[var(--color-surface)] border border-[var(--color-gray-200)] rounded-xl shadow-lg py-1.5 z-50">
-                  <div className="px-4 py-2 border-b border-[var(--color-gray-100)]">
-                    <p className="text-sm font-semibold text-[var(--color-gray-900)] truncate">{user?.fullName || "User"}</p>
-                    <p className="text-xs text-[var(--color-gray-400)] truncate">{user?.email || ""}</p>
-                  </div>
-                  <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--color-gray-600)] hover:bg-[var(--color-gray-50)] hover:text-[var(--color-gray-900)] transition-colors">
-                    <UserCircle className="w-4 h-4" /> Profile
-                  </Link>
-                  <Link to="/settings" className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--color-gray-600)] hover:bg-[var(--color-gray-50)] hover:text-[var(--color-gray-900)] transition-colors">
-                    <Settings2 className="w-4 h-4" /> Settings
-                  </Link>
-                  <div className="border-t border-[var(--color-gray-100)] my-1" />
-                  <Link to="/help" className="flex items-center gap-3 px-4 py-2 text-sm text-[var(--color-gray-600)] hover:bg-[var(--color-gray-50)] hover:text-[var(--color-gray-900)] transition-colors">
-                    <HelpCircle className="w-4 h-4" /> Help
-                  </Link>
-                  <button
-                    onClick={logout}
-                    className="w-full flex items-center gap-3 px-4 py-2 text-sm text-[var(--color-error)] hover:bg-[var(--color-status-cancelled-bg)] transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" /> Logout
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </header>
 

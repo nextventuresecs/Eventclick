@@ -379,7 +379,7 @@ export const CreateRoom = () => {
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteActivity(act.id)}
-                          className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          className="h-9 w-9 text-muted-foreground hover:text-[var(--color-error)] hover:bg-[var(--color-status-cancelled-bg)] transition-colors"
                           title="Delete Activity"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -405,7 +405,7 @@ export const CreateRoom = () => {
             </div>
 
             {error && (
-              <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm border border-destructive/20">
+              <div className="p-3 rounded-md bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)] text-sm border border-[var(--color-gray-200)]">
                 {error}
               </div>
             )}

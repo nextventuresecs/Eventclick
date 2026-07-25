@@ -98,7 +98,7 @@ export const VerifyEmailPage = () => {
           
           {status === "error" && (
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)]">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"

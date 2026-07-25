@@ -437,7 +437,7 @@ export const AttendanceRecords = () => {
         <Card className="border-destructive/50">
           <CardContent className="p-4 text-center text-destructive text-sm">
             {error}
-            <Button variant="ghost" className="ml-2 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => void fetchEntries()}>
+            <Button variant="ghost" className="ml-2 text-[var(--color-error)] hover:text-[var(--color-error)] hover:bg-[var(--color-status-cancelled-bg)]" onClick={() => void fetchEntries()}>
               Retry
             </Button>
           </CardContent>

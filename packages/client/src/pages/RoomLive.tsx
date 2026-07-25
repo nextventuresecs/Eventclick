@@ -276,7 +276,7 @@ export const RoomLive = () => {
       </div>
 
       {error && (
-        <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm border border-destructive/20">
+        <div className="p-3 rounded-md bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)] text-sm border border-[var(--color-gray-200)]">
           {error}
         </div>
       )}
@@ -685,7 +685,7 @@ export const ActivityTrackerPanel: React.FC<ActivityTrackerPanelProps> = ({
                       {/* Controls (camera / upload) */}
                       <div className="space-y-2 pt-2 border-t border-border/50">
                         {error && (
-                          <div className="p-2 rounded bg-destructive/10 text-destructive text-xs border border-destructive/20 flex items-center gap-1.5">
+                          <div className="p-2 rounded bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)] text-xs border border-[var(--color-gray-200)] flex items-center gap-1.5">
                             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                             <span>{error}</span>
                           </div>

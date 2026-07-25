@@ -107,8 +107,8 @@ const FieldRow = ({ field, onChange, onRemove }: FieldRowProps) => {
 
         {/* Dynamic type-specific helper guidance */}
         {field.type === "select" && (
-          <div className="rounded-md bg-primary/5 border border-primary/10 p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-semibold text-primary/80 flex items-center gap-1">Dropdown (Select) Guidance</p>
+          <div className="rounded-md bg-[var(--color-gray-50)] border border-[var(--color-gray-200)] p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-semibold text-[var(--color-primary)] flex items-center gap-1">Dropdown (Select) Guidance</p>
             <p>
               Volunteers will see a select menu dropdown. Input options below separated by commas.
               Empty inputs or trailing/leading spaces will be automatically cleaned up.
@@ -117,8 +117,8 @@ const FieldRow = ({ field, onChange, onRemove }: FieldRowProps) => {
         )}
 
         {field.type === "checkbox" && (
-          <div className="rounded-md bg-primary/5 border border-primary/10 p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-semibold text-primary/80 flex items-center gap-1">Checkbox (Toggle) Guidance</p>
+          <div className="rounded-md bg-[var(--color-gray-50)] border border-[var(--color-gray-200)] p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-semibold text-[var(--color-primary)] flex items-center gap-1">Checkbox (Toggle) Guidance</p>
             <p>
               Volunteers will see a binary Yes/No checkbox. Use the <strong>Description / Helper Text</strong> field below to specify what checking this box means (e.g. <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono">Checked means yes, unchecked means no</code>).
             </p>
@@ -368,12 +368,12 @@ export const RoomFormBuilder = () => {
             </div>
 
             {error && (
-              <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm border border-destructive/20">
+              <div className="p-3 rounded-md bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)] text-sm border border-[var(--color-gray-200)]">
                 {error}
               </div>
             )}
             {success && (
-              <div className="p-3 rounded-md bg-emerald-500/10 text-emerald-700 text-sm border border-emerald-500/20">
+              <div className="p-3 rounded-md bg-[var(--color-status-live-bg)] text-[var(--color-status-live)] text-sm border border-[var(--color-gray-200)]">
                 {success}
               </div>
             )}

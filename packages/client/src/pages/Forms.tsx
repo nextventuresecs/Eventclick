@@ -110,7 +110,7 @@ export const Forms = () => {
                 </CardDescription>
                 <Link
                   to={`/rooms/${room.id}/attendance/records`}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--gradient-brand)] px-4 h-9 text-sm font-semibold text-white hover:opacity-90 transition-all duration-150 ease-out shadow-sm w-full"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-4 h-9 text-sm font-semibold bg-[var(--gradient-brand)] text-white shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.98] transition-all w-full"
                 >
                   View records
                 </Link>

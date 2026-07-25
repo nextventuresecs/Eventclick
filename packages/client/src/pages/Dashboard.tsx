@@ -151,12 +151,12 @@ const MiniCalendar = ({ rooms }: { rooms: EventRoom[] }) => {
 };
 
 const MapCard = ({ rooms }: { rooms: EventRoom[] }) => {
-  const activeRooms = rooms.filter((r) => r.status === "live" || r.status === "scheduled").slice(0, 6);
+  const activeRooms = rooms.filter((r) => r.status === "live" || r.status === "scheduled").slice(0, 4);
   return (
-    <Card className="card-static rounded-2xl h-full">
-      <CardContent className="p-4 h-full flex flex-col">
+    <Card className="card-static rounded-2xl">
+      <CardContent className="p-4">
         <h4 className="text-sm font-semibold font-display text-[var(--color-gray-900)] mb-3">Event Locations</h4>
-        <div className="flex-1 bg-[var(--color-gray-100)] rounded-xl relative overflow-hidden min-h-[180px]">
+        <div className="h-[220px] bg-[var(--color-gray-100)] rounded-xl relative overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center space-y-2">
               <MapPin className="w-8 h-8 text-[var(--color-primary)] mx-auto" />
@@ -167,10 +167,10 @@ const MapCard = ({ rooms }: { rooms: EventRoom[] }) => {
           {activeRooms.map((room, idx) => (
             <div
               key={room.id}
-              className="absolute bg-[var(--color-surface)] border border-[var(--color-gray-200)] rounded-lg shadow-sm p-2 w-40 text-xs"
+              className="absolute bg-[var(--color-surface)] border border-[var(--color-gray-200)] rounded-lg shadow-sm p-2 w-36 text-xs"
               style={{
-                top: `${20 + (idx % 3) * 30}%`,
-                left: `${15 + (idx % 2) * 45}%`,
+                top: `${25 + (idx % 2) * 35}%`,
+                left: `${10 + (idx % 2) * 48}%`,
               }}
             >
               <p className="font-semibold text-[var(--color-gray-900)] truncate">{room.title}</p>
@@ -292,7 +292,7 @@ export const Dashboard = () => {
     return (
       <Card className="mx-auto max-w-2xl border border-[var(--color-gray-200)] bg-[var(--color-gray-50)] shadow-sm">
         <CardContent className="space-y-3 p-8 text-center">
-          <div className="mx-auto w-12 h-12 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)] mb-2">
+          <div className="mx-auto w-12 h-12 rounded-full bg-[rgba(64,34,145,0.1)] flex items-center justify-center text-[var(--color-primary)] mb-2">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <CardTitle className="font-display">{ROLE_LABELS[user.role]} account created</CardTitle>
@@ -329,7 +329,7 @@ export const Dashboard = () => {
                       : "Once your admin assigns you to an event, it will appear here for live viewing and attendance collection."}
                   </CardDescription>
                   {canManageRooms && (
-                    <Link to="/rooms/create" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-secondary)] px-4 h-10 text-sm font-semibold text-white hover:opacity-90 transition-colors shadow-sm">
+                    <Link to="/rooms/create" className="inline-flex items-center justify-center gap-2 rounded-xl px-4 h-10 text-sm font-semibold bg-[var(--gradient-brand)] text-white shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.98] transition-all">
                       Create your first room
                     </Link>
                   )}
@@ -428,7 +428,7 @@ export const Dashboard = () => {
                       <tr key={m.id} className="hover:bg-[var(--color-gray-50)] transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center text-xs font-bold uppercase">
+                            <div className="h-8 w-8 rounded-full bg-[rgba(64,34,145,0.1)] text-[var(--color-primary)] flex items-center justify-center text-xs font-bold uppercase">
                               {m.fullName.charAt(0)}
                             </div>
                             <span className="font-medium text-[var(--color-gray-900)]">{m.fullName}</span>
