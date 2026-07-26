@@ -406,25 +406,29 @@ export const Attendance = () => {
   }
 
   return (
-    <div className="max-w-md mx-auto p-3 sm:p-6 space-y-4" data-form-key={fieldsLabel}>
-      <div className="flex items-center gap-2">
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center justify-center w-9 h-9 rounded-md text-foreground hover:bg-muted transition-colors shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div className="min-w-0">
-          <h2 className="text-lg font-bold truncate">Attendance</h2>
-          <p className="text-xs text-muted-foreground">
-            Form v{form.version} · {user ? ROLE_LABELS[user.role] : "User"} workflow
-          </p>
+    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in" data-form-key={fieldsLabel}>
+      {/* Header Banner Tile */}
+      <div className="rounded-3xl bg-brand-gradient-tile p-6 md:p-8 text-white shadow-lg space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-white/15 text-white hover:bg-white/25 backdrop-blur-md transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur-md text-white border border-white/20">
+              Form v{form.version} · {user ? ROLE_LABELS[user.role] : "User"} Workflow
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-        Record attendance on behalf of village attendees during the live session. Volunteers can
-        capture a supporting photo before submitting the attendance record.
+        <h1 className="text-2xl md:text-3xl font-bold font-display text-white tracking-tight">
+          Submit Attendance Record
+        </h1>
+        <p className="text-xs text-white/80 leading-relaxed">
+          Record attendee details and optional GPS geotag photo evidence on behalf of participants for {room?.title || "this event"}.
+        </p>
       </div>
 
       {windowCheck && (

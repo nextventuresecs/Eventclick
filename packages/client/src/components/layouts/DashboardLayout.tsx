@@ -22,6 +22,12 @@ import {
   Shield,
   MessageSquare,
   AlertTriangle,
+  Search,
+  Sparkles,
+  SlidersHorizontal,
+  CheckCircle2,
+  ExternalLink,
+  Command,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -90,26 +96,36 @@ export const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const profileRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const addonsRef = useRef<HTMLDivElement>(null);
 
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem("sidebar_collapsed") === "true";
   });
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [addonsOpen, setAddonsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(3);
 
   useEffect(() => {
     localStorage.setItem("sidebar_collapsed", String(isCollapsed));
   }, [isCollapsed]);
 
   useEffect(() => {
-    if (!profileOpen) return;
     const handleClick = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+      if (profileOpen && profileRef.current && !profileRef.current.contains(e.target as Node)) {
         setProfileOpen(false);
+      }
+      if (notifOpen && notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
+      if (addonsOpen && addonsRef.current && !addonsRef.current.contains(e.target as Node)) {
+        setAddonsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [profileOpen]);
+  }, [profileOpen, notifOpen, addonsOpen]);
 
   const canManageRooms = user ? hasRolePermission(user.role, "manage_rooms") : false;
   const canViewForms = user ? hasRolePermission(user.role, "create_attendance_form") || hasRolePermission(user.role, "take_attendance") : false;
@@ -350,35 +366,181 @@ export const DashboardLayout = () => {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <header className="h-16 border-b border-(--color-gray-200) bg-(--color-surface) flex items-center justify-between px-4 md:px-8 shrink-0">
-          <div className="min-w-0">
-            <h1 className="text-base font-display font-semibold text-(--color-gray-900) leading-tight tracking-tight truncate">
-              {pageTitle}
-            </h1>
-            <p className="text-xs text-gray-400 leading-none mt-0.5 truncate">{user?.organizationName || "Organization"}</p>
+        {/* Modern SaaS Header */}
+        <header className="h-16 border-b border-gray-200/80 bg-white/95 backdrop-blur-md flex items-center justify-between px-4 md:px-8 shrink-0 z-30 shadow-xs">
+          {/* Left Title & Breadcrumbs */}
+          <div className="min-w-0 flex items-center gap-3">
+            <div>
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400">
+                <span className="hover:text-purple-600 cursor-pointer transition-colors">Eventclick</span>
+                <span>/</span>
+                <span className="text-purple-700 font-medium truncate">{user?.organizationName || "Organization"}</span>
+              </div>
+              <h1 className="text-base md:text-lg font-bold font-display text-gray-900 leading-tight tracking-tight truncate flex items-center gap-2">
+                {pageTitle}
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Sync
+                </span>
+              </h1>
+            </div>
           </div>
 
+          {/* Right Action Tools & Addons */}
           <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            <div className="hidden md:flex items-center gap-1.5 text-xs text-(--color-gray-500) font-medium">
-              <CalendarDays className="w-3.5 h-3.5 text-gray-400" />
-              <span>{formatDate()}</span>
+            {/* Search Command Trigger */}
+            <div className="hidden lg:flex items-center gap-2 px-3 h-9 rounded-xl bg-gray-100/80 border border-gray-200/80 text-gray-400 text-xs font-medium cursor-pointer hover:bg-gray-100 hover:text-gray-600 transition-all">
+              <Search className="w-3.5 h-3.5" />
+              <span>Quick search...</span>
+              <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-white rounded border border-gray-200 text-gray-500 shadow-2xs">
+                ⌘K
+              </kbd>
             </div>
 
-            <div className="hidden md:block h-4 w-px bg-(--color-gray-200)" />
+            {/* Quick Addons / Options Icon Menu */}
+            <div className="relative" ref={addonsRef}>
+              <button
+                onClick={() => setAddonsOpen(!addonsOpen)}
+                className={`h-9 w-9 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
+                  addonsOpen ? "bg-purple-100 text-purple-700 ring-2 ring-purple-400/30" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+                title="Quick SaaS Utilities & Actions"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+              </button>
 
-            <button className="relative h-9 w-9 flex items-center justify-center rounded-xl text-(--color-gray-500) hover:text-(--color-gray-900) hover:bg-(--color-gray-100) transition-all duration-150 cursor-pointer" aria-label="Notifications">
-              <Bell className="w-4.5 h-4.5" />
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-secondary ring-2 ring-(--color-surface)" />
-            </button>
+              {addonsOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-gray-200 shadow-xl py-2 text-xs z-50 animate-in fade-in zoom-in-95">
+                  <div className="px-3.5 py-2 border-b border-gray-100 flex items-center justify-between">
+                    <span className="font-bold text-gray-900 font-display flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-purple-600" /> Quick Addons
+                    </span>
+                    <span className="text-[10px] text-gray-400 font-mono">Shortcuts</span>
+                  </div>
 
+                  <div className="p-1 space-y-0.5">
+                    {canManageRooms && (
+                      <Link
+                        to="/rooms/create"
+                        onClick={() => setAddonsOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-semibold transition-colors"
+                      >
+                        <PlusCircle className="w-4 h-4 text-purple-600" /> Create Event Room
+                      </Link>
+                    )}
+                    {canViewForms && (
+                      <Link
+                        to="/forms"
+                        onClick={() => setAddonsOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-semibold transition-colors"
+                      >
+                        <FileInput className="w-4 h-4 text-purple-600" /> Attendance Forms
+                      </Link>
+                    )}
+                    {canViewReports && (
+                      <Link
+                        to="/reports"
+                        onClick={() => setAddonsOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-semibold transition-colors"
+                      >
+                        <FileText className="w-4 h-4 text-purple-600" /> Export PDF Reports
+                      </Link>
+                    )}
+                    {canManageUsers && (
+                      <Link
+                        to="/admin/event-assignments"
+                        onClick={() => setAddonsOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-semibold transition-colors"
+                      >
+                        <Users className="w-4 h-4 text-purple-600" /> Manage Team Assignments
+                      </Link>
+                    )}
+                    <Link
+                      to="/settings"
+                      onClick={() => setAddonsOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-semibold transition-colors"
+                    >
+                      <Settings2 className="w-4 h-4 text-purple-600" /> Application Settings
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Notifications Bell Dropdown */}
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setNotifOpen(!notifOpen)}
+                className={`relative h-9 w-9 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
+                  notifOpen ? "bg-purple-100 text-purple-700 ring-2 ring-purple-400/30" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+                aria-label="Notifications"
+              >
+                <Bell className="w-4.5 h-4.5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-purple-600 ring-2 ring-white" />
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-white border border-gray-200 shadow-xl py-2 text-xs z-50 animate-in fade-in zoom-in-95">
+                  <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+                    <span className="font-bold text-gray-900 font-display">System Notifications</span>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={() => setUnreadCount(0)}
+                        className="text-[11px] font-semibold text-purple-600 hover:underline cursor-pointer"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="p-2 space-y-1.5 max-h-72 overflow-y-auto">
+                    <div className="p-2.5 rounded-xl bg-purple-50/60 border border-purple-100 space-y-1">
+                      <div className="flex items-center justify-between font-semibold text-purple-900">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" /> Attendance Check-in
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-mono">10m ago</span>
+                      </div>
+                      <p className="text-[11px] text-gray-600">New verified GPS attendance submitted for Community Outreach event.</p>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 space-y-1">
+                      <div className="flex items-center justify-between font-semibold text-gray-900">
+                        <span>New Room Scheduled</span>
+                        <span className="text-[10px] text-gray-400 font-mono">1h ago</span>
+                      </div>
+                      <p className="text-[11px] text-gray-500">Event room "Annual Health Camp" was scheduled for tomorrow.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="hidden md:block h-4 w-px bg-gray-200" />
+
+            {/* Quick Action Primary Button */}
             {canManageRooms && (
-              <Link to="/rooms/create">
-                <Button size="sm" className="gap-1.5">
+              <Link to="/rooms/create" className="hidden sm:inline-flex">
+                <Button size="sm" className="gap-1.5 bg-brand-gradient h-9 rounded-xl font-semibold shadow-xs">
                   <PlusCircle className="w-4 h-4" />
-                  <span className="hidden md:inline">New Room</span>
+                  <span>New Room</span>
                 </Button>
               </Link>
             )}
+
+            {/* Profile Avatar Quick Pill */}
+            <Link
+              to="/profile"
+              className="flex items-center gap-2 p-1 rounded-xl hover:bg-gray-100 transition-colors"
+              title="User Profile"
+            >
+              <div className="h-8 w-8 rounded-lg bg-brand-gradient text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                {initials}
+              </div>
+            </Link>
           </div>
         </header>
 

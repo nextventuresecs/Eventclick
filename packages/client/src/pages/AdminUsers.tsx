@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Link as LinkIcon, Search } from "lucide-react";
+import { Users, Link as LinkIcon, Search, Trash2, AlertTriangle } from "lucide-react";
 import { hasRolePermission, type OrgUserSummary, type EventAdminAssignment, type UserRole } from "@application/shared";
 import { adminApi, eventAssignmentsApi, ApiClientError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +19,7 @@ export const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<OrgUserSummary | null>(null);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
@@ -151,6 +152,7 @@ export const AdminUsers = () => {
                   <th className="px-4 py-3 font-semibold">Assigned Event</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
                   <th className="px-4 py-3 font-semibold">Assigned By</th>
+                  <th className="px-4 py-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-(--color-gray-100)">
@@ -184,11 +186,24 @@ export const AdminUsers = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-(--color-gray-500) text-xs font-mono">{u.assignedBy ?? "—"}</td>
+                    <td className="px-4 py-3 text-right">
+                      {u.id !== user?.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteTarget(u)}
+                          className="h-8 rounded-xl border-red-200 text-red-600 hover:bg-red-50 text-xs gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete
+                        </Button>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400">No users found matching your filter</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No users found matching your filter</td>
                   </tr>
                 )}
               </tbody>
@@ -196,6 +211,19 @@ export const AdminUsers = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete User Modal */}
+      {deleteTarget && (
+        <DeleteUserModal
+          targetUser={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onSuccess={() => {
+            setDeleteTarget(null);
+            toast("User account deleted successfully", "success");
+            void load();
+          }}
+        />
+      )}
 
       {showCreateModal && (
         <CreateUserModal
@@ -313,6 +341,91 @@ const CreateUserModal = ({
               </Button>
               <Button type="submit" disabled={loading} className="bg-brand-gradient rounded-xl font-semibold shadow-sm">
                 {loading ? "Creating..." : "Create User"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+const DeleteUserModal = ({
+  targetUser,
+  onClose,
+  onSuccess,
+}: {
+  targetUser: OrgUserSummary;
+  onClose: () => void;
+  onSuccess: () => void;
+}) => {
+  const [confirmEmail, setConfirmEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (confirmEmail.trim().toLowerCase() !== targetUser.email.trim().toLowerCase()) {
+      setError(`Please type "${targetUser.email}" to confirm deletion.`);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      await adminApi.deleteUser(targetUser.id, confirmEmail.trim());
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Failed to delete user account");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+      <Card className="w-full max-w-md rounded-2xl shadow-xl border-red-200 bg-white">
+        <CardContent className="p-6 space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <CardTitle className="font-display text-lg text-gray-900">Delete User Account</CardTitle>
+              <CardDescription className="text-xs text-red-600 font-semibold">
+                Delete account for {targetUser.fullName}
+              </CardDescription>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-600 leading-relaxed">
+            Please type <strong className="text-gray-900 font-mono">{targetUser.email}</strong> to confirm deletion:
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmEmail" className="text-xs font-semibold text-gray-700">Confirmation Email</Label>
+              <Input
+                id="confirmEmail"
+                type="email"
+                value={confirmEmail}
+                onChange={(e) => setConfirmEmail(e.target.value)}
+                placeholder={targetUser.email}
+                required
+                disabled={loading}
+                className="input-premium border-red-200 focus:ring-red-500"
+              />
+            </div>
+
+            {error && <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">{error}</p>}
+
+            <div className="flex gap-3 justify-end pt-2">
+              <Button variant="outline" onClick={onClose} disabled={loading} className="rounded-xl">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading} className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold shadow-sm">
+                {loading ? "Deleting..." : "Permanently Delete"}
               </Button>
             </div>
           </form>

@@ -2,17 +2,16 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireRole } from "../middleware/requireRole";
 import { validate } from "../middleware/validate";
-import { listOrgUsers, createUser } from "../controllers/admin.controller";
-import { CreateUserSchema } from "../schemas/admin.schemas";
+import { listOrgUsers, createUser, deleteUser } from "../controllers/admin.controller";
+import { CreateUserSchema, DeleteUserSchema } from "../schemas/admin.schemas";
 
 export const adminRouter = Router();
 
-// All admin routes require NGO Admin role
 adminRouter.use(requireAuth);
-adminRouter.use(requireRole("ngo_admin"));
 
 // User management
-adminRouter.get("/users", listOrgUsers);
-adminRouter.post("/users", validate(CreateUserSchema), createUser);
+adminRouter.get("/users", requireRole("ngo_admin"), listOrgUsers);
+adminRouter.post("/users", requireRole("ngo_admin"), validate(CreateUserSchema), createUser);
+adminRouter.delete("/users/:id", validate(DeleteUserSchema), deleteUser);
 
 export default adminRouter;

@@ -32,6 +32,7 @@ import { Profile } from "./pages/Profile";
 import { HelpCenter } from "./pages/HelpCenter";
 import { Feedback } from "./pages/Feedback";
 import { ReportBug } from "./pages/ReportBug";
+import { Settings } from "./pages/Settings";
 
 const ConnectionError = () => {
   const { retryAuth } = useAuth();
@@ -218,6 +219,7 @@ const router = createBrowserRouter([
         children: [
           { path: "dashboard", element: <Dashboard /> },
           { path: "profile", element: <Profile /> },
+          { path: "settings", element: <Settings /> },
           { path: "help", element: <HelpCenter /> },
           { path: "feedback", element: <Feedback /> },
           { path: "report-bug", element: <ReportBug /> },

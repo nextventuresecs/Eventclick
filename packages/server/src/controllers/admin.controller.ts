@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 import type { CreateOrgUserInput } from "../services/admin.service";
 import { ApiError } from "../utils/errors";
-import { listOrgUsersForAdmin, createOrgUser } from "../services/admin.service";
+import { listOrgUsersForAdmin, createOrgUser, deleteUserAccount } from "../services/admin.service";
 
 const requireOrgId = (organizationId: string | null | undefined): string => {
   if (!organizationId) throw ApiError.unauthorized("No organization");
@@ -30,6 +30,40 @@ export const createUser: RequestHandler = async (req, res, next) => {
     const input = req.body as CreateOrgUserInput;
     const user = await createOrgUser(orgId, req.user!.id, input);
     res.status(201).json(user);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * DELETE /admin/users/:id — delete user account based on role hierarchy
+ */
+export const deleteUser: RequestHandler = async (req, res, next) => {
+  try {
+    const requester = req.user;
+    if (!requester) throw ApiError.unauthorized();
+
+    const rawId = req.params.id;
+    const targetUserId = Array.isArray(rawId) ? rawId[0] : rawId;
+    if (!targetUserId) throw ApiError.badRequest("Target user ID is required");
+
+    const { confirmEmail } = req.body as { confirmEmail: string };
+    if (!confirmEmail) throw ApiError.badRequest("confirmEmail parameter is required");
+
+    const result = await deleteUserAccount(
+      requester.id,
+      requester.role,
+      requester.organizationId,
+      targetUserId,
+      confirmEmail,
+    );
+
+    // If self deletion, clear refresh cookie
+    if (requester.id === targetUserId) {
+      res.clearCookie("Evently_rt");
+    }
+
+    res.json(result);
   } catch (err) {
     next(err);
   }

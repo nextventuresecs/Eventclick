@@ -128,7 +128,7 @@ export const api = {
   post: <T>(path: string, body?: Body) => request<T>("POST", path, body),
   put: <T>(path: string, body?: Body) => request<T>("PUT", path, body),
   patch: <T>(path: string, body?: Body) => request<T>("PATCH", path, body),
-  delete: <T>(path: string) => request<T>("DELETE", path),
+  delete: <T>(path: string, body?: Body) => request<T>("DELETE", path, body),
 };
 
 export const authApi = {
@@ -256,6 +256,8 @@ export const adminApi = {
   listUsers: () => api.get<{ items: OrgUserSummary[] }>("/admin/users"),
   createUser: (body: CreateOrgUserInput) =>
     api.post<OrgUserSummary>("/admin/users", body),
+  deleteUser: (userId: string, confirmEmail: string) =>
+    api.delete<{ success: boolean; message: string }>(`/admin/users/${userId}`, { confirmEmail }),
 };
 
 export const uploadToPresignedUrl = async (

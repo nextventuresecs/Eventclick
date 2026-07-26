@@ -297,63 +297,58 @@ export const AttendanceRecords = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">
+    <div className="space-y-8 animate-in fade-in">
+      {/* Header Banner Tile */}
+      <div className="rounded-3xl bg-brand-gradient-tile p-6 md:p-8 text-white shadow-lg space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-white/15 text-white hover:bg-white/25 backdrop-blur-md transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur-md text-white border border-white/20 flex items-center gap-1.5">
+                <ClipboardList className="w-3.5 h-3.5 text-purple-300" />
+                {entries.length} Attendance Records
+              </span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold font-display text-white tracking-tight">
               {room ? `${room.title} Records` : "Attendance Records"}
-            </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Detailed attendance log for {room ? room.title : "this room"}
+            </h1>
+            <p className="text-xs text-white/80 max-w-xl leading-relaxed">
+              Detailed attendance entries, geotagged location logs, custom form submissions, and photo evidence for this event.
             </p>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void fetchEntries()}
-            disabled={loading || pdfLoading}
-            className="gap-1.5"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportCSV}
-            disabled={pdfLoading || sortedEntries.length === 0}
-            className="gap-1.5"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Export CSV
-          </Button>
-          {user?.role === "ngo_admin" && (
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Button
-              variant="primary"
-              size="sm"
+              onClick={handleExportCSV}
+              disabled={sortedEntries.length === 0}
+              className="bg-white/15 hover:bg-white/25 text-white font-semibold text-xs rounded-xl border border-white/20 h-10 px-4 backdrop-blur-md gap-1.5"
+            >
+              <Download className="w-4 h-4 text-purple-300" />
+              Export CSV
+            </Button>
+            <Button
               onClick={handleDownloadPDF}
-              disabled={pdfLoading || sortedEntries.length === 0 || room?.status !== "ended"}
-              className="bg-brand-gradient text-white h-9 rounded-xl font-semibold shadow-xs hover:shadow-md transition-all gap-1.5"
-              title={room?.status !== "ended" ? "PDF Report is only available after the live session has ended" : undefined}
+              disabled={pdfLoading || sortedEntries.length === 0}
+              className="bg-white text-purple-950 hover:bg-purple-50 font-bold text-xs rounded-xl h-10 px-4 shadow-md gap-1.5"
             >
               {pdfLoading ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-purple-700" />
+                  Generating PDF...
+                </>
               ) : (
-                <FileText className="w-3.5 h-3.5" />
+                <>
+                  <FileText className="w-4 h-4 text-purple-700" />
+                  Download PDF Report
+                </>
               )}
-              {pdfLoading ? "Generating PDF..." : "Download PDF Report"}
             </Button>
-          )}
+          </div>
         </div>
       </div>
 
