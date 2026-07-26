@@ -21,7 +21,7 @@ export const AuthLayout = ({ children }: AuthLayoutProps) => {
           <h1 className="text-3xl lg:text-4xl font-extrabold tracking-wider mb-4 lg:mb-6 font-display">EventClick</h1>
           
           <p className="max-w-md text-xs lg:text-sm leading-relaxed text-blue-50">
-            Create your account to unlock premium features and streamline your event management experience. Join our community and embark on an exciting journey with us!
+            Streamline your organization's events with real-time attendance verification, transparent activity reporting, and seamless member coordination.
           </p>
         </div>
 

@@ -61,7 +61,7 @@ export const LoginPage = () => {
     <AuthLayout>
       <div className="flex flex-col gap-6">
         <div className="mb-2 text-center lg:text-left">
-          <h2 className="text-2xl font-bold tracking-tight font-display text-(--color-gray-900)">Welcome back</h2>
+          <h2 className="text-2xl font-bold tracking-tight font-display text-(--color-gray-900)">Sign in</h2>
           <p className="text-sm text-gray-400 mt-1.5">Sign in to your organization workspace</p>
         </div>
 
