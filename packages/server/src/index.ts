@@ -47,6 +47,7 @@ app.use(
 );
 
 app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.use(cookieParser());
 app.use(compression());
 app.use(
@@ -84,24 +85,27 @@ app.use(
     store: new RedisStore({
       sendCommand: async (...args: string[]) => {
         if (!redisClient.isOpen) {
-          // During store initialization, rate-limit-redis loads its script via 'SCRIPT LOAD'.
-          // This command expects a string return value (the SHA). If we are not connected yet,
-          // return a dummy SHA string to satisfy the init phase check.
+          // During store initialization, rate-limit-redis loads its
+          // script via 'SCRIPT LOAD'. This command expects a string
+          // return value (the SHA). Return a dummy SHA to satisfy
+          // the init phase check, but only for SCRIPT LOAD.
           if (args[0] === "SCRIPT" && args[1] === "LOAD") {
             return "dummy_sha_fallback";
           }
-          // The increment/liveness command expects [totalHits, resetTimeMs].
-          return [0, Date.now() + env.RATE_LIMIT_WINDOW_MS];
+          // Any other Redis command while disconnected means the
+          // rate limiter cannot function — fail closed to protect
+          // the server from a brute-force flood during Redis downtime.
+          throw new Error("Redis not connected — rate limiter unavailable");
         }
         try {
           return await redisClient.sendCommand(args);
         } catch (err) {
           const errorString = String(err);
           if (errorString.includes("NOSCRIPT")) {
-            throw err; // Let rate-limit-redis load the script
+            throw err;
           }
-          logger.error({ err, args }, "[redis-rate-limit] sendCommand failed, falling back");
-          return [0, Date.now() + env.RATE_LIMIT_WINDOW_MS];
+          logger.error({ err, args }, "[redis-rate-limit] sendCommand failed, failing closed");
+          throw err;
         }
       },
     }),

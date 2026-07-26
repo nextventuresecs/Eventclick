@@ -12,6 +12,6 @@ adminRouter.use(requireAuth);
 // User management
 adminRouter.get("/users", requireRole("ngo_admin"), listOrgUsers);
 adminRouter.post("/users", requireRole("ngo_admin"), validate(CreateUserSchema), createUser);
-adminRouter.delete("/users/:id", validate(DeleteUserSchema), deleteUser);
+adminRouter.delete("/users/:id", requireAuth, validate(DeleteUserSchema), deleteUser);
 
 export default adminRouter;

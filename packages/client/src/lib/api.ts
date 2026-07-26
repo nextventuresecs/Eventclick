@@ -65,25 +65,37 @@ const refreshOnce = (): Promise<string | null> => {
 
 type Body = Record<string, unknown> | undefined;
 
+const DEFAULT_TIMEOUT_MS = 15_000;
+let requestIdCounter = 0;
+const nextRequestId = () => `req-${Date.now()}-${++requestIdCounter}`;
+
 const fetchWithAuth = async (
   path: string,
   init?: RequestInit,
   retry = true,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<Response> => {
   const headers: Record<string, string> = {
     ...(init?.headers as Record<string, string>),
   };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  headers["x-request-id"] = headers["x-request-id"] ?? nextRequestId();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers,
     credentials: "include",
+    signal: controller.signal,
   });
+
+  clearTimeout(timeoutId);
 
   if (res.status === 401 && retry && !path.startsWith("/auth/")) {
     const newToken = await refreshOnce();
-    if (newToken) return fetchWithAuth(path, init, false);
+    if (newToken) return fetchWithAuth(path, init, false, timeoutMs);
     onUnauthorized?.();
   }
 
