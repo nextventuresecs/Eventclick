@@ -63,11 +63,11 @@ export const ResetPasswordPage = () => {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
       <div className="mb-8 text-center">
-        <div className="mx-auto h-12 w-12 rounded-xl bg-brand-gradient flex items-center justify-center mb-4 shadow-sm">
+        <div className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center mb-4 shadow-sm">
           <img
             src="/only_icon.png"
             alt="Eventclick"
-            className="h-6 w-6 object-contain"
+            className="h-8 w-8 object-contain"
           />
         </div>
         <h1 className="text-2xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Set new password</h1>
