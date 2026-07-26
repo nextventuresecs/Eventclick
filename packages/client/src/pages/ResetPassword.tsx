@@ -6,15 +6,8 @@ import { ResetPasswordSchema } from "@application/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Lock, CheckCircle2, ArrowLeft, AlertCircle } from "lucide-react";
+import { CheckCircle2, ArrowLeft, AlertCircle } from "lucide-react";
+import { AuthLayout } from "@/components/layout/AuthLayout";
 
 export const ResetPasswordPage = () => {
   const { resetPassword } = useAuth();
@@ -61,103 +54,92 @@ export const ResetPasswordPage = () => {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
-      <div className="mb-8 text-center">
-        <div className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center mb-4 shadow-sm">
-          <img
-            src="/only_icon.png"
-            alt="Eventclick"
-            className="h-8 w-8 object-contain"
-          />
+    <AuthLayout>
+      <div className="flex flex-col gap-6">
+        <div className="mb-2 text-center lg:text-left">
+          <h2 className="text-2xl font-bold tracking-tight font-display text-(--color-gray-900)">Set new password</h2>
+          <p className="text-sm text-gray-400 mt-1.5">Choose a strong password for your account</p>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Set new password</h1>
-        <p className="text-sm text-[var(--color-gray-400)] mt-1.5">Choose a strong password for your account</p>
-      </div>
-      <Card className="card-static rounded-2xl">
-        <CardContent className="pt-6">
-          {!token ? (
-            <div className="flex flex-col items-center gap-4 text-center py-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)]">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-[var(--color-gray-900)]">Invalid or missing reset link</p>
-                <p className="text-sm text-[var(--color-gray-400)] mt-1">
-                  Please request a new password reset link from the sign-in page.
-                </p>
-              </div>
-              <Link to="/forgot-password" className="w-full mt-2">
-                <Button className="w-full" variant="outline">
-                  Request new link
-                </Button>
-              </Link>
-            </div>
-          ) : success ? (
-            <div className="flex flex-col items-center gap-4 text-center py-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-status-live-bg)] text-[var(--color-status-live)]">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-[var(--color-gray-900)]">Password reset successful</p>
-                <p className="text-sm text-[var(--color-gray-400)] mt-1">
-                  You can now log in to your account with your new password.
-                </p>
-              </div>
-              <Button onClick={() => navigate("/login")} className="w-full mt-2">
-                Sign in
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={onSubmit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="password" className="text-sm font-medium text-[var(--color-gray-600)]">New Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={submitting}
-                  className="input-premium"
-                />
-                <p className="text-xs text-[var(--color-gray-400)]">Minimum 8 characters</p>
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="confirmPassword" className="text-sm font-medium text-[var(--color-gray-600)]">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={submitting}
-                  className="input-premium"
-                />
-              </div>
 
-              {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
-
-              <Button type="submit" disabled={submitting} className="w-full">
-                {submitting ? "Resetting…" : "Reset password"}
+        {!token ? (
+          <div className="flex flex-col items-center gap-4 text-center py-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-cancelled-bg text-(--color-error)">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-(--color-gray-900)">Invalid or missing reset link</p>
+              <p className="text-sm text-gray-400 mt-1">
+                Please request a new password reset link from the sign-in page.
+              </p>
+            </div>
+            <Link to="/forgot-password" className="w-full mt-2">
+              <Button className="w-full h-11 text-base font-semibold" variant="outline">
+                Request new link
               </Button>
-            </form>
-          )}
-        </CardContent>
-        <CardFooter className="flex-col justify-center gap-2 text-sm text-[var(--color-gray-400)]">
-          <Link to="/login" className="inline-flex items-center gap-1.5 font-medium text-[var(--color-primary)] hover:underline">
+            </Link>
+          </div>
+        ) : success ? (
+          <div className="flex flex-col items-center gap-4 text-center py-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-live-bg text-status-live">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-(--color-gray-900)">Password reset successful</p>
+              <p className="text-sm text-gray-400 mt-1">
+                You can now log in to your account with your new password.
+              </p>
+            </div>
+            <Button onClick={() => navigate("/login")} className="w-full mt-2 h-11 text-base font-semibold bg-brand-gradient border-0 hover:opacity-90 transition-opacity">
+              Sign in
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="password" className="text-sm font-medium text-(--color-gray-600)">New Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={submitting}
+                className="input-premium"
+              />
+              <p className="text-xs text-gray-400">Minimum 8 characters</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="confirmPassword" className="text-sm font-medium text-(--color-gray-600)">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={submitting}
+                className="input-premium"
+              />
+            </div>
+
+            {error && <p className="text-sm text-(--color-error)">{error}</p>}
+
+            <Button type="submit" disabled={submitting} className="w-full mt-2 h-11 text-base font-semibold bg-brand-gradient border-0 hover:opacity-90 transition-opacity">
+              {submitting ? "Resetting…" : "Reset password"}
+            </Button>
+          </form>
+        )}
+
+        <div className="mt-6 text-center text-sm text-(--color-gray-600)">
+          <Link to="/login" className="inline-flex items-center gap-1.5 font-medium text-(--color-primary) hover:underline">
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to sign in
           </Link>
-          <div className="flex items-center gap-4 pt-1">
-            <Link to="/terms" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Terms</Link>
-            <Link to="/privacy" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Privacy</Link>
-          </div>
-        </CardFooter>
-      </Card>
-    </div>
+        </div>
+      </div>
+    </AuthLayout>
   );
 };

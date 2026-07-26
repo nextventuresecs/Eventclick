@@ -10,9 +10,9 @@ const buttonVariants = cva(
         primary:
           "bg-brand-gradient text-white shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.98]",
         outline:
-          "border border-[var(--color-gray-200)] bg-transparent text-[var(--color-gray-700)] hover:bg-[var(--color-gray-50)] hover:border-[var(--color-gray-300)] active:bg-[var(--color-gray-100)]",
+          "border border-(--color-gray-200) bg-transparent text-gray-700 hover:bg-(--color-gray-50) hover:border-[var(--color-gray-300)] active:bg-(--color-gray-100)",
         ghost:
-          "text-[var(--color-gray-700)] hover:bg-[var(--color-gray-100)] hover:text-[var(--color-gray-900)] active:bg-[var(--color-gray-200)]",
+          "text-gray-700 hover:bg-(--color-gray-100) hover:text-(--color-gray-900) active:bg-(--color-gray-200)",
         destructive:
           "bg-[var(--color-error)] text-white shadow-sm hover:brightness-110 active:scale-[0.98]",
       },

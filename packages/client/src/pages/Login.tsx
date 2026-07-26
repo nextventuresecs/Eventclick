@@ -6,16 +6,8 @@ import { ApiClientError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
-import { Mail, Lock } from "lucide-react";
+import { AuthLayout } from "@/components/layout/AuthLayout";
 
 export const LoginPage = () => {
   const { login, loginWithGoogle } = useAuth();
@@ -66,85 +58,79 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
-      <div className="mb-8 text-center">
-        <div className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center mb-4 shadow-sm">
-          <img
-            src="/only_icon.png"
-            alt="Eventclick"
-            className="h-8 w-8 object-contain"
-          />
+    <AuthLayout>
+      <div className="flex flex-col gap-6">
+        <div className="mb-2 text-center lg:text-left">
+          <h2 className="text-2xl font-bold tracking-tight font-display text-(--color-gray-900)">Welcome back</h2>
+          <p className="text-sm text-gray-400 mt-1.5">Sign in to your organization workspace</p>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Welcome back</h1>
-        <p className="text-sm text-[var(--color-gray-400)] mt-1.5">Sign in to your organization workspace</p>
-      </div>
-      <Card className="card-static rounded-2xl">
-        <CardContent className="flex flex-col gap-5 pt-6">
-          <GoogleSignInButton onToken={onGoogle} disabled={submitting} />
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-[var(--color-gray-200)]" />
-            <span className="text-xs uppercase text-[var(--color-gray-400)] tracking-wide">or</span>
-            <div className="h-px flex-1 bg-[var(--color-gray-200)]" />
+
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email" className="text-sm font-medium text-(--color-gray-600)">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={submitting}
+              className="input-premium"
+              placeholder="Enter email"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-sm font-medium text-(--color-gray-600)">Password</Label>
+              <Link
+                to="/forgot-password"
+                className="text-xs font-medium text-(--color-primary) hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={submitting}
+              className="input-premium"
+              placeholder="Enter Password"
+            />
           </div>
 
-          <form onSubmit={onSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email" className="text-sm font-medium text-[var(--color-gray-600)]">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={submitting}
-                className="input-premium"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium text-[var(--color-gray-600)]">Password</Label>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-medium text-[var(--color-primary)] hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={submitting}
-                className="input-premium"
-              />
-            </div>
+          {error && <p className="text-sm text-(--color-error)">{error}</p>}
 
-            {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
+          <Button type="submit" disabled={submitting} className="w-full mt-2 h-11 text-base font-semibold bg-brand-gradient border-0 hover:opacity-90 transition-opacity">
+            {submitting ? "Signing in…" : "Sign In"}
+          </Button>
+        </form>
 
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex-col justify-center gap-2 text-sm text-[var(--color-gray-400)]">
+        <div className="flex items-center gap-3 mt-4">
+          <div className="h-px flex-1 bg-(--color-gray-200)" />
+          <span className="text-xs text-gray-400 tracking-wide">Sign In with</span>
+          <div className="h-px flex-1 bg-(--color-gray-200)" />
+        </div>
+        
+        <div className="flex justify-center">
+          <GoogleSignInButton onToken={onGoogle} disabled={submitting} />
+        </div>
+
+        <div className="mt-6 text-center text-sm text-(--color-gray-600)">
           <span>Don't have an account?&nbsp;
             <Link
               to="/register"
-              className="font-medium text-[var(--color-primary)] hover:underline"
+              className="font-medium text-(--color-primary) hover:underline"
             >
-              Create one
+              Sign up
             </Link>
           </span>
-          <div className="flex items-center gap-4 pt-1">
-            <Link to="/terms" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Terms</Link>
-            <Link to="/privacy" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Privacy</Link>
-          </div>
-        </CardFooter>
-      </Card>
-    </div>
+        </div>
+      </div>
+    </AuthLayout>
   );
 };

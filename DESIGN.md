@@ -1,18 +1,21 @@
 # Design System — EventClick
 
 ## Product Context
+
 - **What this is:** EventClick is a SaaS platform for NGOs and FPOs to plan, run, and verify live events — attendance capture, live sessions, forms, and reports — all scoped to an organization with role-based access.
 - **Who it's for:** NGO admins, event managers, and volunteers who need clean, trustworthy event operations tooling.
 - **Space/industry:** Civic tech / event management SaaS
 - **Project type:** Web app dashboard with role-aware navigation
 
 ## Aesthetic Direction
+
 - **Direction:** Premium trustworthy SaaS — soft-lavender canvas, white elevated cards, and restrained purple/blue brand accents. Decoration is intentional, not expressive. Color and elevation carry hierarchy.
 - **Decoration level:** Intentional — subtle surface treatments, gradient reserved for brand lockup and primary stat tile only.
 - **Mood:** Professional, calm, organized. The product should feel like serious software for serious work — trustworthy, not flashy.
 - **Reference sites:** SalesHub dashboard patterns, Linear-like clarity, Stripe-like restraint.
 
 ## Typography
+
 - **Display / Brand wordmark:** Poppins, weight 600 — used for sidebar brand lockup, page titles, and stat card numbers.
 - **Headings (H1-H4):** Poppins, weight 600 — used for page headers and section titles.
 - **Body / UI / tables:** Inter, weight 400-500 — used for all body text, labels, table rows, and navigation.
@@ -27,6 +30,7 @@
   - Stat number: 24px / 1.5rem
 
 ## Color
+
 - **Approach:** Balanced — primary deep violet for authority, secondary royal blue for action, periwinkle for hover/interaction, ink navy for dark surfaces. Soft lavender tinted canvas, not white.
 - **Palette:**
   - Deep violet: `#402291` — headings, "Event" wordmark half, primary active nav, primary stat tile
@@ -53,6 +57,7 @@
 - **Dark mode:** Not implemented. Light-only UI per current constraint.
 
 ## Gradients & Borders
+
 - **Brand gradient:** `linear-gradient(135deg, #402291 0%, #3160B7 100%)` — used only for the sidebar brand lockup background, active nav state, and page header primary action button. Not used as a general background or card fill.
 - **Primary tile gradient:** `linear-gradient(135deg, #402291 0%, #5a2fbf 100%)` — used for the Total Rooms stat tile on the dashboard, giving it a subtle violet depth rather than flat color.
 - **Colored borders:** Used as left-edge accents on room cards and as focus rings. Do not use on every card; reserve for status and primary actions.
@@ -64,6 +69,7 @@
 - **Border system:** Keep the existing neutral border scale. Add colored borders only where the status color system already applies, so the palette stays coherent.
 
 ## Elevation / Shadows
+
 - **Approach:** Soft, layered elevation. One primary surface token plus one hover lift. No double shadows.
 - **Elevation scale:**
   - Rest: `0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.08)`
@@ -71,17 +77,20 @@
   - Raised modal/header: `0 10px 15px rgba(16,24,40,.08), 0 4px 12px rgba(16,24,40,.06)`
 
 ## Motion
+
 - **Approach:** Minimal-functional — 150ms ease-out on hover/active only. No scroll-driven animation, no decorative motion.
 - **Easing:** `ease-out` for hover/active states.
 - **Duration:** Micro: 150ms.
 
 ## Surface System
+
 - **Canvas:** `--color-bg` (`#F5F3FC`) — page background only.
 - **Card:** `--color-surface` (`#FFFFFF`) with `--color-gray-200` border and soft shadow.
 - **Hover surface:** `--color-gray-50` (`#F8F9FC`) for table header, empty states, and subtle background lifts.
 - **Dark surface:** `--color-ink` (`#28226E`) reserved for profile card and sidebar footer.
 
 ## Typography & Readability
+
 - **Line height:** 1.5 for body, 1.25 for headings, 1.4 for UI elements like table rows.
 - **Letter spacing:** `-0.01em` for headings, normal for body. `tracking-tight` for the brand wordmark only.
 - **Tables:**
@@ -93,6 +102,7 @@
 ## Component Tokens
 
 ### Sidebar (`DashboardLayout`)
+
 - Width collapsed: 80px / expanded: 256px
 - Border: `--color-gray-200` (right border)
 - Background: `--color-surface`
@@ -116,11 +126,13 @@
   - Subtle border separator between sections
 
 ### Page Header (every page)
+
 - Left: `{Organization name} {Page label}` as title, subtitle line below (context-specific)
 - Right (LTR order): notification bell, today's date ("Jul 25, 2026"), profile avatar with dropdown (Profile / Settings / Help / Sign out), primary action button (Create room, Add user, etc.)
 - Primary action button: gradient background, white text, soft shadow — distinct from nav.
 
 ### Dashboard
+
 - Page background: `--color-bg`
 - Title: Poppins 600, 30px, `--color-gray-900`
 - Subtitle: Inter 400, 14px, `--color-gray-400`
@@ -136,11 +148,13 @@
 - Map card: placeholder with `--color-primary` pin icon, soft grid background
 
 ### Forms & Reports
+
 - Cards: same radius/shadow as dashboard
 - Filter pills: `--color-primary` when active, `--color-gray-200` border when inactive
 - Status pills: reuse status color table
 
 ### Buttons
+
 - Primary action: gradient or `--color-secondary` background, white text, shadow-sm, hover opacity-90 or lift
 - Secondary / outline: `--color-gray-200` border, `--color-gray-600` text, hover `--color-gray-100` background, `transition-colors`
 - Danger: `--color-status-cancelled-bg` background, `--color-status-cancelled` text, hover stronger tint
@@ -148,6 +162,7 @@
 - Transition: `transition-all duration-150 ease-out`
 
 ### Inputs
+
 - Border: `--color-gray-200`
 - Background: `--color-gray-50`
 - Focus ring: `--color-primary` with soft shadow
@@ -156,13 +171,15 @@
 - Transition: `transition-colors duration-150 ease-out`
 
 ### Tables (AdminUsers, Assignments, etc.)
+
 - Container: white card with soft shadow and `--color-gray-200` border
-- Header: `--color-gray-50` background, uppercase `text-xs`, `text-[var(--color-gray-400)]`
-- Dividers: `divide-y divide-[var(--color-gray-100)]`
-- Row hover: `hover:bg-[var(--color-gray-50)] transition-colors`
+- Header: `--color-gray-50` background, uppercase `text-xs`, `text-gray-400`
+- Dividers: `divide-y divide-(--color-gray-100)`
+- Row hover: `hover:bg-(--color-gray-50) transition-colors`
 - Cell padding: `px-4 py-3`
 
 ### Auth Screens (Login, Register, Onboarding)
+
 - Centered card layout, no sidebar
 - Brand lockup with gradient icon background and wordmark
 - Soft shadow and border on the auth card
@@ -171,19 +188,21 @@
 - Background: `--color-bg` canvas
 
 ## Role-Based Page Visibility
-| Page | Org admin | Event manager | Volunteer |
-|------|-----------|---------------|-----------|
-| Dashboard | ✓ | ✓ | ✓ |
-| Rooms | ✓ | ✓ | ✓ |
-| Users | ✓ | ✓ | — |
-| Room assignment | ✓ | ✓ | — |
-| Forms | ✓ | ✓ | ✓ |
-| Reports | ✓ | ✓ | — |
-| Profile / Settings | ✓ | ✓ | ✓ (own profile only) |
+
+| Page               | Org admin | Event manager | Volunteer            |
+| ------------------ | --------- | ------------- | -------------------- |
+| Dashboard          | ✓         | ✓             | ✓                    |
+| Rooms              | ✓         | ✓             | ✓                    |
+| Users              | ✓         | ✓             | —                    |
+| Room assignment    | ✓         | ✓             | —                    |
+| Forms              | ✓         | ✓             | ✓                    |
+| Reports            | ✓         | ✓             | —                    |
+| Profile / Settings | ✓         | ✓             | ✓ (own profile only) |
 
 Sidebar nav renders conditionally off this table. Volunteers do not see Users, Room assignment, or Reports in the MENU/TOOLS groups.
 
 ## Anti-Patterns
+
 - No purple gradients as default accent
 - No 3-column icon grid feature section
 - No centered-everything layout
@@ -194,11 +213,12 @@ Sidebar nav renders conditionally off this table. Volunteers do not see Users, R
 - No flat cards with zero shadow or border
 
 ## Decisions Log
-| Date | Decision | Rationale |
-|------|----------|-----------|
-| 2026-07-25 | Light-only UI, soft lavender background `#F5F3FC` | Single biggest visual gap vs. current build; lavender tint signals brand without overwhelming data |
-| 2026-07-25 | Status color system reused everywhere | Keeps room cards, form cards, and report cards coherent; one mapping instead of per-page invention |
-| 2026-07-25 | Dashboard 60/40 split with calendar + map | Calendar is cheap and useful; map is placeholder until venue fields exist in schema |
-| 2026-07-25 | Poppins + Inter font stack | Poppins carries brand weight for headings; Inter keeps tables and UI readable |
-| 2026-07-25 | Sidebar Help expands in place | Keeps Account group compact while preserving access to legal/support links |
-| 2026-07-25 | Premium elevation + transition system | Soft shadows and 150ms ease-out hover states create a trustworthy, modern SaaS feel without decoration. |
+
+| Date       | Decision                                          | Rationale                                                                                               |
+| ---------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 2026-07-25 | Light-only UI, soft lavender background `#F5F3FC` | Single biggest visual gap vs. current build; lavender tint signals brand without overwhelming data      |
+| 2026-07-25 | Status color system reused everywhere             | Keeps room cards, form cards, and report cards coherent; one mapping instead of per-page invention      |
+| 2026-07-25 | Dashboard 60/40 split with calendar + map         | Calendar is cheap and useful; map is placeholder until venue fields exist in schema                     |
+| 2026-07-25 | Poppins + Inter font stack                        | Poppins carries brand weight for headings; Inter keeps tables and UI readable                           |
+| 2026-07-25 | Sidebar Help expands in place                     | Keeps Account group compact while preserving access to legal/support links                              |
+| 2026-07-25 | Premium elevation + transition system             | Soft shadows and 150ms ease-out hover states create a trustworthy, modern SaaS feel without decoration. |

@@ -107,8 +107,8 @@ const FieldRow = ({ field, onChange, onRemove }: FieldRowProps) => {
 
         {/* Dynamic type-specific helper guidance */}
         {field.type === "select" && (
-          <div className="rounded-md bg-[var(--color-gray-50)] border border-[var(--color-gray-200)] p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-semibold text-[var(--color-primary)] flex items-center gap-1">Dropdown (Select) Guidance</p>
+          <div className="rounded-md bg-(--color-gray-50) border border-(--color-gray-200) p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-semibold text-(--color-primary) flex items-center gap-1">Dropdown (Select) Guidance</p>
             <p>
               Volunteers will see a select menu dropdown. Input options below separated by commas.
               Empty inputs or trailing/leading spaces will be automatically cleaned up.
@@ -117,8 +117,8 @@ const FieldRow = ({ field, onChange, onRemove }: FieldRowProps) => {
         )}
 
         {field.type === "checkbox" && (
-          <div className="rounded-md bg-[var(--color-gray-50)] border border-[var(--color-gray-200)] p-3 text-xs text-muted-foreground space-y-1">
-            <p className="font-semibold text-[var(--color-primary)] flex items-center gap-1">Checkbox (Toggle) Guidance</p>
+          <div className="rounded-md bg-(--color-gray-50) border border-(--color-gray-200) p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-semibold text-(--color-primary) flex items-center gap-1">Checkbox (Toggle) Guidance</p>
             <p>
               Volunteers will see a binary Yes/No checkbox. Use the <strong>Description / Helper Text</strong> field below to specify what checking this box means (e.g. <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono">Checked means yes, unchecked means no</code>).
             </p>
@@ -126,14 +126,14 @@ const FieldRow = ({ field, onChange, onRemove }: FieldRowProps) => {
         )}
 
         {field.type === "date" && (
-          <div className="rounded-lg border border-[var(--color-gray-300)] bg-[var(--color-gray-100)] p-4 text-sm text-[var(--color-gray-600)] space-y-2">
-            <p className="font-semibold text-[var(--color-primary)] flex items-center gap-2">
+          <div className="rounded-lg border border-[var(--color-gray-300)] bg-(--color-gray-100) p-4 text-sm text-(--color-gray-600) space-y-2">
+            <p className="font-semibold text-(--color-primary) flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Date Picker Guidance
             </p>
             <p>
               Volunteers will select dates from a native calendar popup. Dates are stored/submitted in standard{' '}
-              <code className="bg-[var(--color-surface)] px-1.5 py-0.5 rounded border border-[var(--color-gray-300)] text-xs font-mono text-[var(--color-gray-900)]">YYYY-MM-DD</code> format.
+              <code className="bg-(--color-surface) px-1.5 py-0.5 rounded border border-[var(--color-gray-300)] text-xs font-mono text-(--color-gray-900)">YYYY-MM-DD</code> format.
             </p>
           </div>
         )}
@@ -368,12 +368,12 @@ export const RoomFormBuilder = () => {
             </div>
 
             {error && (
-              <div className="p-3 rounded-md bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)] text-sm border border-[var(--color-gray-200)]">
+              <div className="p-3 rounded-md bg-status-cancelled-bg text-(--color-error) text-sm border border-(--color-gray-200)">
                 {error}
               </div>
             )}
             {success && (
-              <div className="p-3 rounded-md bg-[var(--color-status-live-bg)] text-[var(--color-status-live)] text-sm border border-[var(--color-gray-200)]">
+              <div className="p-3 rounded-md bg-status-live-bg text-status-live text-sm border border-(--color-gray-200)">
                 {success}
               </div>
             )}
@@ -386,7 +386,7 @@ export const RoomFormBuilder = () => {
             >
               Cancel
             </Link>
-            <Button type="submit" disabled={saving || fields.length === 0} className="min-w-[120px]">
+            <Button type="submit" disabled={saving || fields.length === 0} className="min-w-30">
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

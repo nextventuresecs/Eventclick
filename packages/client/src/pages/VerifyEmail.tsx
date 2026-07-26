@@ -61,28 +61,28 @@ export const VerifyEmailPage = () => {
             className="h-8 w-8 object-contain"
           />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Verify your email</h1>
-        <p className="text-sm text-[var(--color-gray-400)] mt-1.5">Confirm your email address to access all features</p>
+        <h1 className="text-2xl font-bold tracking-tight font-display text-(--color-gray-900)">Verify your email</h1>
+        <p className="text-sm text-gray-400 mt-1.5">Confirm your email address to access all features</p>
       </div>
       <Card className="card-static rounded-2xl">
         <CardContent className="pt-6">
           {status === "loading" && (
             <div className="flex flex-col items-center gap-4 py-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-gray-100)] text-[var(--color-primary)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-(--color-gray-100) text-(--color-primary)">
                 <Mail className="w-6 h-6 animate-pulse" />
               </div>
-              <p className="text-sm text-[var(--color-gray-400)]">Verifying your email address…</p>
+              <p className="text-sm text-gray-400">Verifying your email address…</p>
             </div>
           )}
 
           {status === "success" && (
             <div className="flex flex-col items-center gap-4 text-center py-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-status-live-bg)] text-[var(--color-status-live)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-live-bg text-status-live">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm font-medium text-[var(--color-gray-900)]">Email verified</p>
-                <p className="text-sm text-[var(--color-gray-400)] mt-1">
+                <p className="text-sm font-medium text-(--color-gray-900)">Email verified</p>
+                <p className="text-sm text-gray-400 mt-1">
                   Thank you for verifying your email address. You can now access all features of your account.
                 </p>
               </div>
@@ -94,12 +94,12 @@ export const VerifyEmailPage = () => {
 
           {status === "error" && (
             <div className="flex flex-col items-center gap-4 text-center py-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-cancelled-bg text-(--color-error)">
                 <AlertCircle className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm font-medium text-[var(--color-gray-900)]">Verification failed</p>
-                <p className="text-sm text-[var(--color-gray-400)] mt-1">{error}</p>
+                <p className="text-sm font-medium text-(--color-gray-900)">Verification failed</p>
+                <p className="text-sm text-gray-400 mt-1">{error}</p>
               </div>
               <Link to="/login" className="w-full mt-4">
                 <Button className="w-full" variant="outline">
@@ -109,14 +109,14 @@ export const VerifyEmailPage = () => {
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex-col justify-center gap-2 text-sm text-[var(--color-gray-400)]">
-          <Link to="/login" className="inline-flex items-center gap-1.5 font-medium text-[var(--color-primary)] hover:underline">
+        <CardFooter className="flex-col justify-center gap-2 text-sm text-gray-400">
+          <Link to="/login" className="inline-flex items-center gap-1.5 font-medium text-(--color-primary) hover:underline">
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to sign in
           </Link>
           <div className="flex items-center gap-4 pt-1">
-            <Link to="/terms" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Terms</Link>
-            <Link to="/privacy" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Privacy</Link>
+            <Link to="/terms" className="text-xs text-gray-400 hover:text-(--color-gray-600) transition-colors">Terms</Link>
+            <Link to="/privacy" className="text-xs text-gray-400 hover:text-(--color-gray-600) transition-colors">Privacy</Link>
           </div>
         </CardFooter>
       </Card>

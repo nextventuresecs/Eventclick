@@ -60,37 +60,37 @@ export const Forms = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Forms</h2>
-        <p className="text-[var(--color-gray-400)] mt-1">
+        <h2 className="text-3xl font-bold tracking-tight font-display text-(--color-gray-900)">Forms</h2>
+        <p className="text-gray-400 mt-1">
           Review attendance forms for {user?.organizationName || "your organization"} events
         </p>
       </div>
 
       {error && (
-        <Card className="border-[var(--color-status-cancelled-bg)] bg-[var(--color-status-cancelled-bg)]">
+        <Card className="bg-status-cancelled-bg">
           <CardContent className="pt-6">
-            <p className="text-[var(--color-status-cancelled)] text-sm">{error}</p>
+            <p className="text-status-cancelled text-sm">{error}</p>
           </CardContent>
         </Card>
       )}
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-gray-400)]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
             placeholder="Search forms..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 border-[var(--color-gray-200)] bg-[var(--color-gray-50)] input-premium"
+            className="pl-9 border-(--color-gray-200) bg-(--color-gray-50) input-premium"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.length === 0 ? (
-          <Card className="col-span-full border border-dashed border-[var(--color-gray-200)]">
-            <CardContent className="p-8 text-center text-[var(--color-gray-400)]">
-              <FileInput className="mx-auto h-10 w-10 mb-2 text-[var(--color-gray-300)]" />
+          <Card className="col-span-full border border-dashed border-(--color-gray-200)">
+            <CardContent className="p-8 text-center text-gray-400">
+              <FileInput className="mx-auto h-10 w-10 mb-2 text-gray-300" />
               <p>No forms found</p>
             </CardContent>
           </Card>
@@ -100,12 +100,12 @@ export const Forms = () => {
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   {pill(room.status)}
-                  <span className="text-xs text-[var(--color-gray-400)] font-medium tabular-nums">
+                  <span className="text-xs text-gray-400 font-medium tabular-nums">
                     {format(new Date(room.scheduledStart), "MMM d, yyyy")}
                   </span>
                 </div>
-                <CardTitle className="text-base font-semibold text-[var(--color-gray-900)] mb-1">{room.title}</CardTitle>
-                <CardDescription className="text-sm text-[var(--color-gray-400)] mb-4">
+                <CardTitle className="text-base font-semibold text-(--color-gray-900) mb-1">{room.title}</CardTitle>
+                <CardDescription className="text-sm text-gray-400 mb-4">
                   {room.attendanceCount ?? 0} records
                 </CardDescription>
                 <Link

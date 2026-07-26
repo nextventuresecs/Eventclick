@@ -59,17 +59,17 @@ const RoomCard = ({ room }: { room: EventRoom }) => {
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3 mb-2">
           {statusPill(room.status)}
-          <span className="text-[11px] text-[var(--color-gray-400)] font-medium">
+          <span className="text-[11px] text-gray-400 font-medium">
             {formatDistanceToNow(new Date(room.createdAt), { addSuffix: true })}
           </span>
         </div>
 
-        <h4 className="text-sm font-semibold leading-tight text-[var(--color-gray-900)] mb-1 font-display">{room.title}</h4>
+        <h4 className="text-sm font-semibold leading-tight text-(--color-gray-900) mb-1 font-display">{room.title}</h4>
         {room.description && (
-          <p className="text-xs text-[var(--color-gray-400)] line-clamp-2 mb-2">{room.description}</p>
+          <p className="text-xs text-gray-400 line-clamp-2 mb-2">{room.description}</p>
         )}
 
-        <div className="flex items-center gap-3 text-[11px] text-[var(--color-gray-400)] mb-3">
+        <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-3">
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
             {format(new Date(room.scheduledStart), "MMM d, h:mm a")}
@@ -88,14 +88,14 @@ const RoomCard = ({ room }: { room: EventRoom }) => {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[var(--color-gray-100)]">
+        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-(--color-gray-100)">
           {room.status === "live" && hasRolePermission(user?.role ?? "volunteer", "view_live_session") && (
             <Link to={`/rooms/${room.id}/live`} className="inline-flex items-center gap-1 rounded-lg px-2.5 h-7 text-[11px] font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors">
               <Radio className="w-3 h-3" /> Live
             </Link>
           )}
           {hasRolePermission(user?.role ?? "volunteer", "take_attendance") && (
-            <Link to={`/rooms/${room.id}/attendance`} className="inline-flex items-center gap-1 rounded-lg px-2.5 h-7 text-[11px] font-semibold bg-[var(--color-primary)] text-white hover:brightness-110 transition-colors">
+            <Link to={`/rooms/${room.id}/attendance`} className="inline-flex items-center gap-1 rounded-lg px-2.5 h-7 text-[11px] font-semibold bg-(--color-primary) text-white hover:brightness-110 transition-colors">
               <ClipboardList className="w-3 h-3" /> Attendance
             </Link>
           )}
@@ -110,10 +110,10 @@ const RoomCard = ({ room }: { room: EventRoom }) => {
               <Copy className="w-3 h-3" /> Copy Link
             </Button>
           )}
-          <Link to={`/rooms/${room.id}/form-builder`} className="inline-flex items-center gap-1 rounded-lg px-2.5 h-7 text-[11px] font-medium border border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-50)] transition-colors">
+          <Link to={`/rooms/${room.id}/form-builder`} className="inline-flex items-center gap-1 rounded-lg px-2.5 h-7 text-[11px] font-medium border border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-50) transition-colors">
             <FileText className="w-3 h-3" /> Form
           </Link>
-          <Link to={`/rooms/${room.id}/attendance/records`} className="inline-flex items-center gap-1 rounded-lg px-2.5 h-7 text-[11px] font-medium border border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-50)] transition-colors">
+          <Link to={`/rooms/${room.id}/attendance/records`} className="inline-flex items-center gap-1 rounded-lg px-2.5 h-7 text-[11px] font-medium border border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-50) transition-colors">
             <MapPin className="w-3 h-3" /> Records
           </Link>
         </div>
@@ -164,12 +164,12 @@ export const Rooms = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between gap-4">
-          <div className="space-y-2"><div className="h-8 w-32 bg-[var(--color-gray-100)] rounded-lg animate-pulse" /></div>
-          <div className="h-9 w-32 bg-[var(--color-gray-100)] rounded-xl animate-pulse" />
+          <div className="space-y-2"><div className="h-8 w-32 bg-(--color-gray-100) rounded-lg animate-pulse" /></div>
+          <div className="h-9 w-32 bg-(--color-gray-100) rounded-xl animate-pulse" />
         </div>
-        <div className="flex gap-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 w-20 bg-[var(--color-gray-100)] rounded-lg animate-pulse" />)}</div>
+        <div className="flex gap-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-8 w-20 bg-(--color-gray-100) rounded-lg animate-pulse" />)}</div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-48 bg-[var(--color-gray-50)] animate-pulse" />)}
+          {Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-48 bg-(--color-gray-50) animate-pulse" />)}
         </div>
       </div>
     );
@@ -177,10 +177,10 @@ export const Rooms = () => {
 
   if (error) {
     return (
-      <Card className="border border-[var(--color-gray-200)]">
+      <Card className="border border-(--color-gray-200)">
         <CardContent className="p-8 text-center">
-          <XCircle className="w-10 h-10 text-[var(--color-error)] mx-auto mb-3" />
-          <p className="text-sm text-[var(--color-gray-600)] mb-4">{error}</p>
+          <XCircle className="w-10 h-10 text-(--color-error) mx-auto mb-3" />
+          <p className="text-sm text-(--color-gray-600) mb-4">{error}</p>
           <Button variant="outline" onClick={() => window.location.reload()}>Try Again</Button>
         </CardContent>
       </Card>
@@ -191,8 +191,8 @@ export const Rooms = () => {
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Rooms</h2>
-          <p className="text-xs text-[var(--color-gray-400)] mt-0.5">{rooms.length} total rooms</p>
+          <h2 className="text-xl font-bold tracking-tight font-display text-(--color-gray-900)">Rooms</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{rooms.length} total rooms</p>
         </div>
         {canManageRooms && (
           <Link to="/rooms/create">
@@ -204,26 +204,26 @@ export const Rooms = () => {
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex bg-[var(--color-gray-100)] rounded-xl p-1 gap-0.5">
+        <div className="flex bg-(--color-gray-100) rounded-xl p-1 gap-0.5">
           {FILTER_TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveFilter(tab.key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 cursor-pointer ${
                 activeFilter === tab.key
-                  ? "bg-white text-[var(--color-gray-900)] shadow-sm"
-                  : "text-[var(--color-gray-500)] hover:text-[var(--color-gray-700)]"
+                  ? "bg-white text-(--color-gray-900) shadow-sm"
+                  : "text-(--color-gray-500) hover:text-gray-700"
               }`}
             >
               {tab.label}
-              <span className={`ml-1.5 text-[10px] ${activeFilter === tab.key ? "text-[var(--color-primary)]" : "text-[var(--color-gray-400)]"}`}>
+              <span className={`ml-1.5 text-[10px] ${activeFilter === tab.key ? "text-(--color-primary)" : "text-gray-400"}`}>
                 {counts[tab.key]}
               </span>
             </button>
           ))}
         </div>
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-gray-400)]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -234,9 +234,9 @@ export const Rooms = () => {
       </div>
 
       {filteredRooms.length === 0 ? (
-        <Card className="border border-dashed border-[var(--color-gray-200)]">
+        <Card className="border border-dashed border-(--color-gray-200)">
           <CardContent className="py-16 flex flex-col items-center text-center">
-            <CalendarClock className="w-12 h-12 text-[var(--color-gray-300)] mb-3" />
+            <CalendarClock className="w-12 h-12 text-gray-300 b-3" />
             <CardTitle className="text-sm mb-1">
               {search ? "No rooms match your search" : activeFilter === "all" ? "No rooms yet" : `No ${activeFilter} rooms`}
             </CardTitle>

@@ -63,11 +63,11 @@ const MetricCard = ({
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <p className={`text-xs font-semibold uppercase tracking-wide ${isPrimary ? "text-white/70" : "text-[var(--color-gray-400)]"}`}>{title}</p>
-            <p className={`text-2xl font-bold tracking-tight font-display tabular-nums ${isPrimary ? "text-white" : "text-[var(--color-gray-900)]"}`}>{value}</p>
-            {sub && <p className={`text-xs ${isPrimary ? "text-white/70" : "text-[var(--color-gray-400)]"}`}>{sub}</p>}
+            <p className={`text-xs font-semibold uppercase tracking-wide ${isPrimary ? "text-white/70" : "text-gray-400"}`}>{title}</p>
+            <p className={`text-2xl font-bold tracking-tight font-display tabular-nums ${isPrimary ? "text-white" : "text-(--color-gray-900)"}`}>{value}</p>
+            {sub && <p className={`text-xs ${isPrimary ? "text-white/70" : "text-gray-400"}`}>{sub}</p>}
           </div>
-          <div className={`rounded-lg p-2 ${isPrimary ? "bg-white/10 text-white" : "bg-[var(--color-gray-100)] text-[var(--color-primary)]"}`}>
+          <div className={`rounded-lg p-2 ${isPrimary ? "bg-white/10 text-white" : "bg-(--color-gray-100) text-(--color-primary)"}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -98,17 +98,17 @@ const MiniCalendar = ({ rooms }: { rooms: EventRoom[] }) => {
     <Card className="card-static rounded-2xl overflow-hidden">
       <CardContent className="p-3">
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-xs font-semibold font-display text-[var(--color-gray-900)]">{format(today, "MMM yyyy")}</h4>
+          <h4 className="text-xs font-semibold font-display text-(--color-gray-900)">{format(today, "MMM yyyy")}</h4>
           <div className="flex gap-0.5">
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-[var(--color-gray-400)]">
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400">
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-[var(--color-gray-400)]">
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400">
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] font-medium text-[var(--color-gray-400)] mb-0.5">
+        <div className="grid grid-cols-7 gap-0.5 text-center text-[10px] font-medium text-gray-400 mb-0.5">
           {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
             <div key={i} className="py-0.5">{d}</div>
           ))}
@@ -126,7 +126,7 @@ const MiniCalendar = ({ rooms }: { rooms: EventRoom[] }) => {
               <div
                 key={key}
                 className={`aspect-square flex flex-col items-center justify-center rounded-md text-[10px] font-medium ${
-                  isTodayDate ? "bg-[var(--color-primary)] text-white" : "text-[var(--color-gray-700)]"
+                  isTodayDate ? "bg-(--color-primary) text-white" : "text-gray-700"
                 }`}
               >
                 <span>{format(day, "d")}</span>
@@ -155,25 +155,25 @@ const MapCard = ({ rooms }: { rooms: EventRoom[] }) => {
   return (
     <Card className="card-static rounded-2xl overflow-hidden">
       <CardContent className="p-3">
-        <h4 className="text-xs font-semibold font-display text-[var(--color-gray-900)] mb-2">Event Locations</h4>
-        <div className="h-[140px] bg-[var(--color-gray-100)] rounded-xl relative overflow-hidden">
+        <h4 className="text-xs font-semibold font-display text-(--color-gray-900) mb-2">Event Locations</h4>
+        <div className="h-35 bg-(--color-gray-100) rounded-xl relative overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center space-y-1">
-              <MapPin className="w-6 h-6 text-[var(--color-primary)] mx-auto" />
-              <p className="text-[10px] font-medium text-[var(--color-gray-500)]">No venue data yet</p>
+              <MapPin className="w-6 h-6 text-(--color-primary) mx-auto" />
+              <p className="text-[10px] font-medium text-(--color-gray-500)">No venue data yet</p>
             </div>
           </div>
           {activeRooms.map((room, idx) => (
             <div
               key={room.id}
-              className="absolute bg-[var(--color-surface)] border border-[var(--color-gray-200)] rounded-md shadow-sm p-1.5 w-28 text-[10px]"
+              className="absolute bg-(--color-surface) border border-(--color-gray-200) rounded-md shadow-sm p-1.5 w-28 text-[10px]"
               style={{
                 top: `${20 + (idx % 2) * 40}%`,
                 left: `${8 + (idx % 2) * 50}%`,
               }}
             >
-              <p className="font-semibold text-[var(--color-gray-900)] truncate leading-tight">{room.title}</p>
-              <p className="text-[var(--color-gray-400)] capitalize leading-tight">{room.status}</p>
+              <p className="font-semibold text-(--color-gray-900) truncate leading-tight">{room.title}</p>
+              <p className="text-gray-400 capitalize leading-tight">{room.status}</p>
             </div>
           ))}
         </div>
@@ -278,9 +278,9 @@ export const Dashboard = () => {
 
   if (error) {
     return (
-      <Card className="border border-[var(--color-status-cancelled-bg)]">
+      <Card className="border border-status-cancelled-bg">
         <CardContent className="p-6 text-center">
-          <p className="text-[var(--color-status-cancelled)] mb-4">{error}</p>
+          <p className="text-status-cancelled mb-4">{error}</p>
           <Button onClick={() => window.location.reload()} variant="outline">Try Again</Button>
         </CardContent>
       </Card>
@@ -289,9 +289,9 @@ export const Dashboard = () => {
 
   if (user && !user.organizationId) {
     return (
-      <Card className="mx-auto max-w-2xl border border-[var(--color-gray-200)] bg-[var(--color-gray-50)] shadow-sm">
+      <Card className="mx-auto max-w-2xl border border-(--color-gray-200) bg-(--color-gray-50) shadow-sm">
         <CardContent className="space-y-3 p-8 text-center">
-          <div className="mx-auto w-12 h-12 rounded-full bg-[rgba(64,34,145,0.1)] flex items-center justify-center text-[var(--color-primary)] mb-2">
+          <div className="mx-auto w-12 h-12 rounded-full bg-[rgba(64,34,145,0.1)] flex items-center justify-center text-(--color-primary) mb-2">
             <ShieldCheck className="w-6 h-6" />
           </div>
           <CardTitle className="font-display">{ROLE_LABELS[user.role]} account created</CardTitle>
@@ -316,11 +316,11 @@ export const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-5">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--color-gray-400)] mb-3">Live & Upcoming</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Live & Upcoming</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {visibleRooms.length === 0 ? (
-                <Card className="col-span-full flex flex-col items-center justify-center py-16 text-center border border-dashed border-[var(--color-gray-200)]">
-                  <CalendarClock className="w-12 h-12 text-[var(--color-gray-300)] mb-4" />
+                <Card className="col-span-full flex flex-col items-center justify-center py-16 text-center border border-dashed border-(--color-gray-200)">
+                  <CalendarClock className="w-12 h-12 text-gray-300 mb-4" />
                   <CardTitle className="mb-2">{canManageRooms ? "No event rooms yet" : "No assigned event rooms yet"}</CardTitle>
                   <CardDescription className="mb-6 max-w-md">
                     {canManageRooms
@@ -339,27 +339,27 @@ export const Dashboard = () => {
                   .sort((a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime())
                   .map((room) => (
                     <Card key={room.id} className={`card-static rounded-2xl border-l-[3px] transition-all duration-150 ease-out hover:shadow-md hover:-translate-y-0.5 ${
-                  room.status === "live" ? "border-l-[var(--color-status-live)]" :
-                  room.status === "scheduled" ? "border-l-[var(--color-status-scheduled)]" :
-                  room.status === "ended" ? "border-l-[var(--color-status-ended)]" :
-                  "border-l-[var(--color-status-cancelled)]"
+                  room.status === "live" ? "border-l-status-live" :
+                  room.status === "scheduled" ? "border-l-status-scheduled" :
+                  room.status === "ended" ? "border-l-status-ended" :
+                  "border-l-status-cancelled"
                 }`}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           {pill(room.status)}
-                          <span className="text-xs text-[var(--color-gray-400)] font-medium">
+                          <span className="text-xs text-gray-400 font-medium">
                             {formatDistanceToNow(new Date(room.createdAt), { addSuffix: true })}
                           </span>
                         </div>
-                        <h4 className="text-base font-semibold leading-tight text-[var(--color-gray-900)] mb-1">{room.title}</h4>
+                        <h4 className="text-base font-semibold leading-tight text-(--color-gray-900) mb-1">{room.title}</h4>
                         {room.description && (
-                          <p className="text-sm text-[var(--color-gray-400)] line-clamp-2 mt-1">{room.description}</p>
+                          <p className="text-sm text-gray-400 line-clamp-2 mt-1">{room.description}</p>
                         )}
                         <div className="mt-3 flex flex-wrap gap-2">
                           {hasRolePermission(user?.role ?? "volunteer", "take_attendance") && (
                             <Link
                               to={`/rooms/${room.id}/attendance`}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] py-2 px-3 text-xs font-bold text-white hover:opacity-90 transition-all shadow-sm"
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-(--color-primary) py-2 px-3 text-xs font-bold text-white hover:opacity-90 transition-all shadow-sm"
                             >
                               <ClipboardList className="w-3.5 h-3.5" />
                               <span>{hasRolePermission(user?.role ?? "volunteer", "create_attendance_form") ? "Take Attendance" : "Record Attendance"}</span>
@@ -368,7 +368,7 @@ export const Dashboard = () => {
                           {hasRolePermission(user?.role ?? "volunteer", "view_live_session") && (
                             <Link
                               to={`/rooms/${room.id}/live`}
-                              className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-gray-200)] px-3 h-8 text-xs font-medium hover:bg-[var(--color-gray-100)] transition-colors text-[var(--color-gray-600)]"
+                              className="inline-flex items-center gap-1 rounded-lg border border-(--color-gray-200) px-3 h-8 text-xs font-medium hover:bg-(--color-gray-100) transition-colors text-(--color-gray-600)"
                             >
                               <Radio className="w-3.5 h-3.5" />
                               Live
@@ -378,7 +378,7 @@ export const Dashboard = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-8 px-3 gap-1.5 text-xs font-medium border-[var(--color-gray-200)] text-[var(--color-gray-600)]"
+                              className="h-8 px-3 gap-1.5 text-xs font-medium border-(--color-gray-200) text-(--color-gray-600)"
                               onClick={() => {
                                 navigator.clipboard.writeText(room.shareUrl).then(
                                   () => toast("Link copied to clipboard!", "success"),
@@ -391,7 +391,7 @@ export const Dashboard = () => {
                             </Button>
                           )}
                         </div>
-                        <div className="mt-3 pt-2 flex items-center justify-between text-xs text-[var(--color-gray-400)] border-t border-[var(--color-gray-100)]">
+                        <div className="mt-3 pt-2 flex items-center justify-between text-xs text-gray-400 border-t border-(--color-gray-100)">
                           <div className="flex items-center gap-1.5">
                             <Clock className="w-3.5 h-3.5" />
                             <span>{format(new Date(room.scheduledStart), 'MMM d, h:mm a')}</span>
@@ -411,31 +411,31 @@ export const Dashboard = () => {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--color-gray-400)] mb-3">Members</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Members</h3>
             <Card className="card-static rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left table-base">
-                  <thead className="bg-[var(--color-gray-50)] text-[var(--color-gray-400)] text-xs uppercase">
+                  <thead className="bg-(--color-gray-50) text-gray-400 text-xs uppercase">
                     <tr>
                       <th className="px-4 py-3 font-semibold">Member</th>
                       <th className="px-4 py-3 font-semibold">Assigned Event</th>
                       <th className="px-4 py-3 font-semibold">Role</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--color-gray-100)]">
+                  <tbody className="divide-y divide-(--color-gray-100)">
                     {memberRows.map((m) => (
-                      <tr key={m.id} className="hover:bg-[var(--color-gray-50)] transition-colors">
+                      <tr key={m.id} className="hover:bg-(--color-gray-50) transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-[rgba(64,34,145,0.1)] text-[var(--color-primary)] flex items-center justify-center text-xs font-bold uppercase">
+                            <div className="h-8 w-8 rounded-full bg-[rgba(64,34,145,0.1)] text-(--color-primary) flex items-center justify-center text-xs font-bold uppercase">
                               {m.fullName.charAt(0)}
                             </div>
-                            <span className="font-medium text-[var(--color-gray-900)]">{m.fullName}</span>
+                            <span className="font-medium text-(--color-gray-900)">{m.fullName}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-[var(--color-gray-500)]">{m.assignedEvents}</td>
+                        <td className="px-4 py-3 text-(--color-gray-500)">{m.assignedEvents}</td>
                         <td className="px-4 py-3">
-                          <span className="inline-flex items-center rounded-full bg-[var(--color-gray-100)] px-2.5 py-1 text-xs font-semibold text-[var(--color-gray-600)]">
+                          <span className="inline-flex items-center rounded-full bg-(--color-gray-100) px-2.5 py-1 text-xs font-semibold text-(--color-gray-600)">
                             {ROLE_LABELS[m.role]}
                           </span>
                         </td>
@@ -443,7 +443,7 @@ export const Dashboard = () => {
                     ))}
                     {memberRows.length === 0 && (
                       <tr>
-                        <td colSpan={3} className="px-4 py-8 text-center text-[var(--color-gray-400)]">No members found</td>
+                        <td colSpan={3} className="px-4 py-8 text-center text-gray-400">No members found</td>
                       </tr>
                     )}
                   </tbody>

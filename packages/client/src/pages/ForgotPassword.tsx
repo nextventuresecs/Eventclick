@@ -52,21 +52,21 @@ export const ForgotPasswordPage = () => {
             className="h-6 w-6 object-contain"
           />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Reset password</h1>
-        <p className="text-sm text-[var(--color-gray-400)] mt-1.5">We'll send a link to your email to get you back in</p>
+        <h1 className="text-2xl font-bold tracking-tight font-display text-(--color-gray-900)">Reset password</h1>
+        <p className="text-sm text-gray-400 mt-1.5">We'll send a link to your email to get you back in</p>
       </div>
       <Card className="card-static rounded-2xl">
         <CardContent className="pt-6">
           {success ? (
             <div className="flex flex-col items-center gap-4 text-center py-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-status-live-bg)] text-[var(--color-status-live)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-live-bg text-status-live">
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm font-medium text-[var(--color-gray-900)]">Check your inbox</p>
-                <p className="text-sm text-[var(--color-gray-400)] mt-1">
+                <p className="text-sm font-medium text-(--color-gray-900)">Check your inbox</p>
+                <p className="text-sm text-gray-400 mt-1">
                   We've sent a password reset link to{" "}
-                  <strong className="text-[var(--color-gray-900)]">{email}</strong>.
+                  <strong className="text-(--color-gray-900)">{email}</strong>.
                   If the email exists, it should arrive in a few minutes.
                 </p>
               </div>
@@ -74,7 +74,7 @@ export const ForgotPasswordPage = () => {
           ) : (
             <form onSubmit={onSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="email" className="text-sm font-medium text-[var(--color-gray-600)]">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium text-(--color-gray-600)">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -88,7 +88,7 @@ export const ForgotPasswordPage = () => {
                 />
               </div>
 
-              {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
+              {error && <p className="text-sm text-(--color-error)">{error}</p>}
 
               <Button type="submit" disabled={submitting} className="w-full">
                 {submitting ? "Sending…" : "Send reset link"}
@@ -96,14 +96,14 @@ export const ForgotPasswordPage = () => {
             </form>
           )}
         </CardContent>
-        <CardFooter className="flex-col justify-center gap-2 text-sm text-[var(--color-gray-400)]">
-          <Link to="/login" className="inline-flex items-center gap-1.5 font-medium text-[var(--color-primary)] hover:underline">
+        <CardFooter className="flex-col justify-center gap-2 text-sm text-gray-400">
+          <Link to="/login" className="inline-flex items-center gap-1.5 font-medium text-(--color-primary) hover:underline">
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to sign in
           </Link>
           <div className="flex items-center gap-4 pt-1">
-            <Link to="/terms" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Terms</Link>
-            <Link to="/privacy" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Privacy</Link>
+            <Link to="/terms" className="text-xs text-gray-400 hover:text-(--color-gray-600) transition-colors">Terms</Link>
+            <Link to="/privacy" className="text-xs text-gray-400 hover:text-(--color-gray-600) transition-colors">Privacy</Link>
           </div>
         </CardFooter>
       </Card>

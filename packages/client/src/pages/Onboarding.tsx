@@ -71,9 +71,9 @@ export const OnboardingPage = () => {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center p-6">
-      <Card className="relative z-10 w-full max-w-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl">
+      <Card className="relative z-10 w-full max-w-xl border border-(--color-border) bg-(--color-card) shadow-2xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-3xl font-extrabold tracking-tight font-display text-[var(--color-gray-900)]">
+          <CardTitle className="text-3xl font-extrabold tracking-tight font-display text-(--color-gray-900)">
             Welcome to Eventclick
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
@@ -169,7 +169,7 @@ export const OnboardingPage = () => {
 
           {/* Conditional NGO Admin fields */}
           {role === "ngo_admin" && (
-            <div className="flex flex-col gap-2 rounded-xl border border-[var(--color-gray-200)] bg-[var(--color-gray-50)] p-4">
+            <div className="flex flex-col gap-2 rounded-xl border border-(--color-gray-200) bg-(--color-gray-50) p-4">
               <Label htmlFor="orgName" className="font-semibold">
                 Organization Name
               </Label>
@@ -196,7 +196,7 @@ export const OnboardingPage = () => {
             </p>
           )}
         </CardContent>
-        <CardFooter className="flex flex-col gap-3 justify-center border-t border-[var(--color-gray-200)] pt-6">
+        <CardFooter className="flex flex-col gap-3 justify-center border-t border-(--color-gray-200) pt-6">
           <Button
             onClick={handleSubmit}
             disabled={submitting || !role}

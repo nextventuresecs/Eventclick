@@ -74,7 +74,7 @@ export const AdminUsers = () => {
   if (!canManageUsers) {
     return (
       <Card className="card-static">
-        <CardContent className="p-6 text-sm text-[var(--color-gray-500)]">
+        <CardContent className="p-6 text-sm text-(--color-gray-500)">
           Access denied. Only NGO Admins can manage users.
         </CardContent>
       </Card>
@@ -84,7 +84,7 @@ export const AdminUsers = () => {
   if (loading) {
     return (
       <div className="text-center py-12">
-        <p className="text-[var(--color-gray-400)]">Loading users...</p>
+        <p className="text-gray-400">Loading users...</p>
       </div>
     );
   }
@@ -93,13 +93,13 @@ export const AdminUsers = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Users</h2>
-          <p className="text-[var(--color-gray-400)] mt-1">
+          <h2 className="text-3xl font-bold tracking-tight font-display text-(--color-gray-900)">Users</h2>
+          <p className="text-gray-400 mt-1">
             Manage users for {user?.organizationName || "your organization"}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/admin/event-assignments")} className="border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out">
+          <Button variant="outline" onClick={() => navigate("/admin/event-assignments")} className="border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out">
             <LinkIcon className="w-4 h-4 mr-1" />
             Event Assignments
           </Button>
@@ -111,9 +111,9 @@ export const AdminUsers = () => {
       </div>
 
       {error && (
-        <Card className="border-[var(--color-status-cancelled-bg)] bg-[var(--color-status-cancelled-bg)]">
+        <Card className="bg-status-cancelled-bg">
           <CardContent className="pt-6">
-            <p className="text-[var(--color-status-cancelled)] text-sm">{error}</p>
+            <p className="text-status-cancelled text-sm">{error}</p>
           </CardContent>
         </Card>
       )}
@@ -121,30 +121,30 @@ export const AdminUsers = () => {
       <Card className="card-static rounded-2xl">
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-gray-400)]" />
+            <div className="relative flex-1 min-w-50">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Search users..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 border-[var(--color-gray-200)] bg-[var(--color-gray-50)] input-premium"
+                className="pl-9 border-(--color-gray-200) bg-(--color-gray-50) input-premium"
               />
             </div>
             <div className="flex gap-2">
-              <Button variant={roleFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("all")} className={roleFilter !== "all" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>All</Button>
-              <Button variant={roleFilter === "event_admin" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("event_admin")} className={roleFilter !== "event_admin" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>Event Admin</Button>
-              <Button variant={roleFilter === "volunteer" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("volunteer")} className={roleFilter !== "volunteer" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>Volunteer</Button>
+              <Button variant={roleFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("all")} className={roleFilter !== "all" ? "border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out" : ""}>All</Button>
+              <Button variant={roleFilter === "event_admin" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("event_admin")} className={roleFilter !== "event_admin" ? "border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out" : ""}>Event Admin</Button>
+              <Button variant={roleFilter === "volunteer" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("volunteer")} className={roleFilter !== "volunteer" ? "border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out" : ""}>Volunteer</Button>
             </div>
             <div className="flex gap-2">
-              <Button variant={statusFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("all")} className={statusFilter !== "all" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>All</Button>
-              <Button variant={statusFilter === "active" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("active")} className={statusFilter !== "active" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>Active</Button>
-              <Button variant={statusFilter === "inactive" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("inactive")} className={statusFilter !== "inactive" ? "border-[var(--color-gray-200)] text-[var(--color-gray-600)] hover:bg-[var(--color-gray-100)] transition-all duration-150 ease-out" : ""}>Inactive</Button>
+              <Button variant={statusFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("all")} className={statusFilter !== "all" ? "border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out" : ""}>All</Button>
+              <Button variant={statusFilter === "active" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("active")} className={statusFilter !== "active" ? "border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out" : ""}>Active</Button>
+              <Button variant={statusFilter === "inactive" ? "primary" : "outline"} size="sm" onClick={() => setStatusFilter("inactive")} className={statusFilter !== "inactive" ? "border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out" : ""}>Inactive</Button>
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left table-base">
-              <thead className="bg-[var(--color-gray-50)] text-[var(--color-gray-400)] text-xs uppercase">
+              <thead className="bg-(--color-gray-50) text-gray-400 text-xs uppercase">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Member</th>
                   <th className="px-4 py-3 font-semibold">Assigned Event</th>
@@ -152,36 +152,36 @@ export const AdminUsers = () => {
                   <th className="px-4 py-3 font-semibold">Assigned By</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--color-gray-100)]">
+              <tbody className="divide-y divide-(--color-gray-100)">
                 {filtered.map((u) => (
-                  <tr key={u.id} className="hover:bg-[var(--color-gray-50)] transition-colors">
+                  <tr key={u.id} className="hover:bg-(--color-gray-50) transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-[rgba(64,34,145,0.1)] text-[var(--color-primary)] flex items-center justify-center text-xs font-bold uppercase">
+                        <div className="h-8 w-8 rounded-full bg-[rgba(64,34,145,0.1)] text-(--color-primary) flex items-center justify-center text-xs font-bold uppercase">
                           {u.fullName.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-medium text-[var(--color-gray-900)]">{u.fullName}</p>
-                          <p className="text-xs text-[var(--color-gray-400)]">{u.email}</p>
+                          <p className="font-medium text-(--color-gray-900)">{u.fullName}</p>
+                          <p className="text-xs text-gray-400">{u.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-[var(--color-gray-500)]">{u.roomTitle}</td>
+                    <td className="px-4 py-3 text-(--color-gray-500)">{u.roomTitle}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border-0 ${
                         u.isActive
-                          ? "bg-[var(--color-status-live-bg)] text-[var(--color-status-live)]"
-                          : "bg-[var(--color-gray-100)] text-[var(--color-gray-500)]"
+                          ? "bg-status-live-bg text-status-live"
+                          : "bg-(--color-gray-100) text-(--color-gray-500)"
                       }`}>
                         {u.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[var(--color-gray-500)]">{u.assignedBy ?? "—"}</td>
+                    <td className="px-4 py-3 text-(--color-gray-500)">{u.assignedBy ?? "—"}</td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-[var(--color-gray-400)]">No users found</td>
+                    <td colSpan={4} className="px-4 py-8 text-center text-gray-400">No users found</td>
                   </tr>
                 )}
               </tbody>
@@ -237,7 +237,7 @@ const CreateUserModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md border-[var(--color-gray-200)]">
+      <Card className="w-full max-w-md border-(--color-gray-200)">
         <CardContent className="p-6 space-y-4">
           <div>
             <CardTitle className="font-display">Create New User</CardTitle>
@@ -254,7 +254,7 @@ const CreateUserModal = ({
                 placeholder="John Doe"
                 required
                 disabled={loading}
-                className="border-[var(--color-gray-200)]"
+                className="border-(--color-gray-200)"
               />
             </div>
             <div className="space-y-2">
@@ -267,7 +267,7 @@ const CreateUserModal = ({
                 placeholder="john@example.com"
                 required
                 disabled={loading}
-                className="border-[var(--color-gray-200)]"
+                className="border-(--color-gray-200)"
               />
             </div>
             <div className="space-y-2">
@@ -281,7 +281,7 @@ const CreateUserModal = ({
                 required
                 minLength={8}
                 disabled={loading}
-                className="border-[var(--color-gray-200)]"
+                className="border-(--color-gray-200)"
               />
             </div>
             <div className="space-y-2">
@@ -290,7 +290,7 @@ const CreateUserModal = ({
                 id="role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as "event_admin" | "volunteer")}
-                className="w-full border border-[var(--color-gray-200)] rounded-lg px-3 py-2 bg-[var(--color-surface)] text-[var(--color-gray-900)]"
+                className="w-full border border-(--color-gray-200) rounded-lg px-3 py-2 bg-(--color-surface) text-(--color-gray-900)"
                 disabled={loading}
               >
                 <option value="event_admin">Event Admin</option>
@@ -298,10 +298,10 @@ const CreateUserModal = ({
               </select>
             </div>
 
-            {error && <p className="text-sm text-[var(--color-status-cancelled)] bg-[var(--color-status-cancelled-bg)] p-2 rounded">{error}</p>}
+            {error && <p className="text-sm text-status-cancelled bg-status-cancelled-bg p-2 rounded">{error}</p>}
 
             <div className="flex gap-3 justify-end pt-4">
-              <Button variant="outline" onClick={onClose} disabled={loading} className="border-[var(--color-gray-200)] text-[var(--color-gray-600)]">
+              <Button variant="outline" onClick={onClose} disabled={loading} className="border-(--color-gray-200) text-(--color-gray-600)">
                 Cancel
               </Button>
               <Button type="submit" disabled={loading}>

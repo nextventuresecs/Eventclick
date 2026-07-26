@@ -97,7 +97,7 @@ export const EventAssignments = () => {
   if (!canManageUsers) {
     return (
       <Card className="card-static">
-        <CardContent className="p-6 text-sm text-[var(--color-gray-500)]">
+        <CardContent className="p-6 text-sm text-(--color-gray-500)">
           You do not have access to assignment management.
         </CardContent>
       </Card>
@@ -107,16 +107,16 @@ export const EventAssignments = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Event Assignments</h2>
-        <p className="text-[var(--color-gray-400)] mt-1">
+        <h2 className="text-3xl font-bold tracking-tight font-display text-(--color-gray-900)">Event Assignments</h2>
+        <p className="text-gray-400 mt-1">
           Manage live sessions and assign team members for {user?.organizationName || "your organization"}
         </p>
       </div>
 
       {error && (
-        <Card className="border-[var(--color-status-cancelled-bg)] bg-[var(--color-status-cancelled-bg)]">
+        <Card className="bg-status-cancelled-bg">
           <CardContent className="pt-6">
-            <p className="text-[var(--color-status-cancelled)] text-sm">{error}</p>
+            <p className="text-status-cancelled text-sm">{error}</p>
           </CardContent>
         </Card>
       )}
@@ -125,7 +125,7 @@ export const EventAssignments = () => {
         <CardContent className="p-4 space-y-4">
           <div className="grid gap-3 md:grid-cols-3">
             <select
-              className="h-10 rounded-lg border border-[var(--color-gray-200)] bg-[var(--color-gray-50)] px-3 text-sm text-[var(--color-gray-900)]"
+              className="h-10 rounded-lg border border-(--color-gray-200) bg-(--color-gray-50) px-3 text-sm text-(--color-gray-900)"
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
             >
@@ -137,7 +137,7 @@ export const EventAssignments = () => {
               ))}
             </select>
             <select
-              className="h-10 rounded-lg border border-[var(--color-gray-200)] bg-[var(--color-gray-50)] px-3 text-sm text-[var(--color-gray-900)]"
+              className="h-10 rounded-lg border border-(--color-gray-200) bg-(--color-gray-50) px-3 text-sm text-(--color-gray-900)"
               value={selectedRoomId}
               onChange={(e) => setSelectedRoomId(e.target.value)}
             >
@@ -160,27 +160,27 @@ export const EventAssignments = () => {
         <CardContent className="p-4">
           <div className="space-y-3">
             {assignments.length === 0 ? (
-              <p className="text-sm text-[var(--color-gray-400)]">No assignments yet.</p>
+              <p className="text-sm text-gray-400">No assignments yet.</p>
             ) : (
               assignments.map((assignment) => (
                 <Card key={assignment.id} className="card-static rounded-xl">
                   <CardContent className="p-3 flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-[var(--color-gray-900)]">{assignment.user.fullName}</p>
-                        <p className="text-xs text-[var(--color-gray-400)]">
+                        <p className="text-sm font-semibold text-(--color-gray-900)">{assignment.user.fullName}</p>
+                        <p className="text-xs text-gray-400">
                           {assignment.user.email} • {assignment.user.role}
                         </p>
-                        <p className="text-xs text-[var(--color-gray-400)] mt-1">
-                          Room: <span className="font-medium text-[var(--color-gray-700)]">{assignment.room.title}</span>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Room: <span className="font-medium text-gray-700">{assignment.room.title}</span>
                         </p>
-                        <p className="text-xs text-[var(--color-gray-400)]">
+                        <p className="text-xs text-gray-400">
                           Status: {assignment.revokedAt ? "revoked" : "active"}
                         </p>
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <select
-                          className="h-9 rounded-lg border border-[var(--color-gray-200)] bg-[var(--color-surface)] px-2 text-xs text-[var(--color-gray-700)]"
+                          className="h-9 rounded-lg border border-(--color-gray-200) bg-(--color-surface) px-2 text-xs text-gray-700"
                           value={assignmentRoomDrafts[assignment.id] ?? assignment.roomId}
                           onChange={(e) =>
                             setAssignmentRoomDrafts((prev) => ({ ...prev, [assignment.id]: e.target.value }))
@@ -201,7 +201,7 @@ export const EventAssignments = () => {
                           size="sm"
                           disabled={pending}
                           onClick={() => updateRoom(assignment.id)}
-                          className="border-[var(--color-gray-200)] text-[var(--color-gray-600)]"
+                          className="border-(--color-gray-200) text-(--color-gray-600)"
                         >
                           <RefreshCcw className="w-4 h-4 mr-1" />
                           Update
@@ -209,7 +209,7 @@ export const EventAssignments = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-[var(--color-status-cancelled)] border-[var(--color-status-cancelled-bg)] hover:bg-[var(--color-status-cancelled-bg)]"
+                          className="text-status-cancelled border-status-cancelled-bg hover:bg-status-cancelled-bg"
                           disabled={pending || Boolean(assignment.revokedAt)}
                           onClick={() => revoke(assignment.id)}
                         >

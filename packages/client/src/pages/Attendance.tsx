@@ -434,7 +434,7 @@ export const Attendance = () => {
               ? windowCheck.status === "live"
                 ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
                 : "bg-amber-500/10 text-amber-700 border-amber-500/20"
-              : "bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)] border-[var(--color-gray-200)]"
+              : "bg-status-cancelled-bg text-(--color-error) border-(--color-gray-200)"
           }`}
         >
           {windowCheck.isAllowed ? (
@@ -513,7 +513,7 @@ export const Attendance = () => {
             )}
             {f.type === "date" && (
               <div className="relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-gray-600)]">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-(--color-gray-600)">
                   <Calendar className="w-4 h-4" />
                 </div>
                 <Input
@@ -654,12 +654,12 @@ export const Attendance = () => {
         </div>
 
         {error && (
-          <div className="p-3 rounded-md bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)] text-sm border border-[var(--color-gray-200)]">
+          <div className="p-3 rounded-md bg-status-cancelled-bg text-(--color-error) text-sm border border-(--color-gray-200)">
             {error}
           </div>
         )}
         {lastSubmitted && !error && (
-          <div className="p-3 rounded-md bg-[var(--color-status-live-bg)] text-[var(--color-status-live)] text-sm border border-[var(--color-gray-200)] flex items-center gap-2">
+          <div className="p-3 rounded-md bg-status-live-bg text-status-live text-sm border border-(--color-gray-200) flex items-center gap-2">
             <Check className="w-4 h-4" />
             Submitted at {lastSubmitted}
           </div>

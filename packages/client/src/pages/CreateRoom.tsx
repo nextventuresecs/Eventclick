@@ -124,7 +124,7 @@ export const CreateRoom = () => {
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Create New Room</h2>
+          <h2 className="text-2xl font-bold tracking-tight font-display text-(--color-gray-900)">Create New Room</h2>
           <p className="text-sm text-muted-foreground">
             Set up a new event or webinar room for {user?.organizationName || "your organization"}.
           </p>
@@ -152,7 +152,7 @@ export const CreateRoom = () => {
               <textarea
                 id="description"
                 placeholder="Brief description of the event..."
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="flex min-h-25 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={submitting}
@@ -163,7 +163,7 @@ export const CreateRoom = () => {
               <div className="space-y-2">
                 <Label htmlFor="scheduledStart">Start Time <span className="text-destructive">*</span></Label>
                 <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-gray-600)]">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-(--color-gray-600)">
                     <Calendar className="w-4 h-4" />
                   </div>
                   <Input
@@ -180,7 +180,7 @@ export const CreateRoom = () => {
               <div className="space-y-2">
                 <Label htmlFor="scheduledEnd">End Time <span className="text-destructive">*</span></Label>
                 <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-gray-600)]">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-(--color-gray-600)">
                     <Calendar className="w-4 h-4" />
                   </div>
                   <Input
@@ -364,7 +364,7 @@ export const CreateRoom = () => {
                           <textarea
                             id={`act-desc-${act.id}`}
                             placeholder="Add guidelines for volunteers uploading proofs..."
-                            className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="flex min-h-15 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             value={act.description || ""}
                             onChange={(e) => updateActivity(act.id, "description", e.target.value)}
                             disabled={submitting}
@@ -379,7 +379,7 @@ export const CreateRoom = () => {
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteActivity(act.id)}
-                          className="h-9 w-9 text-muted-foreground hover:text-[var(--color-error)] hover:bg-[var(--color-status-cancelled-bg)] transition-colors"
+                          className="h-9 w-9 text-muted-foreground hover:text-(--color-error) hover:bg-status-cancelled-bg transition-colors"
                           title="Delete Activity"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -405,7 +405,7 @@ export const CreateRoom = () => {
             </div>
 
             {error && (
-              <div className="p-3 rounded-md bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)] text-sm border border-[var(--color-gray-200)]">
+              <div className="p-3 rounded-md bg-status-cancelled-bg text-(--color-error) text-sm border border-(--color-gray-200)">
                 {error}
               </div>
             )}
@@ -418,7 +418,7 @@ export const CreateRoom = () => {
             >
               Cancel
             </Link>
-            <Button type="submit" disabled={submitting} className="min-w-[120px]">
+            <Button type="submit" disabled={submitting} className="min-w-30">
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
