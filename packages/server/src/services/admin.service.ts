@@ -56,7 +56,7 @@ export const createOrgUser = async (
 
   const passwordHash = await hashPassword(password);
 
-  const newUser = await db.transaction(async (tx) => {
+  const { user: newUser, token } = await db.transaction(async (tx) => {
     const [user] = await tx
       .insert(users)
       .values({
@@ -80,8 +80,8 @@ export const createOrgUser = async (
     });
 
     // Generate Email Verification Token
-    const token = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(verificationToken).digest("hex");
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     await tx.insert(emailVerifications).values({
@@ -90,15 +90,13 @@ export const createOrgUser = async (
       expiresAt,
     });
 
-    (user as any)._verificationToken = token;
-
-    return user;
+    return { user, token: verificationToken };
   });
 
   await enqueueEmail({
     type: "verification",
     email: newUser.email,
-    token: (newUser as any)._verificationToken,
+    token: token,
   });
 
   await invalidateUserCache(newUser.id, newUser.email);

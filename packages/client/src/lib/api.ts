@@ -90,7 +90,7 @@ const fetchWithAuth = async (
   return res;
 };
 
-const request = async <T>(
+const request = async <T = void>(
   method: string,
   path: string,
   body?: Body,
@@ -106,6 +106,7 @@ const request = async <T>(
     retry,
   );
 
+  // Return null safely for 204 No Content (cast to T safely)
   if (res.status === 204) return null as unknown as T;
 
   const text = await res.text();
@@ -124,11 +125,11 @@ const request = async <T>(
 };
 
 export const api = {
-  get: <T>(path: string) => request<T>("GET", path),
-  post: <T>(path: string, body?: Body) => request<T>("POST", path, body),
-  put: <T>(path: string, body?: Body) => request<T>("PUT", path, body),
-  patch: <T>(path: string, body?: Body) => request<T>("PATCH", path, body),
-  delete: <T>(path: string, body?: Body) => request<T>("DELETE", path, body),
+  get: <T = unknown>(path: string) => request<T>("GET", path),
+  post: <T = void>(path: string, body?: Body) => request<T>("POST", path, body),
+  put: <T = void>(path: string, body?: Body) => request<T>("PUT", path, body),
+  patch: <T = void>(path: string, body?: Body) => request<T>("PATCH", path, body),
+  delete: <T = void>(path: string, body?: Body) => request<T>("DELETE", path, body),
 };
 
 export const authApi = {
