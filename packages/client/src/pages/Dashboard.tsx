@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { format, formatDistanceToNow, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from "date-fns";
+import { format, formatDistanceToNow, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from "date-fns";
 import {
   Copy,
   Users,
   Clock,
   CalendarClock,
-  FormInput,
   ClipboardList,
   Radio,
   ShieldCheck,
@@ -67,7 +66,7 @@ const MetricCard = ({
             <p className={`text-2xl font-bold tracking-tight font-display tabular-nums ${isPrimary ? "text-white" : "text-(--color-gray-900)"}`}>{value}</p>
             {sub && <p className={`text-xs ${isPrimary ? "text-white/70" : "text-gray-400"}`}>{sub}</p>}
           </div>
-          <div className={`rounded-lg p-2 ${isPrimary ? "bg-white/10 text-white" : "bg-(--color-gray-100) text-(--color-primary)"}`}>
+          <div className={`rounded-lg p-2 ${isPrimary ? "bg-white/15 text-white" : "bg-purple-50 text-purple-700 font-semibold"}`}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -305,7 +304,32 @@ export const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      {/* Hero Greeting Banner */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-brand-gradient-tile text-white shadow-sm relative overflow-hidden">
+        <div className="space-y-1.5 z-10">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white text-xs font-semibold backdrop-blur-md">
+              {user ? ROLE_LABELS[user.role] : "Member"}
+            </span>
+            <span className="text-white/70 text-xs font-medium">• {user?.organizationName || "Eventclick"}</span>
+          </div>
+          <h2 className="text-2xl font-bold font-display tracking-tight text-white">
+            Welcome back, {user?.fullName?.split(" ")[0] || "Admin"}! 👋
+          </h2>
+          <p className="text-xs text-white/80 max-w-xl leading-relaxed">
+            Overview of active rooms, verified attendee records, field activities, and system geotagging data.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 z-10 shrink-0">
+          {canManageRooms && (
+            <Link to="/rooms/create" className="inline-flex items-center gap-2 px-4 h-9 rounded-xl bg-white text-purple-950 font-semibold text-xs shadow-md hover:bg-purple-50 transition-all">
+              <Activity className="w-4 h-4 text-purple-700" /> Create Room
+            </Link>
+          )}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard title="Total Rooms" value={rooms.length} sub={`${liveRooms} live, ${scheduledRooms} scheduled`} icon={Activity} variant="primary" />
         <MetricCard title="Verified members" value={verifiedAttendees} sub="Across all rooms" icon={Users} />
@@ -316,7 +340,7 @@ export const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-5">
           <div>
-            <h3 className="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-3">Live & Upcoming</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3 font-display">Live & Upcoming Rooms</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {visibleRooms.length === 0 ? (
                 <Card className="col-span-full flex flex-col items-center justify-center py-16 text-center border border-dashed border-(--color-gray-200)">
@@ -351,9 +375,15 @@ export const Dashboard = () => {
                             {formatDistanceToNow(new Date(room.createdAt), { addSuffix: true })}
                           </span>
                         </div>
-                        <h4 className="text-base font-semibold leading-tight text-(--color-gray-900) mb-1">{room.title}</h4>
+                        <h4 className="text-base font-semibold leading-tight text-(--color-gray-900) mb-1 font-display">{room.title}</h4>
                         {room.description && (
-                          <p className="text-sm text-gray-400 line-clamp-2 mt-1">{room.description}</p>
+                          <p className="text-xs text-gray-500 line-clamp-2 mt-1">{room.description}</p>
+                        )}
+                        {room.location && (
+                          <div className="flex items-center gap-1.5 mt-2 text-[11px] font-medium text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg w-fit border border-purple-100">
+                            <MapPin className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                            <span className="truncate">{room.location}</span>
+                          </div>
                         )}
                         <div className="mt-3 flex flex-wrap gap-2">
                           {hasRolePermission(user?.role ?? "volunteer", "take_attendance") && (
@@ -427,7 +457,7 @@ export const Dashboard = () => {
                       <tr key={m.id} className="hover:bg-(--color-gray-50) transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-[rgba(64,34,145,0.1)] text-(--color-primary) flex items-center justify-center text-xs font-bold uppercase">
+                            <div className="h-8 w-8 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-bold uppercase">
                               {m.fullName.charAt(0)}
                             </div>
                             <span className="font-medium text-(--color-gray-900)">{m.fullName}</span>

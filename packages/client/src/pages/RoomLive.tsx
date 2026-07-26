@@ -19,6 +19,7 @@ import {
   Upload,
   ChevronRight,
   ImageIcon,
+  MapPin,
 } from "lucide-react";
 import {
   EventRoom,
@@ -217,6 +218,12 @@ export const RoomLive = () => {
               }`}
             />
             {room.status.toUpperCase()} · provider: {room.streamProvider}
+            {room.location && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-purple-200 bg-purple-50 text-purple-900 font-medium text-[11px]">
+                <MapPin className="w-3 h-3 text-purple-600" />
+                {room.location}
+              </span>
+            )}
             {room.streamProvider === "livekit" && presence && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted/40 text-foreground">
                 <Users className="w-3 h-3" />

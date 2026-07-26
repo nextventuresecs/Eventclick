@@ -69,20 +69,26 @@ const RoomCard = ({ room }: { room: EventRoom }) => {
           <p className="text-xs text-gray-400 line-clamp-2 mb-2">{room.description}</p>
         )}
 
-        <div className="flex items-center gap-3 text-[11px] text-gray-400 mb-3">
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
+        <div className="flex flex-wrap items-center gap-3 text-[11px] text-gray-500 mb-2">
+          <span className="flex items-center gap-1 font-medium">
+            <Clock className="w-3.5 h-3.5 text-gray-400" />
             {format(new Date(room.scheduledStart), "MMM d, h:mm a")}
           </span>
+          {room.location && (
+            <span className="flex items-center gap-1 text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 font-medium">
+              <MapPin className="w-3 h-3 text-purple-600 shrink-0" />
+              <span className="truncate max-w-44">{room.location}</span>
+            </span>
+          )}
           {room.maxParticipants && (
-            <span className="flex items-center gap-1">
-              <Users className="w-3 h-3" />
+            <span className="flex items-center gap-1 font-medium">
+              <Users className="w-3.5 h-3.5 text-gray-400" />
               Max {room.maxParticipants}
             </span>
           )}
           {room.attendanceCount != null && room.attendanceCount > 0 && (
-            <span className="flex items-center gap-1">
-              <ClipboardList className="w-3 h-3" />
+            <span className="flex items-center gap-1 font-medium text-emerald-700">
+              <ClipboardList className="w-3.5 h-3.5" />
               {room.attendanceCount} records
             </span>
           )}

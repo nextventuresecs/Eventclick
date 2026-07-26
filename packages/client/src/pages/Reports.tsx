@@ -120,24 +120,34 @@ export const Reports = () => {
           </Card>
         ) : (
           filtered.map((room) => (
-            <Card key={room.id} className="card-base rounded-2xl">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-3 mb-3">
+            <Card key={room.id} className="card-static rounded-2xl hover:shadow-md transition-all">
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-start justify-between gap-3">
                   {pill(room.status)}
                   <span className="text-xs text-gray-400 font-medium tabular-nums">
                     {format(new Date(room.scheduledStart), "MMM d, yyyy")}
                   </span>
                 </div>
-                <CardTitle className="text-base font-semibold text-(--color-gray-900) mb-1">{room.title}</CardTitle>
-                <CardDescription className="text-sm text-gray-400 mb-4">
-                  Ready for export
+                <div>
+                  <CardTitle className="text-base font-bold font-display text-gray-900 mb-1">{room.title}</CardTitle>
+                  {room.location && (
+                    <p className="text-xs text-purple-700 font-medium flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                      {room.location}
+                    </p>
+                  )}
+                </div>
+                <CardDescription className="text-xs text-gray-500 font-medium flex items-center justify-between">
+                  <span>Attendance Report PDF</span>
+                  <span className="font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">{room.attendanceCount ?? 0} records</span>
                 </CardDescription>
                 <Button
                   onClick={() => download(room)}
                   disabled={generating[room.id]}
-                  className="w-full"
+                  className="w-full bg-brand-gradient h-10 rounded-xl font-semibold shadow-xs hover:shadow-md transition-all"
                 >
-                  {generating[room.id] ? "Generating..." : "Download report"}
+                  <FileText className="w-4 h-4 mr-1.5" />
+                  {generating[room.id] ? "Generating PDF..." : "Download Report"}
                 </Button>
               </CardContent>
             </Card>

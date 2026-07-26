@@ -339,11 +339,11 @@ export const AttendanceRecords = () => {
           </Button>
           {user?.role === "ngo_admin" && (
             <Button
-              variant="outline"
+              variant="primary"
               size="sm"
               onClick={handleDownloadPDF}
               disabled={pdfLoading || sortedEntries.length === 0 || room?.status !== "ended"}
-              className="bg-primary/10 border-primary/20 text-primary hover:bg-primary/20 hover:text-primary transition-all backdrop-blur-md shadow-sm gap-1.5"
+              className="bg-brand-gradient text-white h-9 rounded-xl font-semibold shadow-xs hover:shadow-md transition-all gap-1.5"
               title={room?.status !== "ended" ? "PDF Report is only available after the live session has ended" : undefined}
             >
               {pdfLoading ? (
@@ -351,7 +351,7 @@ export const AttendanceRecords = () => {
               ) : (
                 <FileText className="w-3.5 h-3.5" />
               )}
-              {pdfLoading ? "Generating..." : "Download PDF Report"}
+              {pdfLoading ? "Generating PDF..." : "Download PDF Report"}
             </Button>
           )}
         </div>

@@ -70,11 +70,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => setOnUnauthorized(null);
   }, [handleUnauthorized]);
 
-  const applyAuth = (result: { user: AuthUser; accessToken: string }) => {
+  const applyAuth = useCallback((result: { user: AuthUser; accessToken: string }) => {
     setAccessToken(result.accessToken);
     setUser(result.user);
     setStatus("authenticated");
-  };
+  }, []);
 
   const value: AuthContextValue = useMemo(
     () => ({
@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         applyAuth(result);
       },
     }),
-    [user, status, handleUnauthorized, retryAuth],
+    [user, status, applyAuth, handleUnauthorized, retryAuth],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   index,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { activitySubmissions } from "./activitySubmissions";
@@ -24,6 +25,8 @@ export const activityPhotos = pgTable(
     activityId: varchar("activity_id", { length: 64 }).notNull(),
     photoKey: varchar("photo_key", { length: 256 }).notNull(),
     photoUrl: text("photo_url").notNull(),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
     submittedBy: uuid("submitted_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -121,15 +121,16 @@ export const EventAssignments = () => {
         </Card>
       )}
 
-      <Card className="card-static rounded-2xl">
-        <CardContent className="p-4 space-y-4">
+      <Card className="card-static rounded-2xl border-purple-100 shadow-xs">
+        <CardContent className="p-5 space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-purple-900 font-display">Assign Team Member To Event</h3>
           <div className="grid gap-3 md:grid-cols-3">
             <select
-              className="h-10 rounded-lg border border-(--color-gray-200) bg-(--color-gray-50) px-3 text-sm text-(--color-gray-900)"
+              className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:ring-2 focus:ring-purple-600 focus:outline-none"
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
             >
-              <option value="">Select user</option>
+              <option value="">Select team member...</option>
               {eventAdminCandidates.map((candidate) => (
                 <option key={candidate.id} value={candidate.id}>
                   {candidate.fullName} ({candidate.email}) — {candidate.role}
@@ -137,88 +138,91 @@ export const EventAssignments = () => {
               ))}
             </select>
             <select
-              className="h-10 rounded-lg border border-(--color-gray-200) bg-(--color-gray-50) px-3 text-sm text-(--color-gray-900)"
+              className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:ring-2 focus:ring-purple-600 focus:outline-none"
               value={selectedRoomId}
               onChange={(e) => setSelectedRoomId(e.target.value)}
             >
-              <option value="">Select event room</option>
+              <option value="">Select target event room...</option>
               {rooms.map((room) => (
                 <option key={room.id} value={room.id}>
                   {room.title}
                 </option>
               ))}
             </select>
-            <Button disabled={pending || !selectedUserId || !selectedRoomId} onClick={assign}>
+            <Button disabled={pending || !selectedUserId || !selectedRoomId} onClick={assign} className="bg-brand-gradient h-10 rounded-xl font-semibold shadow-xs">
               <Plus className="w-4 h-4 mr-1" />
-              Assign
+              Assign Admin
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <Card className="card-static rounded-2xl">
-        <CardContent className="p-4">
+        <CardContent className="p-5 space-y-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 font-display">Active Event Assignments</h3>
           <div className="space-y-3">
             {assignments.length === 0 ? (
-              <p className="text-sm text-gray-400">No assignments yet.</p>
+              <p className="text-sm text-gray-400 py-6 text-center border border-dashed border-gray-200 rounded-xl">No active assignments configured.</p>
             ) : (
               assignments.map((assignment) => (
-                <Card key={assignment.id} className="card-static rounded-xl">
-                  <CardContent className="p-3 flex flex-col gap-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-(--color-gray-900)">{assignment.user.fullName}</p>
-                        <p className="text-xs text-gray-400">
-                          {assignment.user.email} • {assignment.user.role}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Room: <span className="font-medium text-gray-700">{assignment.room.title}</span>
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          Status: {assignment.revokedAt ? "revoked" : "active"}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <select
-                          className="h-9 rounded-lg border border-(--color-gray-200) bg-(--color-surface) px-2 text-xs text-gray-700"
-                          value={assignmentRoomDrafts[assignment.id] ?? assignment.roomId}
-                          onChange={(e) =>
-                            setAssignmentRoomDrafts((prev) => ({ ...prev, [assignment.id]: e.target.value }))
-                          }
-                          disabled={pending}
-                        >
-                          {!rooms.some((room) => room.id === assignment.roomId) && (
-                            <option value={assignment.roomId}>{assignment.room.title} (archived)</option>
-                          )}
-                          {rooms.map((room) => (
-                            <option key={room.id} value={room.id}>
-                              {room.title}
-                            </option>
-                          ))}
-                        </select>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={pending}
-                          onClick={() => updateRoom(assignment.id)}
-                          className="border-(--color-gray-200) text-(--color-gray-600)"
-                        >
-                          <RefreshCcw className="w-4 h-4 mr-1" />
-                          Update
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-status-cancelled border-status-cancelled-bg hover:bg-status-cancelled-bg"
-                          disabled={pending || Boolean(assignment.revokedAt)}
-                          onClick={() => revoke(assignment.id)}
-                        >
-                          Revoke
-                        </Button>
-                      </div>
+                <div key={assignment.id} className="p-4 rounded-xl border border-gray-200 bg-white hover:border-purple-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900 font-display text-sm">{assignment.user.fullName}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+                        {assignment.user.role}
+                      </span>
                     </div>
-                  </CardContent>
-                </Card>
+                    <p className="text-xs text-gray-400">{assignment.user.email}</p>
+                    <div className="flex items-center gap-2 text-xs pt-1">
+                      <span className="text-gray-500 font-medium">Assigned Event:</span>
+                      <span className="font-semibold text-purple-900 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100">{assignment.room.title}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        assignment.revokedAt ? "bg-red-50 text-red-600 border border-red-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                      }`}>
+                        {assignment.revokedAt ? "Revoked" : "Active"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <select
+                      className="h-9 rounded-xl border border-gray-200 bg-white px-2.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-600"
+                      value={assignmentRoomDrafts[assignment.id] ?? assignment.roomId}
+                      onChange={(e) =>
+                        setAssignmentRoomDrafts((prev) => ({ ...prev, [assignment.id]: e.target.value }))
+                      }
+                      disabled={pending}
+                    >
+                      {!rooms.some((room) => room.id === assignment.roomId) && (
+                        <option value={assignment.roomId}>{assignment.room.title} (archived)</option>
+                      )}
+                      {rooms.map((room) => (
+                        <option key={room.id} value={room.id}>
+                          {room.title}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => updateRoom(assignment.id)}
+                      className="h-9 rounded-xl border-gray-200 text-gray-700 text-xs"
+                    >
+                      <RefreshCcw className="w-3.5 h-3.5 mr-1" />
+                      Update
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 rounded-xl text-red-600 border-red-200 hover:bg-red-50 text-xs"
+                      disabled={pending || Boolean(assignment.revokedAt)}
+                      onClick={() => revoke(assignment.id)}
+                    >
+                      Revoke
+                    </Button>
+                  </div>
+                </div>
               ))
             )}
           </div>

@@ -96,24 +96,45 @@ export const Forms = () => {
           </Card>
         ) : (
           filtered.map((room) => (
-            <Card key={room.id} className="card-base rounded-2xl">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-3 mb-3">
+            <Card key={room.id} className="card-static rounded-2xl hover:shadow-md transition-all">
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-start justify-between gap-3">
                   {pill(room.status)}
                   <span className="text-xs text-gray-400 font-medium tabular-nums">
                     {format(new Date(room.scheduledStart), "MMM d, yyyy")}
                   </span>
                 </div>
-                <CardTitle className="text-base font-semibold text-(--color-gray-900) mb-1">{room.title}</CardTitle>
-                <CardDescription className="text-sm text-gray-400 mb-4">
-                  {room.attendanceCount ?? 0} records
+                <div>
+                  <CardTitle className="text-base font-bold font-display text-gray-900 mb-1">{room.title}</CardTitle>
+                  {room.location && (
+                    <p className="text-xs text-purple-700 font-medium flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />
+                      {room.location}
+                    </p>
+                  )}
+                </div>
+                <CardDescription className="text-xs text-gray-500 font-medium">
+                  {room.attendanceCount ?? 0} verified attendance records
                 </CardDescription>
-                <Link
-                  to={`/rooms/${room.id}/attendance/records`}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl px-4 h-9 text-sm font-semibold bg-brand-gradient text-white shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.98] transition-all w-full"
-                >
-                  View records
-                </Link>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
+                  {canManageRooms && (
+                    <Link
+                      to={`/rooms/${room.id}/form-builder`}
+                      className="inline-flex items-center justify-center gap-1 rounded-xl px-3 h-9 text-xs font-semibold border border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors"
+                    >
+                      Build Form
+                    </Link>
+                  )}
+                  <Link
+                    to={`/rooms/${room.id}/attendance/records`}
+                    className={`inline-flex items-center justify-center gap-1 rounded-xl px-3 h-9 text-xs font-semibold bg-brand-gradient text-white shadow-xs hover:shadow-md transition-all ${
+                      canManageRooms ? "" : "col-span-2"
+                    }`}
+                  >
+                    View Records
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ))

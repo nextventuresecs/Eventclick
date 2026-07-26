@@ -65,29 +65,48 @@ const refreshOnce = (): Promise<string | null> => {
 
 type Body = Record<string, unknown> | undefined;
 
+const fetchWithAuth = async (
+  path: string,
+  init?: RequestInit,
+  retry = true,
+): Promise<Response> => {
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string>),
+  };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers,
+    credentials: "include",
+  });
+
+  if (res.status === 401 && retry && !path.startsWith("/auth/")) {
+    const newToken = await refreshOnce();
+    if (newToken) return fetchWithAuth(path, init, false);
+    onUnauthorized?.();
+  }
+
+  return res;
+};
+
 const request = async <T>(
   method: string,
   path: string,
   body?: Body,
   retry = true,
 ): Promise<T> => {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const res = await fetchWithAuth(
+    path,
+    {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    },
+    retry,
+  );
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    credentials: "include",
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (res.status === 401 && retry && !path.startsWith("/auth/")) {
-    const newToken = await refreshOnce();
-    if (newToken) return request<T>(method, path, body, false);
-    onUnauthorized?.();
-  }
-
-  if (res.status === 204) return undefined as T;
+  if (res.status === 204) return null as unknown as T;
 
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
@@ -163,33 +182,10 @@ export const roomsApi = {
     api.post<EventRoom>(`/rooms/${id}/fallback/youtube`, { youtubeWatchUrl }),
   clearFallback: (id: string) => api.post<EventRoom>(`/rooms/${id}/fallback/clear`),
   downloadReportPdf: async (id: string): Promise<Blob> => {
-    const headers: Record<string, string> = {};
-    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-
-    let res = await fetch(`${API_URL}/rooms/${id}/report/pdf`, {
-      method: "GET",
-      headers,
-      credentials: "include",
-    });
-
-    if (res.status === 401) {
-      const newToken = await refreshOnce();
-      if (newToken) {
-        headers.Authorization = `Bearer ${newToken}`;
-        res = await fetch(`${API_URL}/rooms/${id}/report/pdf`, {
-          method: "GET",
-          headers,
-          credentials: "include",
-        });
-      } else {
-        onUnauthorized?.();
-      }
-    }
-
+    const res = await fetchWithAuth(`/rooms/${id}/report/pdf`, { method: "GET" });
     if (!res.ok) {
       throw new ApiClientError(res.status, "PDF_DOWNLOAD_FAILED", "Failed to download PDF report");
     }
-
     return res.blob();
   },
 };

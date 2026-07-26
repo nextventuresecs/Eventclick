@@ -28,6 +28,10 @@ import { AdminUsers } from "./pages/AdminUsers";
 import { EventAssignments } from "./pages/EventAssignments";
 import { Forms } from "./pages/Forms";
 import { Reports } from "./pages/Reports";
+import { Profile } from "./pages/Profile";
+import { HelpCenter } from "./pages/HelpCenter";
+import { Feedback } from "./pages/Feedback";
+import { ReportBug } from "./pages/ReportBug";
 
 const ConnectionError = () => {
   const { retryAuth } = useAuth();
@@ -213,6 +217,10 @@ const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { path: "dashboard", element: <Dashboard /> },
+          { path: "profile", element: <Profile /> },
+          { path: "help", element: <HelpCenter /> },
+          { path: "feedback", element: <Feedback /> },
+          { path: "report-bug", element: <ReportBug /> },
           { path: "rooms", element: <Rooms /> },
           {
             element: <PermissionRoute permission="manage_rooms" />,
@@ -270,6 +278,12 @@ const router = createBrowserRouter([
   },
 ]);
 
+import { ErrorBoundary } from "./components/ErrorBoundary";
+
 export function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
+  );
 }

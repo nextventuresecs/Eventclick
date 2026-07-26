@@ -301,32 +301,40 @@ export const RoomFormBuilder = () => {
       <div className="flex items-center gap-4">
         <Link
           to="/dashboard"
-          className="inline-flex items-center justify-center w-10 h-10 rounded-md text-foreground hover:bg-muted transition-colors shrink-0 -ml-2"
+          className="inline-flex items-center justify-center w-10 h-10 rounded-xl text-foreground hover:bg-muted transition-colors shrink-0 -ml-2"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold tracking-tight font-display">Attendance Form</h2>
-          <p className="text-muted-foreground text-sm">
-            {version ? `Current version: v${version}` : "No form yet — build one below."}
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold tracking-tight font-display text-gray-900">Attendance Form Builder</h2>
+            {version && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                v{version}
+              </span>
+            )}
+          </div>
+          <p className="text-muted-foreground text-xs">
+            Design customized field forms for volunteers and attendees to complete during attendance submission.
           </p>
         </div>
         <button
           type="button"
           onClick={() => navigate(`/rooms/${id}/attendance`)}
-          className="text-sm text-primary hover:underline"
+          className="text-xs font-semibold text-purple-700 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-100 hover:bg-purple-100 transition-colors"
         >
-          Preview attendance →
+          Preview Attendance →
         </button>
       </div>
 
-      <Card>
+      <Card className="card-static rounded-2xl">
         <form onSubmit={onSubmit}>
-          <CardContent className="space-y-4 pt-6">
+          <CardContent className="space-y-6 pt-6">
             {fields.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">
-                No fields yet. Add one below.
-              </p>
+              <div className="p-8 text-center border border-dashed border-gray-200 rounded-xl space-y-2">
+                <p className="text-sm font-semibold text-gray-700">No fields added yet</p>
+                <p className="text-xs text-muted-foreground">Select a field type below to start building your custom attendance form.</p>
+              </div>
             ) : (
               <DndContext
                 sensors={sensors}
@@ -351,29 +359,32 @@ export const RoomFormBuilder = () => {
               </DndContext>
             )}
 
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-              <span className="text-sm text-muted-foreground w-full">Add field:</span>
-              {FIELD_TYPES.map((t) => (
-                <Button
-                  key={t}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addField(t)}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  {t}
-                </Button>
-              ))}
+            <div className="space-y-2 pt-3 border-t border-border">
+              <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Add New Field Type:</span>
+              <div className="flex flex-wrap gap-2">
+                {FIELD_TYPES.map((t) => (
+                  <Button
+                    key={t}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addField(t)}
+                    className="h-8 text-xs rounded-lg hover:border-purple-300 hover:bg-purple-50/50"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1 text-purple-600" />
+                    <span className="capitalize">{t}</span>
+                  </Button>
+                ))}
+              </div>
             </div>
 
             {error && (
-              <div className="p-3 rounded-md bg-status-cancelled-bg text-(--color-error) text-sm border border-(--color-gray-200)">
+              <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200">
                 {error}
               </div>
             )}
             {success && (
-              <div className="p-3 rounded-md bg-status-live-bg text-status-live text-sm border border-(--color-gray-200)">
+              <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 text-xs border border-emerald-200 font-medium">
                 {success}
               </div>
             )}

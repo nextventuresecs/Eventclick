@@ -147,6 +147,7 @@ export const AdminUsers = () => {
               <thead className="bg-(--color-gray-50) text-gray-400 text-xs uppercase">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Member</th>
+                  <th className="px-4 py-3 font-semibold">Role</th>
                   <th className="px-4 py-3 font-semibold">Assigned Event</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
                   <th className="px-4 py-3 font-semibold">Assigned By</th>
@@ -157,31 +158,37 @@ export const AdminUsers = () => {
                   <tr key={u.id} className="hover:bg-(--color-gray-50) transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full bg-[rgba(64,34,145,0.1)] text-(--color-primary) flex items-center justify-center text-xs font-bold uppercase">
+                        <div className="h-8 w-8 rounded-full bg-purple-100 text-purple-800 flex items-center justify-center text-xs font-bold uppercase shrink-0">
                           {u.fullName.charAt(0)}
                         </div>
                         <div>
-                          <p className="font-medium text-(--color-gray-900)">{u.fullName}</p>
-                          <p className="text-xs text-gray-400">{u.email}</p>
+                          <p className="font-medium text-(--color-gray-900) font-display">{u.fullName}</p>
+                          <p className="text-xs text-gray-400 font-mono">{u.email}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-(--color-gray-500)">{u.roomTitle}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border-0 ${
+                      <span className="inline-flex items-center rounded-full bg-purple-50 text-purple-700 px-2.5 py-0.5 text-xs font-semibold border border-purple-100">
+                        {u.role.replace("_", " ").toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-(--color-gray-500) font-medium">{u.roomTitle}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                         u.isActive
-                          ? "bg-status-live-bg text-status-live"
-                          : "bg-(--color-gray-100) text-(--color-gray-500)"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                          : "bg-gray-100 text-gray-500 border border-gray-200"
                       }`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
                         {u.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-(--color-gray-500)">{u.assignedBy ?? "—"}</td>
+                    <td className="px-4 py-3 text-(--color-gray-500) text-xs font-mono">{u.assignedBy ?? "—"}</td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-gray-400">No users found</td>
+                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400">No users found matching your filter</td>
                   </tr>
                 )}
               </tbody>
@@ -236,42 +243,42 @@ const CreateUserModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md border-(--color-gray-200)">
-        <CardContent className="p-6 space-y-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+      <Card className="w-full max-w-md rounded-2xl shadow-xl border-purple-100 bg-white">
+        <CardContent className="p-6 space-y-5">
           <div>
-            <CardTitle className="font-display">Create New User</CardTitle>
-            <CardDescription>Add a new user to your organization</CardDescription>
+            <CardTitle className="font-display text-xl text-gray-900">Create New User</CardTitle>
+            <CardDescription className="text-xs">Add a new admin or volunteer to your organization</CardDescription>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="fullName" className="text-xs font-semibold text-gray-700">Full Name</Label>
               <Input
                 id="fullName"
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="John Doe"
+                placeholder="e.g. Sarah Connor"
                 required
                 disabled={loading}
-                className="border-(--color-gray-200)"
+                className="input-premium"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-semibold text-gray-700">Email Address</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="john@example.com"
+                placeholder="sarah@organization.org"
                 required
                 disabled={loading}
-                className="border-(--color-gray-200)"
+                className="input-premium"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-xs font-semibold text-gray-700">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -281,16 +288,16 @@ const CreateUserModal = ({
                 required
                 minLength={8}
                 disabled={loading}
-                className="border-(--color-gray-200)"
+                className="input-premium"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="role" className="text-xs font-semibold text-gray-700">Assigned Role</Label>
               <select
                 id="role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as "event_admin" | "volunteer")}
-                className="w-full border border-(--color-gray-200) rounded-lg px-3 py-2 bg-(--color-surface) text-(--color-gray-900)"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-600"
                 disabled={loading}
               >
                 <option value="event_admin">Event Admin</option>
@@ -298,13 +305,13 @@ const CreateUserModal = ({
               </select>
             </div>
 
-            {error && <p className="text-sm text-status-cancelled bg-status-cancelled-bg p-2 rounded">{error}</p>}
+            {error && <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">{error}</p>}
 
-            <div className="flex gap-3 justify-end pt-4">
-              <Button variant="outline" onClick={onClose} disabled={loading} className="border-(--color-gray-200) text-(--color-gray-600)">
+            <div className="flex gap-3 justify-end pt-2">
+              <Button variant="outline" onClick={onClose} disabled={loading} className="rounded-xl">
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} className="bg-brand-gradient rounded-xl font-semibold shadow-sm">
                 {loading ? "Creating..." : "Create User"}
               </Button>
             </div>

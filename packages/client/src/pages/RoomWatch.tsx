@@ -6,7 +6,7 @@ import {
   VideoConference,
 } from "@livekit/components-react";
 import "@livekit/components-styles";
-import { Loader2, Radio, Users } from "lucide-react";
+import { Loader2, Radio, Users, MapPin } from "lucide-react";
 import type {
   LiveTokenResponse,
   PresenceSnapshot,
@@ -102,37 +102,47 @@ export const RoomWatch = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border px-4 py-3">
+      <header className="border-b border-border bg-white px-4 py-3 shadow-xs">
         <div className="max-w-5xl mx-auto flex items-center gap-3">
-          <h1 className="text-lg font-semibold truncate flex-1">{room.title}</h1>
+          <div className="flex items-center gap-2 pr-2 border-r border-gray-200 shrink-0">
+            <img src="/only_icon.png" alt="Eventclick" className="h-6 w-6 object-contain" />
+            <span className="font-display font-bold text-sm tracking-tight hidden sm:inline">Eventclick</span>
+          </div>
+          <h1 className="text-base font-semibold font-display text-gray-900 truncate flex-1">{room.title}</h1>
+          {room.location && (
+            <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+              <MapPin className="w-3 h-3 text-purple-600" />
+              <span className="truncate max-w-40">{room.location}</span>
+            </span>
+          )}
           {room.streamProvider === "livekit" && presence && (
-            <span className="text-xs inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted/40">
-              <Users className="w-3 h-3" />
+            <span className="text-xs inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-gray-200 bg-gray-50 text-gray-700 font-medium">
+              <Users className="w-3.5 h-3.5 text-gray-500" />
               {presence.count}
             </span>
           )}
           <span
-            className={`text-xs px-2 py-0.5 rounded-full border ${
+            className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${
               room.status === "live"
-                ? "bg-red-500/10 text-red-500 border-red-500/20"
-                : "bg-muted text-muted-foreground border-border"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-gray-100 text-gray-600 border-gray-200"
             }`}
           >
             {room.status === "live" && (
-              <Radio className="w-3 h-3 inline mr-1 animate-pulse" />
+              <Radio className="w-3 h-3 inline mr-1 animate-pulse text-emerald-600" />
             )}
             {room.status.toUpperCase()}
           </span>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto p-4 space-y-4">
+      <main className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
         {room.description && (
-          <p className="text-sm text-muted-foreground">{room.description}</p>
+          <p className="text-sm text-gray-600 max-w-3xl leading-relaxed">{room.description}</p>
         )}
 
         {room.streamProvider === "youtube" && room.youtubeEmbedUrl && (
-          <div className="aspect-video w-full rounded-md overflow-hidden border border-border bg-black">
+          <div className="aspect-video w-full rounded-2xl overflow-hidden border border-border bg-black shadow-lg">
             <iframe
               src={room.youtubeEmbedUrl}
               className="w-full h-full"
@@ -146,31 +156,40 @@ export const RoomWatch = () => {
         {room.streamProvider === "livekit" && !live && (
           <form
             onSubmit={handleJoin}
-            className="max-w-sm mx-auto space-y-4 rounded-md border border-border p-6"
+            className="max-w-md mx-auto space-y-5 rounded-2xl border border-purple-100 bg-white p-8 shadow-sm text-center"
           >
-            <div className="space-y-1.5">
-              <Label htmlFor="guest-name">Your name (optional)</Label>
+            <div className="mx-auto w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-700">
+              <Radio className="w-6 h-6 animate-pulse" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold font-display text-gray-900">Join Event Session</h3>
+              <p className="text-xs text-gray-500">Enter your name to join the live room broadcast.</p>
+            </div>
+
+            <div className="space-y-2 text-left">
+              <Label htmlFor="guest-name" className="text-xs font-semibold text-gray-700">Your Name <span className="text-gray-400 font-normal">(optional)</span></Label>
               <Input
                 id="guest-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Guest"
+                placeholder="e.g. Alex Johnson"
                 maxLength={60}
+                className="input-premium"
               />
             </div>
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-xs text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-100">{error}</p>
             )}
-            <Button type="submit" disabled={joining} className="w-full">
+            <Button type="submit" disabled={joining} className="w-full bg-brand-gradient h-11 rounded-xl text-sm font-semibold shadow-md hover:shadow-lg transition-all">
               {joining ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Joining…
+                  Connecting…
                 </>
               ) : room.status === "live" ? (
-                "Join live stream"
+                "Join Live Stream Now"
               ) : (
-                "Join room (waiting for host)"
+                "Join Room (Waiting for Host)"
               )}
             </Button>
           </form>
