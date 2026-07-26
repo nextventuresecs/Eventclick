@@ -160,11 +160,11 @@ export const DashboardLayout = () => {
   return (
     <div className="h-screen flex overflow-hidden bg-(--color-bg)">
       <aside
-        className={`border-r border-(--color-gray-200) bg-(--color-surface) text-(--color-gray-900) hidden md:flex flex-col h-full relative transition-all duration-300 shrink-0 ${
+        className={`border-r border-(--color-gray-200) bg-(--color-surface) text-(--color-gray-900) hidden md:flex flex-col h-full relative transition-all duration-300 shrink-0 shadow-sm ${
           isCollapsed ? "w-20" : "w-64"
         }`}
       >
-        <div className="h-14 flex items-center justify-between px-4 border-b border-(--color-gray-200) shrink-0">
+        <div className="h-14 flex items-center justify-between px-4 border-b border-(--color-gray-200)/80 shrink-0 relative">
           {!isCollapsed && (
             <div className="flex items-center gap-2.5">
               <img src="/only_icon.png" alt="Eventclick" className="h-8 w-8 object-contain" />
@@ -175,13 +175,15 @@ export const DashboardLayout = () => {
             </div>
           )}
           {isCollapsed && (
-            <div className="mx-auto">
-              <img src="/only_icon.png" alt="Eventclick" className="h-8 w-8 object-contain" />
+            <div className="flex flex-col items-center gap-1" title="Eventclick">
+              <div className="w-10 h-10 rounded-xl bg-brand-gradient text-white flex items-center justify-center font-display font-bold text-sm shadow-sm ring-1 ring-white/20 hover:shadow-md hover:ring-purple-400/40 transition-all duration-200 cursor-pointer">
+                E
+              </div>
             </div>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="h-8 w-8 flex items-center justify-center rounded-lg text-(--color-gray-500) hover:text-(--color-gray-900) hover:bg-(--color-gray-100) transition-colors cursor-pointer"
+            className="h-8 w-8 flex items-center justify-center rounded-lg text-(--color-gray-500) hover:text-(--color-gray-900) hover:bg-(--color-gray-100) transition-all duration-200 cursor-pointer hover:shadow-sm"
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -200,12 +202,17 @@ export const DashboardLayout = () => {
                   key={item.path}
                   to={item.path}
                   title={isCollapsed ? item.name : undefined}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-150 ease-out ${
+                  className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-150 ease-out ${
                     isCollapsed ? "justify-center" : ""
-                  } ${
-                    active ? "nav-item-active" : "nav-item-inactive"
-                  }`}
+                  } group
+                    ${active
+                      ? "bg-brand-gradient-tile text-white shadow-sm"
+                      : "text-(--color-gray-600) hover:text-(--color-gray-900) hover:bg-(--color-gray-50)"}
+                  `}
                 >
+                  {active && !isCollapsed && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-white/80" />
+                  )}
                   <item.icon className="w-5 h-5 shrink-0" />
                   {!isCollapsed && <span>{item.name}</span>}
                 </Link>
@@ -228,12 +235,17 @@ export const DashboardLayout = () => {
                     key={item.path}
                     to={item.path}
                     title={isCollapsed ? item.name : undefined}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-150 ease-out ${
+                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-150 ease-out ${
                       isCollapsed ? "justify-center" : ""
-                    } ${
-                      active ? "nav-item-active" : "nav-item-inactive"
-                    }`}
+                    } group
+                      ${active
+                        ? "bg-brand-gradient-tile text-white shadow-sm"
+                        : "text-(--color-gray-600) hover:text-(--color-gray-900) hover:bg-(--color-gray-50)"}
+                    `}
                   >
+                    {active && !isCollapsed && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-white/80" />
+                    )}
                     <item.icon className="w-5 h-5 shrink-0" />
                     {!isCollapsed && <span>{item.name}</span>}
                   </Link>
@@ -270,7 +282,10 @@ export const DashboardLayout = () => {
                 </div>
               </div>
             ) : (
-              <div className="flex justify-center p-2">
+              <div
+                className="flex justify-center p-2 cursor-pointer"
+                title={user?.fullName || "User"}
+              >
                 {user?.photoUrl ? (
                   <img src={user.photoUrl} alt={user.fullName} className="w-9 h-9 rounded-xl object-cover border-2 border-purple-600 shadow-xs" />
                 ) : (
