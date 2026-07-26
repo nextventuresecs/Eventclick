@@ -11,17 +11,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { CheckCircle2, AlertCircle, ArrowLeft, Mail } from "lucide-react";
 
 export const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { retryAuth, user } = useAuth();
-  
+
   const token = searchParams.get("token") || "";
-  
+
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
-  
+
   const hasAttempted = useRef(false);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export const VerifyEmailPage = () => {
       setError("Verification token is missing. Please check your email link.");
       return;
     }
-    
+
     if (hasAttempted.current) return;
     hasAttempted.current = true;
 
@@ -38,7 +39,6 @@ export const VerifyEmailPage = () => {
       try {
         await authApi.verifyEmail(token);
         setStatus("success");
-        // If they are logged in but unverified, refresh their auth state
         if (user) {
           retryAuth();
         }
@@ -53,76 +53,72 @@ export const VerifyEmailPage = () => {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Email Verification</CardTitle>
-          <CardDescription>
-            {status === "loading" && "Verifying your email address..."}
-            {status === "success" && "Your email has been verified successfully"}
-            {status === "error" && "Email verification failed"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="mb-8 text-center">
+        <div className="mx-auto h-12 w-12 rounded-xl bg-brand-gradient flex items-center justify-center mb-4 shadow-sm">
+          <img
+            src="/only_icon.png"
+            alt="Eventclick"
+            className="h-6 w-6 object-contain"
+          />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Verify your email</h1>
+        <p className="text-sm text-[var(--color-gray-400)] mt-1.5">Confirm your email address to access all features</p>
+      </div>
+      <Card className="card-static rounded-2xl">
+        <CardContent className="pt-6">
           {status === "loading" && (
-            <div className="flex justify-center p-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <div className="flex flex-col items-center gap-4 py-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-gray-100)] text-[var(--color-primary)]">
+                <Mail className="w-6 h-6 animate-pulse" />
+              </div>
+              <p className="text-sm text-[var(--color-gray-400)]">Verifying your email address…</p>
             </div>
           )}
-          
+
           {status === "success" && (
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10 text-green-500">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  className="h-6 w-6"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                  />
-                </svg>
+            <div className="flex flex-col items-center gap-4 text-center py-2">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-status-live-bg)] text-[var(--color-status-live)]">
+                <CheckCircle2 className="w-6 h-6" />
               </div>
-              <p className="text-sm text-muted-foreground">
-                Thank you for verifying your email address. You can now access all features of your account.
-              </p>
+              <div>
+                <p className="text-sm font-medium text-[var(--color-gray-900)]">Email verified</p>
+                <p className="text-sm text-[var(--color-gray-400)] mt-1">
+                  Thank you for verifying your email address. You can now access all features of your account.
+                </p>
+              </div>
               <Button onClick={() => navigate(user ? "/dashboard" : "/login")} className="w-full mt-2">
                 {user ? "Go to Dashboard" : "Sign in"}
               </Button>
             </div>
           )}
-          
+
           {status === "error" && (
-            <div className="flex flex-col items-center gap-4 text-center">
+            <div className="flex flex-col items-center gap-4 text-center py-2">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-status-cancelled-bg)] text-[var(--color-error)]">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  className="h-6 w-6"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
+                <AlertCircle className="w-6 h-6" />
               </div>
-              <p className="text-sm text-destructive font-medium">{error}</p>
+              <div>
+                <p className="text-sm font-medium text-[var(--color-gray-900)]">Verification failed</p>
+                <p className="text-sm text-[var(--color-gray-400)] mt-1">{error}</p>
+              </div>
               <Link to="/login" className="w-full mt-4">
                 <Button className="w-full" variant="outline">
-                  Return to Login
+                  Return to sign in
                 </Button>
               </Link>
             </div>
           )}
         </CardContent>
+        <CardFooter className="flex-col justify-center gap-2 text-sm text-[var(--color-gray-400)]">
+          <Link to="/login" className="inline-flex items-center gap-1.5 font-medium text-[var(--color-primary)] hover:underline">
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back to sign in
+          </Link>
+          <div className="flex items-center gap-4 pt-1">
+            <Link to="/terms" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Terms</Link>
+            <Link to="/privacy" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Privacy</Link>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );

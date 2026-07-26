@@ -72,8 +72,8 @@ export const RegisterPage = () => {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
-      <div className="mb-6 text-center">
-        <div className="mx-auto h-12 w-12 rounded-xl bg-brand-gradient flex items-center justify-center mb-3 shadow-sm">
+      <div className="mb-8 text-center">
+        <div className="mx-auto h-12 w-12 rounded-xl bg-brand-gradient flex items-center justify-center mb-4 shadow-sm">
           <img
             src="/only_icon.png"
             alt="Eventclick"
@@ -81,7 +81,7 @@ export const RegisterPage = () => {
           />
         </div>
         <h1 className="text-2xl font-bold tracking-tight font-display text-[var(--color-gray-900)]">Create your account</h1>
-        <p className="text-sm text-[var(--color-gray-400)] mt-1">Set up your organization workspace</p>
+        <p className="text-sm text-[var(--color-gray-400)] mt-1.5">Set up your organization workspace</p>
       </div>
       <Card className="card-static rounded-2xl">
         <CardContent className="flex flex-col gap-5 pt-6">
@@ -145,21 +145,26 @@ export const RegisterPage = () => {
               <p className="text-xs text-[var(--color-gray-400)]">Create your organization workspace to get started.</p>
             </div>
 
-             {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
+            {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
 
-             <Button type="submit" disabled={submitting} className="w-full">
-               {submitting ? "Creating…" : "Create account"}
-             </Button>
+            <Button type="submit" disabled={submitting} className="w-full">
+              {submitting ? "Creating…" : "Create account"}
+            </Button>
           </form>
         </CardContent>
-        <CardFooter className="justify-center text-sm text-[var(--color-gray-400)]">
-          Already have an account?&nbsp;
-          <Link
-            to="/login"
-            className="font-medium text-[var(--color-primary)] hover:underline"
-          >
-            Sign in
-          </Link>
+        <CardFooter className="flex-col justify-center gap-2 text-sm text-[var(--color-gray-400)]">
+          <span>Already have an account?&nbsp;
+            <Link
+              to="/login"
+              className="font-medium text-[var(--color-primary)] hover:underline"
+            >
+              Sign in
+            </Link>
+          </span>
+          <div className="flex items-center gap-4 pt-1">
+            <Link to="/terms" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Terms</Link>
+            <Link to="/privacy" className="text-xs text-[var(--color-gray-400)] hover:text-[var(--color-gray-600)] transition-colors">Privacy</Link>
+          </div>
         </CardFooter>
       </Card>
     </div>

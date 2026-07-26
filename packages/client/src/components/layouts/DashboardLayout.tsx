@@ -311,29 +311,31 @@ export const DashboardLayout = () => {
 
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <header className="h-16 border-b border-[var(--color-gray-200)] bg-[var(--color-surface)] flex items-center justify-between px-4 md:px-8 shrink-0">
-          <div className="flex flex-col">
-            <h1 className="text-sm font-semibold text-[var(--color-gray-900)] leading-tight">
-              {user?.organizationName || "Organization"}
+          <div className="min-w-0">
+            <h1 className="text-base font-display font-semibold text-[var(--color-gray-900)] leading-tight tracking-tight truncate">
+              {pageTitle}
             </h1>
-            <p className="text-xs text-[var(--color-gray-400)] leading-tight">{pageTitle}</p>
+            <p className="text-xs text-[var(--color-gray-400)] leading-none mt-0.5 truncate">{user?.organizationName || "Organization"}</p>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
-            <Button variant="ghost" size="icon" className="relative text-[var(--color-gray-500)] hover:text-[var(--color-gray-900)] hover:bg-[var(--color-gray-100)]">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[var(--color-secondary)]" />
-            </Button>
-
-            <div className="hidden md:flex items-center gap-2 text-xs text-[var(--color-gray-500)]">
-              <CalendarDays className="w-4 h-4" />
-              <span className="font-medium">{formatDate()}</span>
+          <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            <div className="hidden md:flex items-center gap-1.5 text-xs text-[var(--color-gray-500)] font-medium">
+              <CalendarDays className="w-3.5 h-3.5 text-[var(--color-gray-400)]" />
+              <span>{formatDate()}</span>
             </div>
+
+            <div className="hidden md:block h-4 w-px bg-[var(--color-gray-200)]" />
+
+            <button className="relative h-9 w-9 flex items-center justify-center rounded-xl text-[var(--color-gray-500)] hover:text-[var(--color-gray-900)] hover:bg-[var(--color-gray-100)] transition-all duration-150 cursor-pointer" aria-label="Notifications">
+              <Bell className="w-[18px] h-[18px]" />
+              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-[var(--color-secondary)] ring-2 ring-[var(--color-surface)]" />
+            </button>
 
             {canManageRooms && (
               <Link to="/rooms/create">
-                <Button size="sm">
-                  <PlusCircle className="w-4 h-4 md:mr-1.5" />
-                  <span className="hidden md:inline text-xs font-semibold">Create Room</span>
+                <Button size="sm" className="gap-1.5">
+                  <PlusCircle className="w-4 h-4" />
+                  <span className="hidden md:inline">New Room</span>
                 </Button>
               </Link>
             )}
