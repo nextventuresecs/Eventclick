@@ -19,6 +19,8 @@ export function useNetwork() {
             formDefinitionId: record.formDefinitionId,
             data: record.data,
             photoKey: record.photoKey,
+            latitude: record.latitude,
+            longitude: record.longitude,
             idempotencyKey: `att_${record.id}_${record.createdAt}`
           });
           await db.attendance.update(record.id!, { synced: true });
@@ -34,6 +36,8 @@ export function useNetwork() {
           await api.post(`/rooms/${record.roomId}/activities/submission`, {
             activityId: record.activityId,
             photoKey: record.photoKey,
+            latitude: record.latitude,
+            longitude: record.longitude,
             idempotencyKey: `act_${record.id}_${record.createdAt}`
           });
           await db.activities.update(record.id!, { synced: true });

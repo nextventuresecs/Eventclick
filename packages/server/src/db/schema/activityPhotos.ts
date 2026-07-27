@@ -6,6 +6,7 @@ import {
   timestamp,
   index,
   doublePrecision,
+  geometry,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { activitySubmissions } from "./activitySubmissions";
@@ -27,6 +28,7 @@ export const activityPhotos = pgTable(
     photoUrl: text("photo_url").notNull(),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
+    location: geometry("location", { type: "point", mode: "xy", srid: 4326 }),
     submittedBy: uuid("submitted_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -34,6 +36,7 @@ export const activityPhotos = pgTable(
     index("activity_photos_submission_idx").on(t.submissionId),
     index("activity_photos_room_activity_idx").on(t.roomId, t.activityId),
     index("activity_photos_submitted_by_idx").on(t.submittedBy),
+    index("activity_photos_location_idx").using("gist", t.location),
   ],
 );
 

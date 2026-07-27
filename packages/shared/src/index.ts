@@ -475,6 +475,8 @@ export const SubmitAttendanceSchema = z.object({
   data: z.record(z.string().min(1).max(64), ATTENDANCE_VALUE),
   photoKey: z.string().min(1).max(200).optional(),
   idempotencyKey: z.string().max(100).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
 });
 export type SubmitAttendanceInput = z.infer<typeof SubmitAttendanceSchema>;
 

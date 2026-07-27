@@ -10,6 +10,9 @@ import {
   uploadToPresignedUrl,
 } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { useNetwork } from "@/hooks/useNetwork";
+import { db } from "@/lib/db";
 import { compressImage } from "@/lib/imageCompress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +51,13 @@ export const Attendance = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  const { isOnline } = useNetwork();
+  const { latitude, longitude, requestLocation, error: geoError, loading: geoLoading } = useGeolocation();
+
+  useEffect(() => {
+    requestLocation();
+  }, [requestLocation]);
 
   useEffect(() => {
     if (!id) return;
@@ -358,11 +368,29 @@ export const Attendance = () => {
         }
       }
 
-      await attendanceApi.submit(id, {
-        formDefinitionId: form.id,
-        data: coerced,
-        photoKey,
-      });
+      if (isOnline) {
+        await attendanceApi.submit(id, {
+          formDefinitionId: form.id,
+          data: coerced,
+          photoKey,
+          latitude: latitude ?? undefined,
+          longitude: longitude ?? undefined,
+        });
+      } else {
+        // Save locally for offline sync
+        if (user?.id) {
+          await db.attendance.add({
+            roomId: id,
+            formDefinitionId: form.id,
+            data: coerced,
+            photoKey,
+            latitude: latitude ?? undefined,
+            longitude: longitude ?? undefined,
+            synced: false,
+            createdAt: Date.now(),
+          });
+        }
+      }
 
       setLastSubmitted(new Date().toLocaleTimeString());
       resetForm();

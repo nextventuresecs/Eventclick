@@ -151,6 +151,12 @@ export const submitActivityPhoto = async (
       activityId: input.activityId,
       photoKey: input.photoKey,
       photoUrl: buildPublicUrl(input.photoKey),
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
+      location:
+        input.latitude != null && input.longitude != null
+          ? { x: input.longitude, y: input.latitude }
+          : null,
       submittedBy: user.id,
     });
   });

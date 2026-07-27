@@ -7,6 +7,7 @@ import {
   jsonb,
   index,
   doublePrecision,
+  geometry,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { eventRooms } from "./eventRooms";
@@ -29,6 +30,7 @@ export const attendanceEntries = pgTable(
     photoUrl: text("photo_url"),
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
+    location: geometry("location", { type: "point", mode: "xy", srid: 4326 }),
     ipAddress: varchar("ip_address", { length: 45 }),
     userAgent: text("user_agent"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
@@ -39,6 +41,7 @@ export const attendanceEntries = pgTable(
     index("attendance_entries_submitted_at_idx").on(t.submittedAt),
     index("attendance_entries_submitted_by_idx").on(t.submittedBy),
     index("attendance_entries_room_submitted_at_idx").on(t.roomId, t.submittedAt),
+    index("attendance_entries_location_idx").using("gist", t.location),
   ],
 );
 
