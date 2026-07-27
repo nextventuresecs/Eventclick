@@ -133,7 +133,7 @@ export const AdminUsers = () => {
             </div>
             <div className="flex gap-2">
               <Button variant={roleFilter === "all" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("all")} className={roleFilter !== "all" ? "border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out" : ""}>All</Button>
-              <Button variant={roleFilter === "event_admin" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("event_admin")} className={roleFilter !== "event_admin" ? "border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out" : ""}>Event Admin</Button>
+              <Button variant={roleFilter === "event_manager" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("event_manager")} className={roleFilter !== "event_manager" ? "border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out" : ""}>Event Manager</Button>
               <Button variant={roleFilter === "volunteer" ? "primary" : "outline"} size="sm" onClick={() => setRoleFilter("volunteer")} className={roleFilter !== "volunteer" ? "border-(--color-gray-200) text-(--color-gray-600) hover:bg-(--color-gray-100) transition-all duration-150 ease-out" : ""}>Volunteer</Button>
             </div>
             <div className="flex gap-2">
@@ -249,7 +249,7 @@ const CreateUserModal = ({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"event_admin" | "volunteer">("event_admin");
+  const [role, setRole] = useState<"event_manager" | "volunteer">("event_manager");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -324,11 +324,11 @@ const CreateUserModal = ({
               <select
                 id="role"
                 value={role}
-                onChange={(e) => setRole(e.target.value as "event_admin" | "volunteer")}
+                onChange={(e) => setRole(e.target.value as "event_manager" | "volunteer")}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-600"
                 disabled={loading}
               >
-                <option value="event_admin">Event Admin</option>
+                <option value="event_manager">Event Manager</option>
                 <option value="volunteer">Volunteer</option>
               </select>
             </div>

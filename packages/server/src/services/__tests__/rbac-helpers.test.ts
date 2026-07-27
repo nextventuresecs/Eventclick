@@ -3,7 +3,7 @@ import { getRolePermissions, hasRolePermission } from "@application/shared";
 
 describe("role permissions", () => {
   it("gives NGO admins the full management set", () => {
-    expect(getRolePermissions("ngo_admin")).toEqual([
+    expect(getRolePermissions("admin")).toEqual([
       "manage_rooms",
       "manage_live_session",
       "create_attendance_form",
@@ -16,10 +16,10 @@ describe("role permissions", () => {
   });
 
   it("keeps event admins focused on event operations", () => {
-    expect(hasRolePermission("event_admin", "manage_live_session")).toBe(true);
-    expect(hasRolePermission("event_admin", "create_attendance_form")).toBe(true);
-    expect(hasRolePermission("event_admin", "view_reports")).toBe(true);
-    expect(hasRolePermission("event_admin", "manage_users")).toBe(false);
+    expect(hasRolePermission("event_manager", "manage_live_session")).toBe(true);
+    expect(hasRolePermission("event_manager", "create_attendance_form")).toBe(true);
+    expect(hasRolePermission("event_manager", "view_reports")).toBe(true);
+    expect(hasRolePermission("event_manager", "manage_users")).toBe(false);
   });
 
   it("limits volunteers to live viewing, link sharing, and attendance", () => {

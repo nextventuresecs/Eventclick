@@ -67,7 +67,7 @@ export const listRooms: RequestHandler = async (req, res, next) => {
     const offset = Math.max(Number(req.query.offset) || 0, 0);
     const user = req.user!;
 
-    // Default-deny: only ngo_admin sees all rooms; others see assigned only
+    // Default-deny: only admin sees all rooms; others see assigned only
     const needsAssignmentFilter = !hasRolePermission(user.role, "manage_users");
     const assignedRoomIds = needsAssignmentFilter
       ? await listAssignedRoomIdsForUser(orgId, user.id)
@@ -79,8 +79,18 @@ export const listRooms: RequestHandler = async (req, res, next) => {
     }
 
     const rows = await db
-      .select()
+      .select({
+        room: eventRooms,
+        attendanceCount: sql<number>`cast(count(${attendanceEntries.id}) as int)`,
+      })
       .from(eventRooms)
+      .leftJoin(
+        attendanceEntries,
+        and(
+          eq(eventRooms.id, attendanceEntries.roomId),
+          ...(user.role === "volunteer" ? [eq(attendanceEntries.submittedBy, user.id)] : [])
+        )
+      )
       .where(
         and(
           eq(eventRooms.organizationId, orgId),
@@ -88,34 +98,14 @@ export const listRooms: RequestHandler = async (req, res, next) => {
           ...(assignedRoomIds ? [inArray(eventRooms.id, assignedRoomIds)] : []),
         ),
       )
+      .groupBy(eventRooms.id)
       .orderBy(desc(eventRooms.createdAt))
       .limit(limit)
       .offset(offset);
 
-    const roomIds = rows.map((row) => row.id);
-    const attendanceCounts =
-      roomIds.length === 0
-        ? []
-        : await db
-            .select({
-              roomId: attendanceEntries.roomId,
-              count: sql<number>`cast(count(*) as int)`,
-            })
-            .from(attendanceEntries)
-            .where(
-              and(
-                inArray(attendanceEntries.roomId, roomIds),
-                ...(user.role === "volunteer"
-                  ? [eq(attendanceEntries.submittedBy, user.id)]
-                  : []),
-              ),
-            )
-            .groupBy(attendanceEntries.roomId);
-
-    const countsByRoomId = buildAttendanceCountMap(attendanceCounts);
-    const items = rows.map((row) => ({
-      ...toEventRoom(row),
-      attendanceCount: attendanceCountForRoom(countsByRoomId, row.id),
+    const items = rows.map(({ room, attendanceCount }) => ({
+      ...toEventRoom(room),
+      attendanceCount,
     }));
 
     res.json({ items, limit, offset });
@@ -152,7 +142,7 @@ export const createRoom: RequestHandler = async (req, res, next) => {
     if (!row) throw ApiError.internal("Failed to create room");
 
     // Auto-assign the creator to the room if they need assignment-based access
-    if (req.user!.role !== "ngo_admin") {
+    if (req.user!.role !== "admin") {
       await db
         .insert(eventAdminAssignments)
         .values({
@@ -347,7 +337,7 @@ export const getLiveToken: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessWithRoom(req.user!, orgId, id);
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const user = await findUserById(req.user!.id);
 
@@ -421,7 +411,7 @@ export const startRoomRecording: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessWithRoom(req.user!, orgId, id);
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const recording = await livekitStartRecording(id);
     res.json(recording);
@@ -434,7 +424,7 @@ export const stopRoomRecording: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessWithRoom(req.user!, orgId, id);
+    await assertRoomAccessForUser(req.user!, orgId, id);
 
     const { egressId } = req.body;
     if (!egressId) throw ApiError.badRequest("egressId is required to stop recording");
@@ -450,7 +440,7 @@ export const getPresence: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const id = req.params.id as string;
-    await assertRoomAccessWithRoom(req.user!, orgId, id);
+    await assertRoomAccessForUser(req.user!, orgId, id);
     res.json(await getRoomPresence(id, orgId));
   } catch (err) {
     next(err);

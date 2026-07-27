@@ -29,6 +29,7 @@ export const eventAdminAssignments = pgTable(
     index("event_admin_assignments_org_idx").on(t.organizationId),
     index("event_admin_assignments_room_idx").on(t.roomId),
     index("event_admin_assignments_user_idx").on(t.userId),
+    index("event_admin_assignments_assigned_by_idx").on(t.assignedBy),
     index("event_admin_assignments_revoked_idx").on(t.revokedAt),
   ],
 );

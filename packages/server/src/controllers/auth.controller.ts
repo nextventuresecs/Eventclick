@@ -13,6 +13,8 @@ import {
   completeOnboarding,
   verifyEmailToken,
   resendVerificationToken,
+  updateUserProfile,
+  changeUserPassword,
   type AuthResult,
 } from "../services/auth.service";
 import { refreshTtlMs } from "../services/session.service";
@@ -162,6 +164,26 @@ export const onboard: RequestHandler = async (req, res, next) => {
       extractMeta(req),
     );
     sendAuthResult(res, result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateProfile: RequestHandler = async (req, res, next) => {
+  try {
+    if (!req.user) throw ApiError.unauthorized();
+    const user = await updateUserProfile(req.user.id, req.body);
+    res.json({ user });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const changePassword: RequestHandler = async (req, res, next) => {
+  try {
+    if (!req.user) throw ApiError.unauthorized();
+    await changeUserPassword(req.user.id, req.body.currentPassword, req.body.newPassword);
+    res.json({ message: "Password updated successfully" });
   } catch (err) {
     next(err);
   }

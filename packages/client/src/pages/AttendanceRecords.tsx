@@ -235,6 +235,15 @@ export const AttendanceRecords = () => {
     return <span className="ml-1 text-primary">{sortDir === "asc" ? "↑" : "↓"}</span>;
   };
 
+  const escapeCsvCell = (val: unknown) => {
+    if (val == null) return '""';
+    let str = String(val).replace(/"/g, '""');
+    if (/^[=+\-@]/.test(str)) {
+      str = "'" + str;
+    }
+    return `"${str}"`;
+  };
+
   const handleExportCSV = () => {
     if (sortedEntries.length === 0) return;
     const headers = [
@@ -249,8 +258,8 @@ export const AttendanceRecords = () => {
       ...sortedEntries.map((entry, idx) =>
         [
           idx + 1,
-          `"${room?.title || "—"}"`,
-          `"${format(new Date(entry.submittedAt), "yyyy-MM-dd HH:mm:ss")}"`,
+          escapeCsvCell(room?.title || "—"),
+          escapeCsvCell(format(new Date(entry.submittedAt), "yyyy-MM-dd HH:mm:ss")),
           ...columns.map((col) => {
             const label = col.label;
             let val = entry.data[col.id];
@@ -261,9 +270,9 @@ export const AttendanceRecords = () => {
                 if (key) val = entry.data[key];
               }
             }
-            return `"${formatValue(val ?? null)}"`;
+            return escapeCsvCell(formatValue(val ?? null));
           }),
-          ...(hasPhotos ? [`"${entry.photoUrl || ""}"`] : [])
+          ...(hasPhotos ? [escapeCsvCell(entry.photoUrl || "")] : [])
         ].join(","),
       ),
     ];
@@ -289,7 +298,6 @@ export const AttendanceRecords = () => {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Failed to download PDF report:", err);
       setError(err instanceof ApiClientError ? err.message : "Failed to generate PDF report. Please ensure Gotenberg is running.");
     } finally {
       setPdfLoading(false);

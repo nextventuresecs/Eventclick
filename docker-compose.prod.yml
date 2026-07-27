@@ -230,6 +230,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     deploy:
       resources:
         limits:
@@ -260,6 +265,13 @@ services:
     depends_on:
       server:
         condition: service_healthy
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
     deploy:
       resources:
         limits:

@@ -22,7 +22,7 @@ export const EventAssignments = () => {
   const canManageUsers = user ? hasRolePermission(user.role, "manage_users") : false;
 
   const eventAdminCandidates = useMemo(
-    () => users.filter((u) => u.role === "event_admin" || u.role === "volunteer"),
+    () => users.filter((u) => u.role === "event_manager" || u.role === "volunteer"),
     [users],
   );
 

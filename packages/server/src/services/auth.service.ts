@@ -9,6 +9,7 @@ import type {
   RegisterInput,
   GoogleLoginInput,
   OnboardingInput,
+  UpdateProfileInput,
 } from "@application/shared";
 import { db } from "../db";
 import { users, organizations, orgMembers, passwordResets, emailVerifications, type User } from "../db/schema";
@@ -175,7 +176,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
 
   const { user: created, verificationToken } = await db.transaction(async (tx) => {
     let orgId: string | null = null;
-    let role: "ngo_admin" | "volunteer" = "volunteer";
+    let role: "admin" | "volunteer" = "volunteer";
 
     if (input.organizationName) {
       const slug = `${slugify(input.organizationName)}-${nanoid(6).toLowerCase()}`;
@@ -185,7 +186,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
         .returning({ id: organizations.id });
       if (!org) throw ApiError.internal("Failed to create organization");
       orgId = org.id;
-      role = "ngo_admin";
+      role = "admin";
       logger.info({ orgId, slug, event: "organization.created" }, "organization created");
     }
 
@@ -362,6 +363,8 @@ export const getCurrentUser = async (userId: string): Promise<AuthUser> => {
 export const forgotPassword = async (email: string): Promise<void> => {
   const user = await findUserByEmail(email);
   if (!user) {
+    // Dummy hash to prevent timing attack enumeration
+    await hashPassword(crypto.randomBytes(32).toString("hex"));
     logger.warn({ email, event: "password_reset.request_failed" }, "reset request for non-existent email (ignored to prevent enumeration)");
     return;
   }
@@ -445,7 +448,7 @@ export const completeOnboarding = async (
   await db.transaction(async (tx) => {
     let orgId: string | null = null;
 
-    if (input.role === "ngo_admin") {
+    if (input.role === "admin") {
       if (!input.organizationName) {
         throw ApiError.badRequest("Organization name is required to become an NGO Admin");
       }
@@ -461,17 +464,17 @@ export const completeOnboarding = async (
       // Update user details
       await tx
         .update(users)
-        .set({ role: "ngo_admin", organizationId: orgId, updatedAt: new Date() })
+        .set({ role: "admin", organizationId: orgId, updatedAt: new Date() })
         .where(eq(users.id, userId));
 
       // Add to orgMembers
       await tx.insert(orgMembers).values({
         userId,
         organizationId: orgId,
-        role: "ngo_admin",
+        role: "admin",
       });
       
-      logger.info({ userId, orgId, slug, event: "onboarding.ngo_admin" }, "user onboarded as NGO Admin");
+      logger.info({ userId, orgId, slug, event: "onboarding.admin" }, "user onboarded as NGO Admin");
     } else {
       // Just keep/ensure they are standard volunteer
       await tx
@@ -556,4 +559,51 @@ export const resendVerificationToken = async (email: string): Promise<void> => {
     token,
   });
   logger.info({ userId: user.id, event: "email_verification.resent" }, "email verification resent");
+};
+
+export const updateUserProfile = async (
+  userId: string,
+  input: UpdateProfileInput
+): Promise<AuthUser> => {
+  const [updatedUser] = await db
+    .update(users)
+    .set({
+      fullName: input.fullName,
+      photoUrl: input.photoUrl,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId))
+    .returning();
+
+  if (!updatedUser) throw ApiError.notFound("User not found");
+
+  await invalidateUserCache(userId);
+  return toAuthUser(updatedUser);
+};
+
+export const changeUserPassword = async (
+  userId: string,
+  currentPasswordPlain: string,
+  newPasswordPlain: string
+): Promise<void> => {
+  const [userRow] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!userRow) throw ApiError.notFound("User not found");
+  if (!userRow.passwordHash) throw ApiError.badRequest("User does not use password authentication");
+
+  const isValid = await verifyPassword(currentPasswordPlain, userRow.passwordHash);
+  if (!isValid) throw ApiError.unauthorized("Incorrect current password");
+
+  const pwdScore = zxcvbn(newPasswordPlain);
+  if (pwdScore.score < 3) {
+    throw ApiError.badRequest(`Password is too weak. ${pwdScore.feedback.warning || "Please choose a stronger password."}`);
+  }
+
+  const newPasswordHash = await hashPassword(newPasswordPlain);
+
+  await db.update(users).set({ passwordHash: newPasswordHash, updatedAt: new Date() }).where(eq(users.id, userId));
+
+  await revokeAllUserSessions(userId);
+  await invalidateUserCache(userId);
+
+  logger.info({ userId, event: "password_change.success" }, "User password changed successfully");
 };

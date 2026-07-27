@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AlertTriangle, Bug, CheckCircle2, Cpu, Send, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
+import { bugReportsApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,14 +41,26 @@ export const ReportBug = () => {
   // System environment snapshot
   const systemInfo = `${navigator.userAgent} • ${window.screen.width}x${window.screen.height}`;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      await bugReportsApi.submit({
+        severity,
+        component,
+        title,
+        steps,
+        expected,
+        actual,
+        systemInfo,
+      });
       setSubmitted(true);
       toast("Bug report logged successfully", "success");
-    }, 700);
+    } catch (err: any) {
+      toast(err.message || "Failed to submit bug report", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

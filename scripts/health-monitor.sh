@@ -109,25 +109,28 @@ docker compose -f "$COMPOSE_FILE" ps --format "table {{.Name}}\t{{.Status}}" 2>/
 echo "  Resource usage:"
 docker stats --no-stream --format "  {{.Name}}: CPU={{.CPUPerc}} MEM={{.MemUsage}}" 2>/dev/null
 
-# ── Send alert via curl to your notification endpoint (optional) ─────
-# Uncomment and configure one of these notification methods:
+# ── Send alerts (fires only when env vars are configured) ─────────────
 
-# Option 1: Resend email alert
-# curl -s -X POST "https://api.resend.com/emails" \
-#   -H "Authorization: Bearer ${RESEND_API_KEY}" \
-#   -H "Content-Type: application/json" \
-#   -d "{
-#     \"from\": \"${RESEND_FROM_EMAIL}\",
-#     \"to\": [\"your-alert-email@example.com\"],
-#     \"subject\": \"⚠️ Eventclick Health Alert\",
-#     \"text\": \"$(printf '%s\\n' "${ALERTS[@]}")\"
-#   }"
+# Resend email alert
+if [[ -n "${RESEND_API_KEY:-}" && -n "${ALERT_NOTIFY_EMAIL:-}" ]]; then
+  curl -s -X POST "https://api.resend.com/emails" \
+    -H "Authorization: Bearer ${RESEND_API_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"from\": \"${RESEND_FROM_EMAIL}\",
+      \"to\": [\"${ALERT_NOTIFY_EMAIL}\"],
+      \"subject\": \"⚠️ Eventclick Health Alert\",
+      \"text\": \"$(printf '%s\\n' "${ALERTS[@]}")\"
+    }" > /dev/null 2>&1
+fi
 
-# Option 2: Discord webhook
-# DISCORD_WEBHOOK="https://discord.com/api/webhooks/YOUR_WEBHOOK_URL"
-# ALERT_TEXT=$(printf '%s\\n' "${ALERTS[@]}")
-# curl -s -X POST "$DISCORD_WEBHOOK" \
-#   -H "Content-Type: application/json" \
-#   -d "{\"content\": \"⚠️ **Eventclick Health Alert**\n${ALERT_TEXT}\"}"
+# Discord webhook alert
+if [[ -n "${DISCORD_WEBHOOK_URL:-}" ]]; then
+  ALERT_TEXT=$(printf '%s\\n' "${ALERTS[@]}")
+  curl -s -X POST "${DISCORD_WEBHOOK_URL}" \
+    -H "Content-Type: application/json" \
+    -d "{\"content\": \"⚠️ **Eventclick Health Alert**\n${ALERT_TEXT}\"}" > /dev/null 2>&1
+fi
 
 exit 1
+

@@ -1,12 +1,12 @@
 import type { UserRole } from "@application/shared";
 import { hasRolePermission } from "@application/shared";
 
-export const canManageAssignments = (role: UserRole): boolean => role === "ngo_admin";
+export const canManageAssignments = (role: UserRole): boolean => role === "admin";
 
 export const canBeAssignedToEvent = (role: UserRole): boolean =>
-  role === "event_admin" || role === "volunteer";
+  role === "event_manager" || role === "volunteer";
 
-/** ngo_admin bypasses assignment check; event_admin + volunteer need assignment */
+/** admin bypasses assignment check; event_manager + volunteer need assignment */
 export const requiresRoomAssignment = (role: UserRole): boolean =>
   !hasRolePermission(role, "manage_users");
 

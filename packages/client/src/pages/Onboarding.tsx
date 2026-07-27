@@ -19,7 +19,7 @@ export const OnboardingPage = () => {
   const { completeOnboarding, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [role, setRole] = useState<"ngo_admin" | "volunteer" | null>(null);
+  const [role, setRole] = useState<"admin" | "volunteer" | null>(null);
   const [organizationName, setOrganizationName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -34,7 +34,7 @@ export const OnboardingPage = () => {
 
     const parsed = OnboardingSchema.safeParse({
       role,
-      organizationName: role === "ngo_admin" ? organizationName : undefined,
+      organizationName: role === "admin" ? organizationName : undefined,
     });
 
     if (!parsed.success) {
@@ -86,17 +86,17 @@ export const OnboardingPage = () => {
             {/* NGO Admin Option */}
             <div
               onClick={() => {
-                setRole("ngo_admin");
+                setRole("admin");
                 setError(null);
               }}
               className={`group relative flex flex-col gap-3 rounded-xl border p-5 cursor-pointer transition-all duration-200 select-none ${
-                role === "ngo_admin" ? "role-card-active" : "role-card-inactive"
+                role === "admin" ? "role-card-active" : "role-card-inactive"
               }`}
             >
               <div className="flex items-center gap-3">
                 <div
                   className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
-                    role === "ngo_admin" ? "role-icon-active" : "role-icon-inactive"
+                    role === "admin" ? "role-icon-active" : "role-icon-inactive"
                   }`}
                 >
                   <svg
@@ -168,7 +168,7 @@ export const OnboardingPage = () => {
           </div>
 
           {/* Conditional NGO Admin fields */}
-          {role === "ngo_admin" && (
+          {role === "admin" && (
             <div className="flex flex-col gap-2 rounded-xl border border-(--color-gray-200) bg-(--color-gray-50) p-4">
               <Label htmlFor="orgName" className="font-semibold">
                 Organization Name

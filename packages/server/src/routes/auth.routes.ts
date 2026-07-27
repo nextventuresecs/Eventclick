@@ -7,6 +7,8 @@ import {
   ForgotPasswordSchema,
   ResetPasswordSchema,
   OnboardingSchema,
+  UpdateProfileSchema,
+  ChangePasswordSchema,
 } from "@application/shared";
 import RedisStore from "rate-limit-redis";
 import { redisClient } from "../config/redis";
@@ -52,12 +54,16 @@ const recoveryLimiter = rateLimit({
 
 export const authRouter = Router();
 
+import { csrfProtection } from "../middleware/csrf";
+
 authRouter.post("/register", authLimiter, validate(RegisterSchema), authController.register);
 authRouter.post("/login", authLimiter, validate(LoginSchema), authController.login);
 authRouter.post("/google", authLimiter, validate(GoogleLoginSchema), authController.google);
-authRouter.post("/refresh", authController.refresh);
-authRouter.post("/logout", authController.logout);
+authRouter.post("/refresh", csrfProtection, authController.refresh);
+authRouter.post("/logout", csrfProtection, authController.logout);
 authRouter.get("/me", requireAuth, authController.me);
+authRouter.patch("/profile", requireAuth, validate(UpdateProfileSchema), authController.updateProfile);
+authRouter.post("/change-password", requireAuth, validate(ChangePasswordSchema), authController.changePassword);
 
 authRouter.post("/forgot-password", recoveryLimiter, validate(ForgotPasswordSchema), authController.forgot);
 authRouter.post("/reset-password", recoveryLimiter, validate(ResetPasswordSchema), authController.reset);

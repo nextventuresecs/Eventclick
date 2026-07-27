@@ -304,7 +304,7 @@ export const Dashboard = () => {
 
   const memberRows = useMemo(() => {
     const rows = allUsers
-      .filter((u) => u.role !== "ngo_admin")
+      .filter((u) => u.role !== "admin")
       .map((u) => {
         const userAssignments = assignments.filter((a) => a.userId === u.id);
         const roomNames = userAssignments.map((a) => {

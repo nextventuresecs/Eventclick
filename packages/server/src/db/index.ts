@@ -5,7 +5,7 @@ import * as schema from "./schema";
 
 export const pool = new Pool({
   connectionString: env.DATABASE_URL,
-  max: env.NODE_ENV === "production" ? 20 : 10,
+  max: env.DB_POOL_MAX,
   idleTimeoutMillis: 30_000,
 });
 
