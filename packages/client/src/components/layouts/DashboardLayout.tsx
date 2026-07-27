@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useNetwork } from "@/hooks/useNetwork";
 import { Button } from "@/components/ui/button";
 
 const HelpDropdown = () => {
@@ -107,6 +108,43 @@ export const DashboardLayout = () => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [addonsOpen, setAddonsOpen] = useState(false);
   const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
+  const { isOnline, isSyncing } = useNetwork();
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showIosInstruction, setShowIosInstruction] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+  }, []);
+
+  const handleDownloadApp = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult: any) => {
+        if (choiceResult.outcome === "accepted") {
+          console.log("User accepted the install prompt");
+        }
+        setDeferredPrompt(null);
+      });
+    } else {
+      // Check if iOS
+      const isIos = () => {
+        const userAgent = window.navigator.userAgent.toLowerCase();
+        return /iphone|ipad|ipod/.test(userAgent);
+      };
+      if (isIos()) {
+        setShowIosInstruction(true);
+        setTimeout(() => setShowIosInstruction(false), 5000);
+      } else {
+        alert("App is already installed or not supported by your browser.");
+      }
+    }
+    setProfileOpen(false);
+  };
 
   useEffect(() => {
     localStorage.setItem("sidebar_collapsed", String(isCollapsed));
@@ -335,6 +373,12 @@ export const DashboardLayout = () => {
                 >
                   <HelpCircle className="w-4 h-4 text-purple-600" /> Help Center
                 </Link>
+                <button
+                  onClick={handleDownloadApp}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-purple-600" /> Download App
+                </button>
                 <Link
                   to="/feedback"
                   onClick={() => setProfileOpen(false)}
@@ -366,9 +410,28 @@ export const DashboardLayout = () => {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
+        {/* Network Status Banner */}
+        {!isOnline && (
+          <div className="absolute top-0 left-0 right-0 h-8 bg-red-500 text-white flex items-center justify-center text-xs font-semibold z-50 animate-in slide-in-from-top">
+            <AlertTriangle className="w-3.5 h-3.5 mr-2" />
+            You are offline. Changes will be saved locally and synced later.
+          </div>
+        )}
+        {isOnline && isSyncing && (
+          <div className="absolute top-0 left-0 right-0 h-8 bg-emerald-500 text-white flex items-center justify-center text-xs font-semibold z-50 animate-in slide-in-from-top">
+            <Sparkles className="w-3.5 h-3.5 mr-2 animate-pulse" />
+            Syncing offline data...
+          </div>
+        )}
+        {showIosInstruction && (
+          <div className="absolute top-8 left-0 right-0 p-3 bg-purple-600 text-white flex items-center justify-center text-xs font-medium z-50 animate-in slide-in-from-top shadow-md">
+            To install on iOS: tap the Share button at the bottom of Safari, then select "Add to Home Screen".
+          </div>
+        )}
+
         {/* Modern SaaS Header */}
-        <header className="h-16 border-b border-gray-200/80 bg-white/95 backdrop-blur-md flex items-center justify-between px-4 md:px-8 shrink-0 z-30 shadow-xs">
+        <header className={`h-16 border-b border-gray-200/80 bg-white/95 backdrop-blur-md flex items-center justify-between px-4 md:px-8 shrink-0 z-30 shadow-xs transition-all ${!isOnline || isSyncing ? "mt-8" : ""}`}>
           {/* Left Title & Breadcrumbs */}
           <div className="min-w-0 flex items-center gap-3">
             <div>
