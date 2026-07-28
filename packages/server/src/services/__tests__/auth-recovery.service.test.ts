@@ -71,7 +71,7 @@ vi.mock("../../db", () => {
 });
 
 // Import service after mocking
-import { forgotPassword, resetPassword } from "../auth.service";
+import { forgotPassword, resetPassword } from "../auth";
 
 describe("auth.service - Password Recovery Flow", () => {
   beforeEach(() => {

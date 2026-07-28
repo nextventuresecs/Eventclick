@@ -16,7 +16,7 @@ import {
   updateUserProfile,
   changeUserPassword,
   type AuthResult,
-} from "../services/auth.service";
+} from "../services/auth";
 import { refreshTtlMs } from "../services/session.service";
 import { API_PREFIX } from "@application/shared";
 

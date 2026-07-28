@@ -2,7 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { CreateOrgUserInput, OrgUserSummary, UserRole } from "@application/shared";
 import crypto from "crypto";
 import { hashPassword } from "./password.service";
-import { invalidateUserCache } from "./auth.service";
+import { invalidateUserCache } from "./auth";
 import { db } from "../db";
 import { users, orgMembers, emailVerifications } from "../db/schema";
 import { ApiError } from "../utils/errors";

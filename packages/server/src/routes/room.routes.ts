@@ -16,21 +16,21 @@ import { requireRole } from "../middleware/requireRole";
 import { validate } from "../middleware/validate";
 import { ApiError } from "../utils/errors";
 import {
-  listRooms,
-  createRoom,
-  getRoom,
-  updateRoom,
-  deleteRoom,
-  setYouTubeFallback,
   clearFallback,
-  getLiveToken,
-  startLive,
-  stopLive,
-  getPresence,
-  startRoomRecording,
-  stopRoomRecording,
+  createRoom,
+  deleteRoom,
   getActiveRecording,
-} from "../controllers/room.controller";
+  getLiveToken,
+  getPresence,
+  getRoom,
+  listRooms,
+  setYouTubeFallback,
+  startLive,
+  startRoomRecording,
+  stopLive,
+  stopRoomRecording,
+  updateRoom,
+} from "../controllers/room";
 import { getRoomForm, saveRoomForm } from "../controllers/form.controller";
 import {
   listRoomAttendance,

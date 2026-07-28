@@ -2,7 +2,7 @@ import { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } from "@aws-sdk
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
 import { generateVerificationReportPdf } from "../services/report.service";
-import { findUserById } from "../services/auth.service";
+import { findUserById } from "../services/auth";
 
 const sqsClient = new SQSClient({
   region: env.S3_REGION || "us-east-1",

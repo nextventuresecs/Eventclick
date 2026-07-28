@@ -1,20 +1,10 @@
-import { RoomServiceClient } from "livekit-server-sdk";
 import { and, eq, isNull } from "drizzle-orm";
 import type { PresenceSnapshot } from "@application/shared";
 import { db } from "../db";
 import { eventRooms } from "../db/schema";
-import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
-import { roomNameFor } from "./livekit.service";
+import { streamingService } from "./streaming";
 import { cacheGet, cacheSet } from "./cache.service";
-
-const livekitHttpUrl = env.LIVEKIT_URL.replace(/^ws(s?):\/\//, "http$1://");
-
-const roomService = new RoomServiceClient(
-  livekitHttpUrl,
-  env.LIVEKIT_API_KEY,
-  env.LIVEKIT_API_SECRET,
-);
 
 const countParticipants = async (roomId: string): Promise<number> => {
   const cacheKey = `presence:${roomId}`;
@@ -23,14 +13,9 @@ const countParticipants = async (roomId: string): Promise<number> => {
     return cached;
   }
 
-  try {
-    const list = await roomService.listParticipants(roomNameFor(roomId));
-    const count = list.length;
-    await cacheSet(cacheKey, count, 10);
-    return count;
-  } catch {
-    return 0;
-  }
+  const count = await streamingService.getParticipantCount(roomId);
+  await cacheSet(cacheKey, count, 10);
+  return count;
 };
 
 const snapshot = (roomId: string, count: number): PresenceSnapshot => ({
