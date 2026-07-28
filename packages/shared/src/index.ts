@@ -129,6 +129,8 @@ export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
 
 export const UpdateOrganizationSchema = z.object({
   name: z.string().min(1).max(160).optional(),
+  description: z.string().max(2000).optional(),
+  logoUrl: z.string().url().max(1000).or(z.literal("")).optional(),
 });
 export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationSchema>;
 
@@ -165,6 +167,8 @@ export interface AuthUser {
   role: UserRole;
   organizationId: string | null;
   organizationName?: string | null;
+  organizationDescription?: string | null;
+  organizationLogoUrl?: string | null;
   photoUrl?: string | null;
   preferences?: any | null;
   createdAt?: string | null;
@@ -277,8 +281,18 @@ export const CreateRoomSchema = CreateRoomBase.refine(
 );
 export type CreateRoomInput = z.infer<typeof CreateRoomSchema>;
 
+export const CANCELLATION_REASONS = [
+  "Event rescheduled",
+  "Insufficient interest",
+  "Organizer unavailable",
+  "Technical issues",
+  "Other",
+] as const;
+export type CancellationReason = typeof CANCELLATION_REASONS[number];
+
 export const UpdateRoomSchema = CreateRoomBase.partial().extend({
   status: RoomStatusSchema.optional(),
+  cancellationReason: z.string().max(500).optional(),
 });
 export type UpdateRoomInput = z.infer<typeof UpdateRoomSchema>;
 
@@ -311,6 +325,7 @@ export interface EventRoom {
   longitude?: number | null;
   attendanceCount?: number;
   activityDefinitions: ActivityDefinition[];
+  cancellationReason: string | null;
   createdAt: string;
   updatedAt: string;
 }

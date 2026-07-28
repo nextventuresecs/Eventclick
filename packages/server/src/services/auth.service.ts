@@ -39,17 +39,19 @@ const slugify = (name: string): string =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "org";
 
-const toAuthUser = (u: User, orgName?: string | null): AuthUser => ({
+const toAuthUser = (u: User, orgName?: string | null, orgDescription?: string | null, orgLogoUrl?: string | null): AuthUser => ({
   id: u.id,
   email: u.email,
   fullName: u.fullName,
   role: u.role,
   organizationId: u.organizationId,
   organizationName: orgName,
+  organizationDescription: orgDescription,
+  organizationLogoUrl: orgLogoUrl,
   emailVerified: u.emailVerifiedAt !== null,
 });
 
-type UserWithOrg = User & { organizationName?: string | null };
+type UserWithOrg = User & { organizationName?: string | null; organizationDescription?: string | null; organizationLogoUrl?: string | null };
 
 export const invalidateUserCache = async (userId: string, email?: string): Promise<void> => {
   await cacheDel(`user:${userId}`);
@@ -76,6 +78,8 @@ export const findUserById = async (id: string): Promise<UserWithOrg | null> => {
     .select({
       user: users,
       orgName: organizations.name,
+      orgDescription: organizations.description,
+      orgLogoUrl: organizations.logoUrl,
     })
     .from(users)
     .leftJoin(organizations, eq(users.organizationId, organizations.id))
@@ -87,7 +91,7 @@ export const findUserById = async (id: string): Promise<UserWithOrg | null> => {
     return null;
   }
 
-  const userWithOrg = { ...row.user, organizationName: row.orgName };
+  const userWithOrg = { ...row.user, organizationName: row.orgName, organizationDescription: row.orgDescription, organizationLogoUrl: row.orgLogoUrl };
   await cacheSet(cacheKey, userWithOrg, 120);
   return userWithOrg;
 };
@@ -105,6 +109,8 @@ const findUserByEmail = async (email: string): Promise<UserWithOrg | null> => {
     .select({
       user: users,
       orgName: organizations.name,
+      orgDescription: organizations.description,
+      orgLogoUrl: organizations.logoUrl,
     })
     .from(users)
     .leftJoin(organizations, eq(users.organizationId, organizations.id))
@@ -116,7 +122,7 @@ const findUserByEmail = async (email: string): Promise<UserWithOrg | null> => {
     return null;
   }
 
-  const userWithOrg = { ...row.user, organizationName: row.orgName };
+  const userWithOrg = { ...row.user, organizationName: row.orgName, organizationDescription: row.orgDescription, organizationLogoUrl: row.orgLogoUrl };
   await cacheSet(`user:${userWithOrg.id}`, userWithOrg, 120);
   await cacheSet(emailKey, userWithOrg.id, 120);
   return userWithOrg;

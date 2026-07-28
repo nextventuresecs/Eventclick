@@ -51,6 +51,7 @@ const toEventRoom = (row: EventRoomRow): EventRoom => ({
   latitude: row.latitude ?? null,
   longitude: row.longitude ?? null,
   activityDefinitions: row.activityDefinitions,
+  cancellationReason: row.cancellationReason ?? null,
   createdAt: row.createdAt.toISOString(),
   updatedAt: row.updatedAt.toISOString(),
 });
@@ -217,6 +218,9 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
       patch.status = input.status;
       if (input.status === "live") patch.actualStart = new Date();
       if (input.status === "ended" || input.status === "cancelled") patch.actualEnd = new Date();
+    }
+    if (input.cancellationReason !== undefined) {
+      patch.cancellationReason = input.cancellationReason;
     }
 
     const [row] = await db
