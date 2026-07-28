@@ -24,6 +24,7 @@ async function main() {
     console.log("[migrate] ensuring required extensions…");
     await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
     await client.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+    await client.query('CREATE EXTENSION IF NOT EXISTS "postgis"');
 
     console.log("[migrate] running migrations…");
     await migrate(db, { migrationsFolder: "./drizzle" });

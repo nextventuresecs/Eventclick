@@ -2,7 +2,7 @@
 services:
   # ─── PostgreSQL ───────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: postgis/postgis:16-3.4-alpine
     container_name: ${DB_NAME}_postgres
     restart: unless-stopped
     ports:

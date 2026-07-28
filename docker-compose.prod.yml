@@ -13,8 +13,8 @@
 services:
   # ─── PostgreSQL ───────────────────────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
-    container_name: Eventclick_postgres_prod
+    image: postgis/postgis:16-3.4-alpine
+    container_name: ${DB_NAME}_postgres
     restart: always
     # NOT exposed to host — only accessible within Docker network
     expose:
