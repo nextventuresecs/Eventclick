@@ -12,7 +12,7 @@
 
 The implementation correctly:
 
-- Routes access exclusively to `ngo_admin` and `event_admin` roles via the `manage_rooms` permission
+- Routes access exclusively to `admin` and `event_admin` roles via the `manage_rooms` permission
 - Prevents volunteers from accessing the page entirely (frontend + backend)
 - Uses the centralized permission system (`hasRolePermission`)
 - Maintains security through layered protection (routing + backend validation)
@@ -128,7 +128,7 @@ roomRouter.post("/", canManageRooms, validate(CreateRoomSchema), createRoom);
 ```typescript
 // packages/shared/src/index.ts
 const ROLE_PERMISSION_MAP: Record<UserRole, readonly RolePermission[]> = {
-  ngo_admin: [
+  admin: [
     "manage_rooms", // ✅ Can create rooms
     // ... other permissions
   ],
@@ -151,7 +151,7 @@ export const hasRolePermission = (
 
 **Verification:**
 
-- ✅ `ngo_admin` has `manage_rooms` → Can create rooms
+- ✅ `admin` has `manage_rooms` → Can create rooms
 - ✅ `event_admin` has `manage_rooms` → Can create rooms
 - ✅ `volunteer` does NOT have `manage_rooms` → Cannot create rooms
 - ✅ Single source of truth for all permission checks
@@ -234,7 +234,7 @@ Layer 4: SHARED PERMISSION SYSTEM
 
 | Requirement                   | Status | Implementation                            |
 | ----------------------------- | ------ | ----------------------------------------- |
-| NGO Admin can create rooms    | ✅     | manage_rooms in ngo_admin permissions     |
+| NGO Admin can create rooms    | ✅     | manage_rooms in admin permissions         |
 | Event Admin can create rooms  | ✅     | manage_rooms in event_admin permissions   |
 | Volunteer CANNOT create rooms | ✅     | manage_rooms NOT in volunteer permissions |
 | Frontend enforces access      | ✅     | PermissionRoute with manage_rooms check   |
@@ -252,11 +252,11 @@ Layer 4: SHARED PERMISSION SYSTEM
 ### Scenario 1: NGO Admin Creates Room
 
 ```
-User Role: ngo_admin
+User Role: admin
 User Permissions: [manage_rooms, manage_live_session, ...]
 
 Step 1: Navigate to /rooms/create
-  PermissionRoute checks hasRolePermission("ngo_admin", "manage_rooms")
+  PermissionRoute checks hasRolePermission("admin", "manage_rooms")
   Result: ✅ true → CreateRoom component renders
 
 Step 2: Fill form and submit

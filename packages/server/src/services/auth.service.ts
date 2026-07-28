@@ -450,7 +450,7 @@ export const completeOnboarding = async (
 
     if (input.role === "admin") {
       if (!input.organizationName) {
-        throw ApiError.badRequest("Organization name is required to become an NGO Admin");
+        throw ApiError.badRequest("Organization name is required to become an Admin");
       }
       const slug = `${slugify(input.organizationName)}-${nanoid(6).toLowerCase()}`;
       const [org] = await tx
@@ -474,7 +474,7 @@ export const completeOnboarding = async (
         role: "admin",
       });
       
-      logger.info({ userId, orgId, slug, event: "onboarding.admin" }, "user onboarded as NGO Admin");
+      logger.info({ userId, orgId, slug, event: "onboarding.admin" }, "user onboarded as Admin");
     } else {
       // Just keep/ensure they are standard volunteer
       await tx

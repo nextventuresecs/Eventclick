@@ -83,7 +83,7 @@ export const OnboardingPage = () => {
         </CardHeader>
         <CardContent className="flex flex-col gap-6 pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* NGO Admin Option */}
+            {/* Admin Option */}
             <div
               onClick={() => {
                 setRole("admin");
@@ -115,7 +115,7 @@ export const OnboardingPage = () => {
                   </svg>
                 </div>
                 <h3 className="font-bold text-foreground transition-colors group-hover:text-primary">
-                  NGO Admin
+                  Admin
                 </h3>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
@@ -167,7 +167,7 @@ export const OnboardingPage = () => {
             </div>
           </div>
 
-          {/* Conditional NGO Admin fields */}
+          {/* Conditional Admin fields */}
           {role === "admin" && (
             <div className="flex flex-col gap-2 rounded-xl border border-(--color-gray-200) bg-(--color-gray-50) p-4">
               <Label htmlFor="orgName" className="font-semibold">

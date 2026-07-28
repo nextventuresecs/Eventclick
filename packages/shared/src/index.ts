@@ -10,7 +10,7 @@ export const UserRoleSchema = z.enum(USER_ROLES);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 export const ROLE_LABELS = {
-  admin: "NGO Admin",
+  admin: "Admin",
   event_manager: "Event Admin",
   volunteer: "Volunteer",
 } as const satisfies Record<UserRole, string>;

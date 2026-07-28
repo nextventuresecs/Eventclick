@@ -9,7 +9,7 @@ const requireOrgId = (organizationId: string | null | undefined): string => {
 };
 
 /**
- * GET /admin/users — list all users in the NGO Admin's organization
+ * GET /admin/users — list all users in the Admin's organization
  */
 export const listOrgUsers: RequestHandler = async (req, res, next) => {
   try {
@@ -22,7 +22,7 @@ export const listOrgUsers: RequestHandler = async (req, res, next) => {
 };
 
 /**
- * POST /admin/users — create a new user in the NGO Admin's organization
+ * POST /admin/users — create a new user in the Admin's organization
  */
 export const createUser: RequestHandler = async (req, res, next) => {
   try {

@@ -60,7 +60,7 @@ export const CreateRoom = () => {
         <div className="space-y-3 text-center">
           <h2 className="text-2xl font-semibold">Access Limited</h2>
           <p className="text-sm text-muted-foreground">
-            Your role does not have permission to create rooms. Only NGO Admins and Event Admins can create new event rooms.
+            Your role does not have permission to create rooms. Only Admins and Event Admins can create new event rooms.
           </p>
           <Link
             to="/dashboard"

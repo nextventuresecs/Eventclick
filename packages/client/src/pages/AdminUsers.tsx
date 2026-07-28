@@ -76,7 +76,7 @@ export const AdminUsers = () => {
     return (
       <Card className="card-static">
         <CardContent className="p-6 text-sm text-(--color-gray-500)">
-          Access denied. Only NGO Admins can manage users.
+          Access denied. Only Admins can manage users.
         </CardContent>
       </Card>
     );

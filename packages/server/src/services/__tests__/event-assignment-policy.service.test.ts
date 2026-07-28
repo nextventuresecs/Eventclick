@@ -6,7 +6,7 @@ import {
 } from "../event-assignment-policy.service";
 
 describe("event assignment policy", () => {
-  it("allows only NGO admins to manage assignments", () => {
+  it("allows only admins to manage assignments", () => {
     expect(canManageAssignments("admin")).toBe(true);
     expect(canManageAssignments("event_manager")).toBe(false);
     expect(canManageAssignments("volunteer")).toBe(false);
@@ -18,7 +18,7 @@ describe("event assignment policy", () => {
     expect(canBeAssignedToEvent("admin")).toBe(false);
   });
 
-  it("enforces room scoping for event admins and volunteers, but not NGO admins", () => {
+  it("enforces room scoping for event admins and volunteers, but not admins", () => {
     expect(canAccessRoomByAssignment("event_manager", true)).toBe(true);
     expect(canAccessRoomByAssignment("event_manager", false)).toBe(false);
     expect(canAccessRoomByAssignment("volunteer", true)).toBe(true);

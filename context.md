@@ -146,7 +146,7 @@ erDiagram
 
 Shared role system mapped in `@application/shared`:
 
-- **Roles**: `ngo_admin`, `event_admin`, `volunteer`.
+- **Roles**: `admin`, `event_admin`, `volunteer`.
 - **NGO Admin**: Full control over organizations, user creation, room building, live sessions, reporting, and assignments.
 - **Event Admin**: Create volunteers, build custom forms, start live streams, trigger recordings, view room assignments, and capture reports.
 - **Volunteer**: Live viewing, room link sharing, taking attendance submissions.

@@ -27,7 +27,7 @@ export const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Organization settings (NGO Admin)
+  // Organization settings (Admin)
   const [orgName, setOrgName] = useState(user?.organizationName || "");
   const [savingOrg, setSavingOrg] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
@@ -140,7 +140,7 @@ export const Settings = () => {
 
       {/* Grid Layout */}
       <div className="space-y-6">
-        {/* Organization Settings (NGO Admin) */}
+        {/* Organization Settings (Admin) */}
         {isAdmin && (
           <Card className="card-static rounded-2xl border-purple-100">
             <CardContent className="p-6 space-y-5">

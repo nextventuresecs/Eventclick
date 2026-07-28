@@ -4,7 +4,7 @@
 **Auditor**: Project Orchestrator & Multi-Stream Static Analysis Team  
 **Repository**: `C:\Users\jagta\.gemini\antigravity\worktrees\application\audit-production-codebase-review`  
 **Integrity Mode**: Development / Pre-Production Review  
-**Target Scale**: High-Concurrency Multi-Tenant Enterprise Production  
+**Target Scale**: High-Concurrency Multi-Tenant Enterprise Production
 
 ---
 
@@ -16,16 +16,17 @@ Every single file in the repository—including all 20 server service modules, 9
 
 ### Production Readiness Verdict & Score
 
-| Metric | Verdict / Score |
-|---|---|
-| **Production Deployment Verdict** | **NO GO** |
-| **Overall Production Readiness Score** | **42 / 100** |
+| Metric                                 | Verdict / Score |
+| -------------------------------------- | --------------- |
+| **Production Deployment Verdict**      | **NO GO**       |
+| **Overall Production Readiness Score** | **42 / 100**    |
 
 #### Verdict Justification
+
 The application is rated **NO GO** for tomorrow's production launch. While the codebase exhibits modern architecture, strong TypeScript typing, Drizzle ORM usage, and clean modular component design, multiple **CRITICAL** and **HIGH** severity blockers prevent safe production deployment:
 
 1. **Security Vulnerability (CRITICAL)**: Active, live production third-party API credentials (`RESEND_API_KEY`), live AWS SQS Queue URLs, and production JWT secret strings are hardcoded and committed directly in the workspace `.env` file.
-2. **Tenant Isolation Gap (HIGH/CRITICAL)**: Multi-tenant child tables (`attendance_entries`, `form_definitions`, `activity_submissions`, `activity_photos`, `room_recordings`) lack an `organization_id` column and PostgreSQL Row Level Security (RLS). Furthermore, server controllers (`getActiveRecording`, `startRoomRecording`, `stopRoomRecording`) bypass organization checks and soft-delete filters for `ngo_admin` users, allowing cross-tenant video recording manipulation and metadata access.
+2. **Tenant Isolation Gap (HIGH/CRITICAL)**: Multi-tenant child tables (`attendance_entries`, `form_definitions`, `activity_submissions`, `activity_photos`, `room_recordings`) lack an `organization_id` column and PostgreSQL Row Level Security (RLS). Furthermore, server controllers (`getActiveRecording`, `startRoomRecording`, `stopRoomRecording`) bypass organization checks and soft-delete filters for `admin` users, allowing cross-tenant video recording manipulation and metadata access.
 3. **Queue & Job Disconnect (HIGH)**: The PDF export endpoint enqueues PDF generation jobs to SQS and returns HTTP `202 Accepted` when `SQS_QUEUE_URL` is set, but **zero background SQS consumer worker processes exist** in the repository to process PDF jobs. Conversely, omitting `SQS_QUEUE_URL` causes Gotenberg PDF generation to execute synchronously, locking the Express HTTP thread under load.
 4. **Database & Data Corruption (HIGH)**: The `users` database schema omits a `photo_url` column, causing profile picture updates (`photoUrl`) sent from the shared schema and frontend to drop silently. Additionally, key foreign keys (`submitted_by`, `invited_by`, `assigned_by`) lack database B-tree indexes, risking table locks and sequential scans during cascading user deletions.
 5. **Testing Deficit (CRITICAL)**: Zero automated unit, integration, or E2E tests exist for the client or shared packages. Server test coverage is restricted to 11 isolated unit helper files, leaving 100% of Express controllers, middleware, and database operations completely unverified by automated testing.
@@ -53,6 +54,7 @@ graph TD
 ## Phase 1 — Project Architecture Summary
 
 Eventclick is structured as a Turborepo monorepo with 3 primary npm packages:
+
 - **`packages/server`**: Express 5 backend with Drizzle ORM, PostgreSQL 16, Redis 7, SQS, LiveKit SDK, MinIO S3 SDK, Pino logging, Zod validation, and Gotenberg PDF client.
 - **`packages/client`**: React 19 SPA built with Vite, Tailwind CSS v4, Lucide React icons, Radix UI primitives, React Router v6, and LiveKit React WebRTC components.
 - **`packages/shared`** (`@application/shared`): Uncompiled TypeScript package providing Zod validation schemas, API route contracts, and TypeScript interface definitions shared directly via monorepo source imports.
@@ -90,8 +92,8 @@ All 23 client page files (`Dashboard`, `Rooms`, `CreateRoom`, `RoomLive`, `RoomW
 All 20 server service files and 9 controller files were inspected:
 
 - **Tenant Access Bypass in `getActiveRecording`**: `packages/server/src/controllers/room.controller.ts:460-484` queries `roomRecordings` by `roomId` alone without checking parent room organization ownership or soft-delete status.
-- **Tenant Access Bypass in LiveKit Recording Start/Stop**: `room.controller.ts:420-447` calls `assertRoomAccessWithRoom`, which explicitly returns early for `ngo_admin` users without verifying room-to-org ownership.
-- **Orphaned Organization Risk**: `packages/server/src/services/admin.service.ts:113-190` permits an `ngo_admin` user to self-delete their account without checking if they are the sole active administrator of their organization.
+- **Tenant Access Bypass in LiveKit Recording Start/Stop**: `room.controller.ts:420-447` calls `assertRoomAccessWithRoom`, which explicitly returns early for `admin` users without verifying room-to-org ownership.
+- **Orphaned Organization Risk**: `packages/server/src/services/admin.service.ts:113-190` permits an `admin` user to self-delete their account without checking if they are the sole active administrator of their organization.
 
 ---
 
@@ -161,43 +163,43 @@ All 20 server service files and 9 controller files were inspected:
 
 # Detailed Audit Findings Table
 
-| # | Severity | Category | File (Line Range) | Function / Component | Problem Summary | Suggested Remediation |
-|---|---|---|---|---|---|---|
-| 1 | **CRITICAL** | Security | `.env` (17, 24, 60, 80) | Configuration | Live Resend API keys, AWS SQS URL, and JWT secrets committed in repository `.env` | Immediately revoke keys; sanitize `.env`; add `.env` to `.gitignore`. |
-| 2 | **CRITICAL** | Testing | `packages/server/vitest.config.ts`, workspace package.json | Test Suite | 0 tests in client/shared; server has 0 controller, middleware, or API integration tests | Configure Vitest across workspace; add API integration test suite. |
-| 3 | **HIGH** | Security / Multi-Tenancy | `packages/server/src/controllers/room.controller.ts` (460-484) | `getActiveRecording` | `getActiveRecording` queries `roomRecordings` by `roomId` without checking room organization ownership | Enforce `requireRoomInOrg(id, orgId)` before returning recording metadata. |
-| 4 | **HIGH** | Security / Multi-Tenancy | `packages/server/src/controllers/room.controller.ts` (420-447) | `startRoomRecording` | LiveKit recording controls use `assertRoomAccessWithRoom` which bypasses org checks for `ngo_admin` | Replace with `assertRoomAccessForUser` to validate room org ownership. |
-| 5 | **HIGH** | Queues / Async | `packages/server/src/controllers/report.controller.ts` (23-26) | `downloadRoomReportPdf` | Enqueues PDF jobs to SQS when set, but 0 consumer worker processes exist to process jobs | Implement SQS PDF consumer worker or enforce sync generation fallback. |
-| 6 | **HIGH** | Database | `packages/server/src/db/schema/users.ts` (9-21) | `users` schema | Schema omits `photo_url` column, dropping profile photo updates sent by client | Add `photoUrl: text("photo_url")` to `users.ts` schema and generate migration. |
-| 7 | **HIGH** | Database | `packages/server/src/db/schema/attendanceEntries.ts` (26) | Foreign Keys | FK columns (`submitted_by`, `invited_by`, `assigned_by`) lack B-tree database indexes | Add index definitions for all foreign key columns in schema files. |
-| 8 | **HIGH** | Security / State | `packages/client/src/App.tsx` (77-86) | `ProtectedRoute` | Route protection uses `localStorage` key to gate onboarding, allowing easy client bypass | Drive onboarding gate strictly from backend `user.organizationId` state. |
-| 9 | **HIGH** | Performance | `packages/server/src/controllers/report.controller.ts` (23-36) | `downloadRoomReportPdf` | Synchronous PDF generation via Gotenberg blocks Express HTTP thread when SQS is unset | Enforce async queue rendering with timeouts and concurrency limits. |
-| 10 | **HIGH** | DevOps | `scripts/backup-db.sh` (63-84) | Backup Script | Backup script silently skips S3/R2 upload if AWS CLI is missing without failing | Fail backup job explicitly if AWS CLI or cloud upload succeeds. |
-| 11 | **MEDIUM** | Security | `packages/server/src/routes/share.routes.ts` (11) | `getShareLiveToken` | `POST /share/:token/live-token` accepts body without Zod validation middleware | Apply `validate(ShareLiveTokenSchema)` middleware to route. |
-| 12 | **MEDIUM** | Multi-Tenancy | `packages/server/src/services/admin.service.ts` (113-190) | `deleteUserAccount` | Sole `ngo_admin` can self-delete account, leaving organization orphaned | Block self-deletion if user is the sole active `ngo_admin` in org. |
-| 13 | **MEDIUM** | Performance | `packages/client/src/App.tsx` (11-35) | `createBrowserRouter` | Statically imports all 23 page components, increasing initial bundle size | Refactor routes to use `React.lazy()` dynamic imports and `<Suspense>`. |
-| 14 | **MEDIUM** | Security | `packages/client/src/pages/AttendanceRecords.tsx` | CSV Export | Export data does not sanitize formula triggers (`=`, `+`, `-`, `@`) | Prefix formula characters with `'` before rendering CSV output. |
-| 15 | **MEDIUM** | Database | `packages/server/src/db/migrate.ts` (21-23) | `migrate` | Migration execution lacks `pg_advisory_lock` to prevent concurrent startup races | Wrap Drizzle `migrate()` in a PostgreSQL advisory lock. |
-| 16 | **MEDIUM** | API Contracts | `packages/shared/src/index.ts` (215-230) | `CreateRoomSchema` | Schema validates datetime format but fails to enforce `scheduledEnd > scheduledStart` | Add `.refine()` validation to `CreateRoomSchema`. |
-| 17 | **MEDIUM** | DevOps | `docker-compose.prod.yml` (173-276) | Docker Production | Containers lack `read_only` root filesystems and `no-new-privileges:true` options | Harden Compose services with security options and non-root users. |
-| 18 | **MEDIUM** | SaaS Readiness | Monorepo-wide | SaaS Architecture | Complete absence of billing, usage limits/quotas, audit logs, and GDPR export endpoints | Implement subscription schemas, quota middleware, and audit logs. |
-| 19 | **LOW** | Reliability | `packages/server/src/index.ts` (129) | `shutdown` | `disconnectRedis()` is invoked before `server.close()`, causing shutdown errors | Reorder shutdown: call `server.close()` before `disconnectRedis()`. |
-| 20 | **LOW** | Code Quality | `packages/client/src/pages/AttendanceRecords.tsx` (73) | Component Catch Blocks | Direct `console.error` calls bypass `clientLog` centralized error shipping | Replace raw `console` calls with `clientLog` logger methods. |
+| #   | Severity     | Category                 | File (Line Range)                                              | Function / Component    | Problem Summary                                                                                        | Suggested Remediation                                                          |
+| --- | ------------ | ------------------------ | -------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| 1   | **CRITICAL** | Security                 | `.env` (17, 24, 60, 80)                                        | Configuration           | Live Resend API keys, AWS SQS URL, and JWT secrets committed in repository `.env`                      | Immediately revoke keys; sanitize `.env`; add `.env` to `.gitignore`.          |
+| 2   | **CRITICAL** | Testing                  | `packages/server/vitest.config.ts`, workspace package.json     | Test Suite              | 0 tests in client/shared; server has 0 controller, middleware, or API integration tests                | Configure Vitest across workspace; add API integration test suite.             |
+| 3   | **HIGH**     | Security / Multi-Tenancy | `packages/server/src/controllers/room.controller.ts` (460-484) | `getActiveRecording`    | `getActiveRecording` queries `roomRecordings` by `roomId` without checking room organization ownership | Enforce `requireRoomInOrg(id, orgId)` before returning recording metadata.     |
+| 4   | **HIGH**     | Security / Multi-Tenancy | `packages/server/src/controllers/room.controller.ts` (420-447) | `startRoomRecording`    | LiveKit recording controls use `assertRoomAccessWithRoom` which bypasses org checks for `admin`        | Replace with `assertRoomAccessForUser` to validate room org ownership.         |
+| 5   | **HIGH**     | Queues / Async           | `packages/server/src/controllers/report.controller.ts` (23-26) | `downloadRoomReportPdf` | Enqueues PDF jobs to SQS when set, but 0 consumer worker processes exist to process jobs               | Implement SQS PDF consumer worker or enforce sync generation fallback.         |
+| 6   | **HIGH**     | Database                 | `packages/server/src/db/schema/users.ts` (9-21)                | `users` schema          | Schema omits `photo_url` column, dropping profile photo updates sent by client                         | Add `photoUrl: text("photo_url")` to `users.ts` schema and generate migration. |
+| 7   | **HIGH**     | Database                 | `packages/server/src/db/schema/attendanceEntries.ts` (26)      | Foreign Keys            | FK columns (`submitted_by`, `invited_by`, `assigned_by`) lack B-tree database indexes                  | Add index definitions for all foreign key columns in schema files.             |
+| 8   | **HIGH**     | Security / State         | `packages/client/src/App.tsx` (77-86)                          | `ProtectedRoute`        | Route protection uses `localStorage` key to gate onboarding, allowing easy client bypass               | Drive onboarding gate strictly from backend `user.organizationId` state.       |
+| 9   | **HIGH**     | Performance              | `packages/server/src/controllers/report.controller.ts` (23-36) | `downloadRoomReportPdf` | Synchronous PDF generation via Gotenberg blocks Express HTTP thread when SQS is unset                  | Enforce async queue rendering with timeouts and concurrency limits.            |
+| 10  | **HIGH**     | DevOps                   | `scripts/backup-db.sh` (63-84)                                 | Backup Script           | Backup script silently skips S3/R2 upload if AWS CLI is missing without failing                        | Fail backup job explicitly if AWS CLI or cloud upload succeeds.                |
+| 11  | **MEDIUM**   | Security                 | `packages/server/src/routes/share.routes.ts` (11)              | `getShareLiveToken`     | `POST /share/:token/live-token` accepts body without Zod validation middleware                         | Apply `validate(ShareLiveTokenSchema)` middleware to route.                    |
+| 12  | **MEDIUM**   | Multi-Tenancy            | `packages/server/src/services/admin.service.ts` (113-190)      | `deleteUserAccount`     | Sole `admin` can self-delete account, leaving organization orphaned                                    | Block self-deletion if user is the sole active `admin` in org.                 |
+| 13  | **MEDIUM**   | Performance              | `packages/client/src/App.tsx` (11-35)                          | `createBrowserRouter`   | Statically imports all 23 page components, increasing initial bundle size                              | Refactor routes to use `React.lazy()` dynamic imports and `<Suspense>`.        |
+| 14  | **MEDIUM**   | Security                 | `packages/client/src/pages/AttendanceRecords.tsx`              | CSV Export              | Export data does not sanitize formula triggers (`=`, `+`, `-`, `@`)                                    | Prefix formula characters with `'` before rendering CSV output.                |
+| 15  | **MEDIUM**   | Database                 | `packages/server/src/db/migrate.ts` (21-23)                    | `migrate`               | Migration execution lacks `pg_advisory_lock` to prevent concurrent startup races                       | Wrap Drizzle `migrate()` in a PostgreSQL advisory lock.                        |
+| 16  | **MEDIUM**   | API Contracts            | `packages/shared/src/index.ts` (215-230)                       | `CreateRoomSchema`      | Schema validates datetime format but fails to enforce `scheduledEnd > scheduledStart`                  | Add `.refine()` validation to `CreateRoomSchema`.                              |
+| 17  | **MEDIUM**   | DevOps                   | `docker-compose.prod.yml` (173-276)                            | Docker Production       | Containers lack `read_only` root filesystems and `no-new-privileges:true` options                      | Harden Compose services with security options and non-root users.              |
+| 18  | **MEDIUM**   | SaaS Readiness           | Monorepo-wide                                                  | SaaS Architecture       | Complete absence of billing, usage limits/quotas, audit logs, and GDPR export endpoints                | Implement subscription schemas, quota middleware, and audit logs.              |
+| 19  | **LOW**      | Reliability              | `packages/server/src/index.ts` (129)                           | `shutdown`              | `disconnectRedis()` is invoked before `server.close()`, causing shutdown errors                        | Reorder shutdown: call `server.close()` before `disconnectRedis()`.            |
+| 20  | **LOW**      | Code Quality             | `packages/client/src/pages/AttendanceRecords.tsx` (73)         | Component Catch Blocks  | Direct `console.error` calls bypass `clientLog` centralized error shipping                             | Replace raw `console` calls with `clientLog` logger methods.                   |
 
 ---
 
 # Mandatory Production Checklist
 
-| Category | Requirement | Verified Status |
-|---|---|:---:|
-| **Credentials & Secrets** | All production secrets managed via secret vault (SSM/Vault), not git repo `.env` | ❌ FAIL |
-| **Multi-Tenancy** | Child tables contain tenant IDs or DB RLS; API endpoints enforce org context | ❌ FAIL |
-| **Background Queues** | Async queue workers (SQS) active and processing background PDF jobs | ❌ FAIL |
-| **Database Reliability** | DB foreign keys indexed; schema matches shared DTOs; advisory locks on migration | ❌ FAIL |
-| **Testing Coverage** | Automated integration test suite validating Express routes and client pages | ❌ FAIL |
-| **Infrastructure Hardening** | Docker containers run non-root with read-only root filesystems and security opts | ❌ FAIL |
-| **Alerting & Backups** | Cloud S3 backups verified; real-time failure alerts enabled in health monitor | ❌ FAIL |
-| **Frontend Optimization** | Route-level code splitting enabled; secure auth state handling | ❌ FAIL |
+| Category                     | Requirement                                                                      | Verified Status |
+| ---------------------------- | -------------------------------------------------------------------------------- | :-------------: |
+| **Credentials & Secrets**    | All production secrets managed via secret vault (SSM/Vault), not git repo `.env` |     ❌ FAIL     |
+| **Multi-Tenancy**            | Child tables contain tenant IDs or DB RLS; API endpoints enforce org context     |     ❌ FAIL     |
+| **Background Queues**        | Async queue workers (SQS) active and processing background PDF jobs              |     ❌ FAIL     |
+| **Database Reliability**     | DB foreign keys indexed; schema matches shared DTOs; advisory locks on migration |     ❌ FAIL     |
+| **Testing Coverage**         | Automated integration test suite validating Express routes and client pages      |     ❌ FAIL     |
+| **Infrastructure Hardening** | Docker containers run non-root with read-only root filesystems and security opts |     ❌ FAIL     |
+| **Alerting & Backups**       | Cloud S3 backups verified; real-time failure alerts enabled in health monitor    |     ❌ FAIL     |
+| **Frontend Optimization**    | Route-level code splitting enabled; secure auth state handling                   |     ❌ FAIL     |
 
 ---
 
