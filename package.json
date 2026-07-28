@@ -21,5 +21,8 @@
   "type": "commonjs",
   "devDependencies": {
     "turbo": "^2.9.6"
+  },
+  "dependencies": {
+    "nanoid": "^6.0.0"
   }
 }
