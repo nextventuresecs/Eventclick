@@ -12,7 +12,7 @@ import { db } from "../../db";
 import { users, organizations, orgMembers, emailVerifications } from "../../db/schema";
 import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
-import { hashPassword } from "../password.service";
+import argon2 from "argon2";
 import { enqueueEmail } from "../../queues/sqs.client";
 import { type SessionMeta } from "../session.service";
 import { TOKEN_EXPIRY_24H_MS } from "../../config/constants";
@@ -57,7 +57,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
     throw ApiError.conflict("An account with this email already exists");
   }
 
-  const passwordHash = await hashPassword(input.password);
+  const passwordHash = await argon2.hash(input.password);
 
   const { user: created, verificationToken } = await db.transaction(async (tx) => {
     let orgId: string | null = null;

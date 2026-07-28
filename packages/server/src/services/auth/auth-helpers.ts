@@ -4,7 +4,7 @@ import { db } from "../../db";
 import { users, organizations, type User } from "../../db/schema";
 import { signAccessToken } from "../jwt.service";
 import { issueRefreshToken, type SessionMeta } from "../session.service";
-import { cacheGet, cacheSet, cacheDel } from "../cache.service";
+import { redisClient } from "../../config/redis";
 import { CACHE_TTL_USER, CACHE_TTL_NULL_USER } from "../../config/constants";
 
 export const slugify = (name: string): string =>
@@ -41,15 +41,28 @@ export type UserWithOrg = User & {
 };
 
 export const invalidateUserCache = async (userId: string, email?: string): Promise<void> => {
-  await cacheDel(`user:${userId}`);
+  if (!redisClient.isOpen) return;
+  await redisClient.del(`user:${userId}`);
   if (email) {
-    await cacheDel(`email:${email.toLowerCase().trim()}`);
+    await redisClient.del(`email:${email.toLowerCase().trim()}`);
   }
 };
 
 export const findUserById = async (id: string): Promise<UserWithOrg | null> => {
   const cacheKey = `user:${id}`;
-  const cached = await cacheGet<UserWithOrg | string>(cacheKey);
+  let cached: any = null;
+  
+  if (redisClient.isOpen) {
+    const rawCache = await redisClient.get(cacheKey);
+    if (rawCache) {
+      try {
+        cached = JSON.parse(rawCache);
+      } catch {
+        cached = rawCache;
+      }
+    }
+  }
+
   if (cached !== null) {
     if (cached === "__null__") return null;
     if (typeof cached === "object") {
@@ -57,7 +70,7 @@ export const findUserById = async (id: string): Promise<UserWithOrg | null> => {
       if (cached.updatedAt) cached.updatedAt = new Date(cached.updatedAt);
       if (cached.emailVerifiedAt) cached.emailVerifiedAt = new Date(cached.emailVerifiedAt);
       if (cached.lastLoginAt) cached.lastLoginAt = new Date(cached.lastLoginAt);
-      return cached;
+      return cached as UserWithOrg;
     }
   }
 
@@ -74,7 +87,7 @@ export const findUserById = async (id: string): Promise<UserWithOrg | null> => {
     .limit(1);
 
   if (!row) {
-    await cacheSet(cacheKey, "__null__", CACHE_TTL_NULL_USER);
+    if (redisClient.isOpen) await redisClient.setEx(cacheKey, CACHE_TTL_NULL_USER, "__null__");
     return null;
   }
 
@@ -84,13 +97,18 @@ export const findUserById = async (id: string): Promise<UserWithOrg | null> => {
     organizationDescription: row.orgDescription,
     organizationLogoUrl: row.orgLogoUrl,
   };
-  await cacheSet(cacheKey, userWithOrg, CACHE_TTL_USER);
+  if (redisClient.isOpen) await redisClient.setEx(cacheKey, CACHE_TTL_USER, JSON.stringify(userWithOrg));
   return userWithOrg;
 };
 
 export const findUserByEmail = async (email: string): Promise<UserWithOrg | null> => {
   const emailKey = `email:${email.toLowerCase().trim()}`;
-  const cachedUserId = await cacheGet<string>(emailKey);
+  let cachedUserId: string | null = null;
+  
+  if (redisClient.isOpen) {
+    cachedUserId = await redisClient.get(emailKey);
+  }
+
   if (cachedUserId) {
     if (cachedUserId === "__null__") return null;
     const user = await findUserById(cachedUserId);
@@ -110,7 +128,7 @@ export const findUserByEmail = async (email: string): Promise<UserWithOrg | null
     .limit(1);
 
   if (!row) {
-    await cacheSet(emailKey, "__null__", CACHE_TTL_NULL_USER);
+    if (redisClient.isOpen) await redisClient.setEx(emailKey, CACHE_TTL_NULL_USER, "__null__");
     return null;
   }
 
@@ -120,8 +138,10 @@ export const findUserByEmail = async (email: string): Promise<UserWithOrg | null
     organizationDescription: row.orgDescription,
     organizationLogoUrl: row.orgLogoUrl,
   };
-  await cacheSet(`user:${userWithOrg.id}`, userWithOrg, CACHE_TTL_USER);
-  await cacheSet(emailKey, userWithOrg.id, CACHE_TTL_USER);
+  if (redisClient.isOpen) {
+    await redisClient.setEx(`user:${userWithOrg.id}`, CACHE_TTL_USER, JSON.stringify(userWithOrg));
+    await redisClient.setEx(emailKey, CACHE_TTL_USER, userWithOrg.id);
+  }
   return userWithOrg;
 };
 

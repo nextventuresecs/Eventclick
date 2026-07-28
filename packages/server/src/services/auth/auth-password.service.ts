@@ -5,7 +5,7 @@ import { db } from "../../db";
 import { users, passwordResets } from "../../db/schema";
 import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
-import { hashPassword, verifyPassword } from "../password.service";
+import argon2 from "argon2";
 import { enqueueEmail } from "../../queues/sqs.client";
 import { revokeAllUserSessions } from "../session.service";
 import { findUserByEmail, invalidateUserCache } from "./auth-helpers";
@@ -15,7 +15,7 @@ export const forgotPassword = async (email: string): Promise<void> => {
   const user = await findUserByEmail(email);
   if (!user) {
     // Dummy hash to prevent timing attack enumeration
-    await hashPassword(crypto.randomBytes(32).toString("hex"));
+    await argon2.hash(crypto.randomBytes(32).toString("hex"));
     logger.warn({ email, event: "password_reset.request_failed" }, "reset request for non-existent email (ignored to prevent enumeration)");
     return;
   }
@@ -63,7 +63,7 @@ export const resetPassword = async (token: string, newPassword: string): Promise
     throw ApiError.badRequest("Invalid or expired reset token");
   }
 
-  const passwordHash = await hashPassword(newPassword);
+  const passwordHash = await argon2.hash(newPassword);
 
   await db.transaction(async (tx) => {
     // Mark token as used
@@ -95,7 +95,7 @@ export const changeUserPassword = async (
   if (!userRow) throw ApiError.notFound("User not found");
   if (!userRow.passwordHash) throw ApiError.badRequest("User does not use password authentication");
 
-  const isValid = await verifyPassword(currentPasswordPlain, userRow.passwordHash);
+  const isValid = await argon2.verify(userRow.passwordHash, currentPasswordPlain);
   if (!isValid) throw ApiError.unauthorized("Incorrect current password");
 
   const pwdScore = zxcvbn(newPasswordPlain);
@@ -103,7 +103,7 @@ export const changeUserPassword = async (
     throw ApiError.badRequest(`Password is too weak. ${pwdScore.feedback.warning || "Please choose a stronger password."}`);
   }
 
-  const newPasswordHash = await hashPassword(newPasswordPlain);
+  const newPasswordHash = await argon2.hash(newPasswordPlain);
 
   await db.update(users).set({ passwordHash: newPasswordHash, updatedAt: new Date() }).where(eq(users.id, userId));
 

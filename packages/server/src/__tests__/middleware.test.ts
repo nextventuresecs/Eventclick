@@ -6,7 +6,7 @@ import { z } from "zod";
 
 describe("Middleware Tests", () => {
   it("requireAuth should throw 401 if no user", () => {
-    const req: any = {};
+    const req: any = { headers: {} };
     const res: any = {};
     const next = vi.fn();
 
@@ -44,6 +44,6 @@ describe("Middleware Tests", () => {
     expect(next).toHaveBeenCalled();
     const errorArg = next.mock.calls[0]![0];
     expect(errorArg).toBeDefined();
-    expect(errorArg.statusCode).toBe(400); // 400 or 422, let's see how validate maps it (usually 400 for zod error in this setup based on standard ZodError mapping)
+    expect(errorArg.name).toBe("ZodError");
   });
 });

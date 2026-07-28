@@ -12,10 +12,12 @@ vi.mock("../../queues/sqs.client", () => ({
   enqueueEmail: (...args: any[]) => mockEnqueueEmail(...args),
 }));
 
-// Mock password service
-vi.mock("../password.service", () => ({
-  hashPassword: vi.fn().mockResolvedValue("hashed_new_password"),
-  verifyPassword: vi.fn().mockResolvedValue(true),
+// Mock argon2
+vi.mock("argon2", () => ({
+  default: {
+    hash: vi.fn().mockResolvedValue("hashed_new_password"),
+    verify: vi.fn().mockResolvedValue(true),
+  }
 }));
 
 // Mock session service

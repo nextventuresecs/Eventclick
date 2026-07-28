@@ -4,17 +4,21 @@ import { db } from "../db";
 import { eventRooms } from "../db/schema";
 import { ApiError } from "../utils/errors";
 import { streamingService } from "./streaming";
-import { cacheGet, cacheSet } from "./cache.service";
+import { redisClient } from "../config/redis";
 
 const countParticipants = async (roomId: string): Promise<number> => {
   const cacheKey = `presence:${roomId}`;
-  const cached = await cacheGet<number>(cacheKey);
-  if (cached !== null) {
-    return cached;
+  if (redisClient.isOpen) {
+    const cached = await redisClient.get(cacheKey);
+    if (cached !== null) {
+      return parseInt(cached, 10);
+    }
   }
 
   const count = await streamingService.getParticipantCount(roomId);
-  await cacheSet(cacheKey, count, 10);
+  if (redisClient.isOpen) {
+    await redisClient.setEx(cacheKey, 10, count.toString());
+  }
   return count;
 };
 

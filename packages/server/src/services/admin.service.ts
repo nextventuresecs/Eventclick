@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { CreateOrgUserInput, OrgUserSummary, UserRole } from "@application/shared";
 import crypto from "crypto";
-import { hashPassword } from "./password.service";
+import argon2 from "argon2";
 import { invalidateUserCache } from "./auth";
 import { db } from "../db";
 import { users, orgMembers, emailVerifications } from "../db/schema";
@@ -54,7 +54,7 @@ export const createOrgUser = async (
     throw ApiError.conflict("A user with this email already exists");
   }
 
-  const passwordHash = await hashPassword(password);
+  const passwordHash = await argon2.hash(password);
 
   const { user: newUser, token } = await db.transaction(async (tx) => {
     const [user] = await tx

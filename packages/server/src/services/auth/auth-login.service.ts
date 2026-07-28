@@ -4,7 +4,7 @@ import { db } from "../../db";
 import { users } from "../../db/schema";
 import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
-import { verifyPassword } from "../password.service";
+import argon2 from "argon2";
 import { verifyGoogleIdToken } from "../google.service";
 import {
   findActiveSessionByToken,
@@ -39,7 +39,7 @@ export const loginUser = async (input: LoginInput, meta: SessionMeta): Promise<A
     throw ApiError.forbidden("Please verify your email address before logging in.");
   }
 
-  const ok = await verifyPassword(input.password, user.passwordHash);
+  const ok = await argon2.verify(user.passwordHash, input.password);
   if (!ok) {
     logger.warn(
       { userId: user.id, email: input.email, event: "login.failed", reason: "bad_password" },

@@ -21,11 +21,26 @@ vi.mock("../db", () => ({
   },
 }));
 
+vi.mock("@sentry/node", () => ({
+  init: vi.fn(),
+  setupExpressErrorHandler: vi.fn(),
+}));
+
 vi.mock("../config/redis", () => ({
   redisClient: {
     set: vi.fn(),
     get: vi.fn(),
     del: vi.fn(),
+    sendCommand: vi.fn().mockImplementation(async (args: any[]) => {
+      if (args[0] === "SCRIPT" && args[1] === "LOAD") return "dummy_sha";
+      return 1;
+    }),
+    duplicate: vi.fn().mockReturnValue({
+      connect: vi.fn(),
+      subscribe: vi.fn(),
+      publish: vi.fn(),
+      on: vi.fn(),
+    }),
     isOpen: true,
   },
   connectRedis: vi.fn(),
