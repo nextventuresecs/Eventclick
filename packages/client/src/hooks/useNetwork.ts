@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { db } from "../lib/db";
 import { api } from "../lib/api";
 
 export function useNetwork() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isSyncing, setIsSyncing] = useState(false);
+  const syncLock = useRef(false);
 
   const syncOfflineData = useCallback(async () => {
-    if (!navigator.onLine || isSyncing) return;
+    if (!navigator.onLine || syncLock.current) return;
+    syncLock.current = true;
     setIsSyncing(true);
 
     try {
@@ -46,9 +48,10 @@ export function useNetwork() {
         }
       }
     } finally {
+      syncLock.current = false;
       setIsSyncing(false);
     }
-  }, [isSyncing]);
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => {

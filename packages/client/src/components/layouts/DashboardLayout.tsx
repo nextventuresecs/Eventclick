@@ -440,7 +440,7 @@ export const DashboardLayout = () => {
                 <span>/</span>
                 <span className="text-purple-700 font-medium truncate">{user?.organizationName || "Organization"}</span>
               </div>
-              <h1 className="text-base md:text-lg font-bold font-display text-gray-900 leading-tight tracking-tight truncate flex items-center gap-2">
+              <h1 className="text-base md:text-lg font-extrabold font-display text-gray-900 leading-tight tracking-tight truncate flex items-center gap-2">
                 {pageTitle}
                 <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
