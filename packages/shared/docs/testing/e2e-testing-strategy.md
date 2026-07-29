@@ -2,14 +2,14 @@
 
 ## 1. Executive Summary & Strategy Overview
 
-Eventclick is a real-time NGO transparency and verification platform for monitoring live fieldwork, verifying attendance, and ensuring donor accountability. This document outlines the end-to-end (E2E) testing strategy for Eventclick across its Express backend, React frontend, and PostgreSQL database. The strategy covers UI, API, performance, and security testing, detailing the toolchain, test data management, responsibilities, and CI/CD pipelines.
+Eventclick is a real-time Org transparency and verification platform for monitoring live fieldwork, verifying attendance, and ensuring donor accountability. This document outlines the end-to-end (E2E) testing strategy for Eventclick across its Express backend, React frontend, and PostgreSQL database. The strategy covers UI, API, performance, and security testing, detailing the toolchain, test data management, responsibilities, and CI/CD pipelines.
 
 The primary objectives are to:
 
 - Establish a robust QA pipeline that validates multi-tenant organization boundaries.
 - Ensure high-performance and real-time reliability under peak load conditions.
 - Prevent security vulnerabilities such as IDOR, data leakage, and SQL injection.
-- Ensure no mock or test data pollutes production audits or active NGO workloads.
+- Ensure no mock or test data pollutes production audits or active Org workloads.
 
 ---
 
@@ -29,7 +29,7 @@ To prevent pollution of the client runtime workspace, E2E tests are organized in
   - Defines parallel execution, worker limits, retries, and HTML reports.
 
 - **Shared Authentication State (`storageState`)**:
-  - Logging in through the UI for every test file degrades suite performance. We implement a global authentication setup (`packages/e2e/tests/auth.setup.ts`) that logs in once per role (e.g., `ngo_admin`, `volunteer`) and serializes state (cookies and localStorage) to disk (`packages/e2e/.auth/`).
+  - Logging in through the UI for every test file degrades suite performance. We implement a global authentication setup (`packages/e2e/tests/auth.setup.ts`) that logs in once per role (e.g., `Org_admin`, `volunteer`) and serializes state (cookies and localStorage) to disk (`packages/e2e/.auth/`).
   - Individual test suites load the pre-authenticated states dynamically using `test.use({ storageState: ... })`.
 
 - **Page Object Model (POM) Design**:
@@ -142,7 +142,7 @@ To prevent test and load data from polluting donor-visible reports, a strict dat
 ### 3.1 Database (Postgres) Partitioning
 
 - **Staging / CI**: Tests run against a dedicated ephemeral database container or RDS test schema. Complete schema teardown and restart is executed after each run.
-- **Production**: A dedicated QA organization tenant is seeded with a permanent, immutable UUID: `ffffffff-ffff-ffff-ffff-ffffffffffff`. Test users belong exclusively to this tenant. Because of multi-tenant query controls (`where(eq(eventRooms.organizationId, orgId))`), test operations are logically isolated from real NGO records.
+- **Production**: A dedicated QA organization tenant is seeded with a permanent, immutable UUID: `ffffffff-ffff-ffff-ffff-ffffffffffff`. Test users belong exclusively to this tenant. Because of multi-tenant query controls (`where(eq(eventRooms.organizationId, orgId))`), test operations are logically isolated from real Org records.
 - **Cleanup Sweeper Daemon**: A background worker (BullMQ or AWS ECS Task Cron) runs daily in production, querying records associated with the QA tenant UUID, and executing hard-deletes.
 
 ### 3.2 Cache & Queue (Redis) Isolation
@@ -175,18 +175,18 @@ To prevent test and load data from polluting donor-visible reports, a strict dat
 
 ## 4. Detailed Outlines of Critical User Journeys
 
-### Journey 1: NGO Registration & Onboarding
+### Journey 1: Org Registration & Onboarding
 
-**Goal**: Verify a new NGO can create an account, verify their email address, and complete organization onboarding.
+**Goal**: Verify a new Org can create an account, verify their email address, and complete organization onboarding.
 
 - **Setup Steps**:
-  1. Ensure the email address `test-ngo-admin@eventclick.org` is not registered in the database.
+  1. Ensure the email address `test-Org-admin@eventclick.org` is not registered in the database.
   2. Mock the outbound email handler/queue to trap sent verification links.
 - **Execution Sequence**:
   1. **Sign Up**: Client sends `POST /api/v1/auth/register` with:
      ```json
      {
-       "email": "test-ngo-admin@eventclick.org",
+       "email": "test-Org-admin@eventclick.org",
        "password": "SecurePassword123!",
        "fullName": "Test Admin"
      }
@@ -197,14 +197,14 @@ To prevent test and load data from polluting donor-visible reports, a strict dat
   5. **Onboard Organization**: Client sends `POST /api/v1/auth/onboard` with:
      ```json
      {
-       "organizationName": "Greenwood Relief NGO",
-       "role": "ngo_admin"
+       "organizationName": "Greenwood Relief Org",
+       "role": "Org_admin"
      }
      ```
 - **Expected Outcomes**:
   1. A new user is created in the `users` table with `emailVerified` set to `true`.
   2. A new organization record is created in the `organizations` table.
-  3. An entry in `orgMembers` registers the user as the `ngo_admin` for the organization.
+  3. An entry in `orgMembers` registers the user as the `Org_admin` for the organization.
 - **Edge Cases & Error Scenarios**:
   1. **Duplicate Email**: Registering with an existing email returns `409 Conflict`.
   2. **Weak Password**: Providing a password that violates complexity rules fails Zod schema verification and returns `400 Bad Request`.
@@ -217,7 +217,7 @@ To prevent test and load data from polluting donor-visible reports, a strict dat
 **Goal**: Verify an Admin can schedule an event room, design a custom attendance form, and define activity proof quotas.
 
 - **Setup Steps**:
-  1. Authenticate user as `ngo_admin` using `storageState`.
+  1. Authenticate user as `Org_admin` using `storageState`.
 - **Execution Sequence**:
   1. **Create Event Room**: Client sends `POST /api/v1/rooms` with:
      ```json
@@ -347,7 +347,7 @@ To prevent test and load data from polluting donor-visible reports, a strict dat
 
 - **Setup Steps**:
   1. An event room is `live`, with recorded attendance and activity photos.
-  2. Authenticate user as `ngo_admin`.
+  2. Authenticate user as `Org_admin`.
 - **Execution Sequence**:
   1. **Close Event Room**: Client calls `PATCH /api/v1/rooms/:id` with:
      ```json
@@ -361,7 +361,7 @@ To prevent test and load data from polluting donor-visible reports, a strict dat
 - **Expected Outcomes**:
   1. Room status transitions to `ended`.
   2. A valid PDF file buffer is returned with a `Content-Type: application/pdf` header.
-  3. PDF contains the NGO header, event parameters, geolocated attendance sheets, and thumbnails of activity photos.
+  3. PDF contains the Org header, event parameters, geolocated attendance sheets, and thumbnails of activity photos.
 - **Edge Cases & Error Scenarios**:
   1. **Early Generation Request**: Requesting a report while the room is still `live` returns `400 Bad Request` ("Report can only be generated after the live session has ended").
   2. **Gotenberg Service Downtime**: If the Gotenberg container fails to compile the PDF, the server logs the incident and returns `503 Service Unavailable` without crashing the main application process.
