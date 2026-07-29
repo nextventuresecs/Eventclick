@@ -39,6 +39,13 @@ COPY packages/client/nginx.conf /etc/nginx/conf.d/Eventclick.conf
 # Copy built static assets
 COPY --from=build /app/packages/client/dist /usr/share/nginx/html
 
-EXPOSE 80
+# Give nginx user access to runtime dirs and content
+RUN chown -R nginx:nginx /usr/share/nginx/html /var/cache/nginx /var/log/nginx /etc/nginx/conf.d && \
+    touch /var/run/nginx.pid && \
+    chown nginx:nginx /var/run/nginx.pid
+
+EXPOSE 8080
+
+USER nginx
 
 CMD ["nginx", "-g", "daemon off;"]

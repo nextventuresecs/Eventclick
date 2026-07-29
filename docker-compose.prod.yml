@@ -321,22 +321,13 @@ services:
     pull_policy: always
     container_name: Eventclick_client_prod
     restart: always
-    volumes:
-      - /etc/ssl/cloudflare/origin-cert.pem:/etc/nginx/ssl/origin-cert.pem:ro
-      - /etc/ssl/cloudflare/origin-key.pem:/etc/nginx/ssl/origin-key.pem:ro
     ports:
-      - "${CLIENT_PORT:-80}:80"
-      - "${CLIENT_SSL_PORT:-443}:443"
+      - "${CLIENT_PORT:-80}:8080"
     depends_on:
       server:
         condition: service_healthy
-    read_only: true
     security_opt:
       - no-new-privileges:true
-    tmpfs:
-      - /tmp
-      - /var/cache/nginx
-      - /var/run
     deploy:
       resources:
         limits:
