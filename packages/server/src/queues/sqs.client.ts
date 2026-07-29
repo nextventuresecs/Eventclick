@@ -1,7 +1,8 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
-import { sendVerificationEmail, sendPasswordResetEmail } from "../services/email.service";
+import { sendVerificationEmail, sendPasswordResetEmail, sendReportReadyEmail } from "../services/email.service";
+import crypto from "crypto";
 
 const region = env.S3_REGION || "us-east-1";
 
@@ -69,30 +70,31 @@ export interface PdfJobPayload {
 
 export async function enqueuePdfJob(payload: PdfJobPayload): Promise<{ jobId: string }> {
   const queueUrl = env.SQS_QUEUE_URL;
+  const jobId = `pdf_${crypto.randomUUID()}`;
 
   if (!queueUrl) {
     logger.warn(
       { payload, event: "sqs.fallback_pdf" },
       "SQS Queue URL not configured. PDF jobs will not be processed locally unless worker is running."
     );
-    return { jobId: "dev_pdf_job_" + Date.now() };
+    return { jobId };
   }
 
   try {
     const command = new SendMessageCommand({
       QueueUrl: queueUrl,
-      MessageBody: JSON.stringify({ type: "generate_pdf", ...payload }),
+      MessageBody: JSON.stringify({ type: "generate_pdf", jobId, ...payload }),
     });
 
     const response = await sqsClient.send(command);
     logger.info(
-      { messageId: response.MessageId, roomId: payload.roomId, event: "sqs.enqueue_pdf_success" },
+      { messageId: response.MessageId, roomId: payload.roomId, jobId, event: "sqs.enqueue_pdf_success" },
       "Successfully enqueued PDF task to AWS SQS"
     );
-    return { jobId: response.MessageId! };
+    return { jobId };
   } catch (error) {
     logger.error(
-      { error, roomId: payload.roomId, event: "sqs.enqueue_pdf_failed" },
+      { error, roomId: payload.roomId, jobId, event: "sqs.enqueue_pdf_failed" },
       "Failed to enqueue PDF task to AWS SQS"
     );
     throw error;

@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
@@ -87,4 +87,15 @@ export const buildPublicUrl = (key: string): string => {
     return `${base}/${env.S3_BUCKET}/${key}`;
   }
   return `${base}/${key}`;
+};
+
+export const createPresignedGet = async (
+  key: string,
+  expiresIn = 3600,
+): Promise<string> => {
+  const cmd = new GetObjectCommand({
+    Bucket: env.S3_BUCKET,
+    Key: key,
+  });
+  return await getSignedUrl(s3, cmd, { expiresIn });
 };

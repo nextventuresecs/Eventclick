@@ -142,16 +142,22 @@ app.use(errorHandler);
 import { startSqsWorker } from "./queues/worker";
 import { startSessionCleanupJob } from "./jobs/sessionCleanup";
 
+const shouldStartWorker = env.SQS_WORKER_ENABLED !== "false";
+
 async function startServer() {
   await connectRedis();
-  startSessionCleanupJob();
+
+  if (shouldStartWorker) {
+    startSessionCleanupJob();
+    startSqsWorker().catch((err) => {
+      logger.error({ err }, "SQS worker crashed");
+    });
+  } else {
+    logger.info("SQS worker disabled via SQS_WORKER_ENABLED=false");
+  }
 
   const server = app.listen(env.PORT, () => {
     logger.info(`[server] running on http://localhost:${env.PORT}${API_PREFIX}`);
-  });
-
-  startSqsWorker().catch((err) => {
-    logger.error({ err }, "SQS worker crashed");
   });
 
   const shutdown = async (signal: string) => {

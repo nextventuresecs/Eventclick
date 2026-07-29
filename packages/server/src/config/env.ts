@@ -82,6 +82,7 @@ const EnvSchema = z.object({
 
   // ─── AWS SQS ──────────────────────────────────────
   SQS_QUEUE_URL: z.string().url().optional(),
+  SQS_WORKER_ENABLED: z.string().optional(),
 
   // ─── Observability (optional) ──────────────────────
   SENTRY_DSN: z.string().optional(),
