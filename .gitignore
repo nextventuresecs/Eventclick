@@ -20,3 +20,4 @@ scratch/
 .agents/
 .gstack/
 .kilo/
+.playwright-*/
