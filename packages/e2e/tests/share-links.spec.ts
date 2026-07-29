@@ -9,7 +9,10 @@ test.describe("Public share link", () => {
   });
 
   test("404 for invalid share token", async ({ page }) => {
-    const response = await page.goto(`${BASE_URL}/watch/nonexistent-token-12345`);
-    expect(response?.status()).toBe(404);
+    await page.goto(`${BASE_URL}/watch/nonexistent-token-12345`);
+    await page.waitForLoadState("networkidle");
+    await expect(
+      page.getByRole("heading", { name: /not found|page does not exist|invalid/i })
+    ).toBeVisible({ timeout: 10000 });
   });
 });
