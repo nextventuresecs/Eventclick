@@ -13,6 +13,7 @@ import { sql } from "drizzle-orm";
 import { eventRooms } from "./eventRooms";
 import { formDefinitions } from "./formDefinitions";
 import { users } from "./users";
+import { organizations } from "./organizations";
 
 export const attendanceEntries = pgTable(
   "attendance_entries",
@@ -21,6 +22,9 @@ export const attendanceEntries = pgTable(
     roomId: uuid("room_id")
       .notNull()
       .references(() => eventRooms.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
     formDefinitionId: uuid("form_definition_id")
       .notNull()
       .references(() => formDefinitions.id, { onDelete: "restrict" }),
@@ -37,6 +41,7 @@ export const attendanceEntries = pgTable(
   },
   (t) => [
     index("attendance_entries_room_idx").on(t.roomId),
+    index("attendance_entries_org_idx").on(t.organizationId),
     index("attendance_entries_form_idx").on(t.formDefinitionId),
     index("attendance_entries_submitted_at_idx").on(t.submittedAt),
     index("attendance_entries_submitted_by_idx").on(t.submittedBy),

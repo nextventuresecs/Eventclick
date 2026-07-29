@@ -109,6 +109,7 @@ export const submitActivityPhoto = async (
     .insert(activitySubmissions)
     .values({
       roomId,
+      organizationId: orgId,
       activityId: input.activityId,
     })
     .onConflictDoNothing({
@@ -148,6 +149,7 @@ export const submitActivityPhoto = async (
     await tx.insert(activityPhotos).values({
       submissionId: existingSub.id,
       roomId,
+      organizationId: orgId,
       activityId: input.activityId,
       photoKey: input.photoKey,
       photoUrl: buildPublicUrl(input.photoKey),

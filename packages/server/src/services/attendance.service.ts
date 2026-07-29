@@ -206,6 +206,7 @@ export const submitAttendance = async (
     .insert(attendanceEntries)
     .values({
       roomId: ctx.roomId,
+      organizationId: ctx.orgId,
       formDefinitionId: formDef.id,
       submittedBy: ctx.submittedBy,
       data,
