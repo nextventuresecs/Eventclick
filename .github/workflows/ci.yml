@@ -61,7 +61,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run test --workspace=shared
+      - run: npm run test --workspace=@application/shared
       - run: npm run test --workspace=client
       - run: npm run test --workspace=server
         env:

@@ -561,7 +561,7 @@ export const AttendanceRecords = () => {
                         return (
                           <td
                             key={`${entry.id}-${col.id}`}
-                            className="px-4 py-3 text-xs max-w-[200px] truncate"
+                            className="px-4 py-3 text-xs max-w-50 truncate"
                             title={String(val ?? "")}
                           >
                             {formatValue(val ?? null)}
