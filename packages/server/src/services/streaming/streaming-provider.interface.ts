@@ -26,12 +26,12 @@ export interface StreamingProvider {
   /**
    * Starts server-side recording of the room.
    */
-  startRecording(roomId: string): Promise<RoomRecording | undefined>;
+  startRecording(roomId: string, orgId: string): Promise<RoomRecording | undefined>;
 
   /**
    * Stops an active recording.
    */
-  stopRecording(egressId: string): Promise<RoomRecording | undefined>;
+  stopRecording(egressId: string, orgId: string): Promise<RoomRecording | undefined>;
 
   /**
    * Gets the current participant count for a room.

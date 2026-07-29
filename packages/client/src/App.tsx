@@ -4,11 +4,15 @@ import {
   Navigate,
   Outlet,
   useLocation,
+  useRouteError,
 } from "react-router-dom";
 import { hasRolePermission, type RolePermission } from "@application/shared";
 import { useAuth } from "./hooks/useAuth";
 
 import React, { Suspense } from "react";
+
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { RouteErrorFallback } from "./components/RouteErrorFallback";
 
 const lazyLoad = (importFunc: () => Promise<any>, exportName: string) => {
   const LazyComponent = React.lazy(() => importFunc().then((m) => ({ default: m[exportName] })));
@@ -201,17 +205,21 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <Navigate to="/dashboard" replace />,
+    errorElement: <RouteErrorFallback />,
   },
   {
     path: "watch/:token",
     element: <RoomWatch />,
+    errorElement: <RouteErrorFallback />,
   },
   {
     path: "verify-email",
     element: <VerifyEmailPage />,
+    errorElement: <RouteErrorFallback />,
   },
   {
     element: <AuthRoute />,
+    errorElement: <RouteErrorFallback />,
     children: [
       { path: "login", element: <LoginPage /> },
       { path: "register", element: <RegisterPage /> },
@@ -221,6 +229,7 @@ const router = createBrowserRouter([
   },
   {
     element: <ProtectedRoute />,
+    errorElement: <RouteErrorFallback />,
     children: [
       { path: "onboarding", element: <OnboardingPage /> },
       {
@@ -289,7 +298,6 @@ const router = createBrowserRouter([
   },
 ]);
 
-import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export function App() {
   return (
