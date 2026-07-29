@@ -10,7 +10,7 @@ Eventclick is a real-time organization transparency and verification platform fo
 |-------|---------|--------|------------|
 | **Client** | Vitest + React Testing Library + jsdom | ✅ Implemented | 3 unit tests |
 | **Shared** | Vitest | ✅ Implemented | 23 schema/RBAC tests |
-| **Server** | Vitest + Supertest | ✅ Implemented | 11 unit + 6 integration tests |
+| **Server** | Vitest + Supertest | ✅ Implemented | 75 tests across 12 files |
 | **E2E** | Playwright | ✅ Scaffolded | 3 specs |
 | **CI/CD** | GitHub Actions | ✅ Implemented | 3 jobs |
 | **Bundle Analysis** | rollup-plugin-visualizer | ✅ Implemented | `dist/stats.html` |
@@ -25,8 +25,9 @@ Eventclick is a real-time organization transparency and verification platform fo
 
 Client tests run in a `jsdom` environment using Vitest and React Testing Library. Tests are colocated with the source tree under `packages/client/src/`.
 
-- **Configuration**: `packages/client/vite.config.ts` includes the `test` block with globals, jsdom environment, and setup file.
-- **Setup File**: `packages/client/src/test-setup.ts` registers `@testing-library/jest-dom` matchers.
+- **Configuration**: `packages/client/vite.config.ts` includes the `test` block with `globals: true`, `environment: "jsdom"`, and `setupFiles: ["./src/test-setup.ts"]`.
+- **Setup File**: `packages/client/src/test-setup.ts` registers `@testing-library/jest-dom/vitest` matchers.
+- **Test Reference**: `/// <reference types="vitest" />` is present at the top of `vite.config.ts`.
 - **Test Files**:
   - `src/App.test.tsx`: `RouteErrorFallback`, `ErrorBoundary`, `useAuth`
 - **Scripts**:
@@ -57,14 +58,21 @@ Shared tests validate Zod schemas, RBAC utilities, and helpers. They run in a No
 Server tests are split into unit tests (mocked services) and integration tests (real Express app with mocked infra).
 
 - **Configuration**: `packages/server/vitest.config.ts`
+  - Uses `defineConfig` from `vitest/config`
+  - Environment: `node`
+  - Root: `./src`
+  - Coverage: V8 provider, includes `services/**`, `utils/**`, `db/helpers.ts`
+  - Env overrides ensure tests never hit real infra (PORT=0, test DATABASE_URL, test REDIS_URL, etc.)
 - **Unit Tests** (`packages/server/src/services/__tests__/`):
   - `errors.test.ts`, `jwt.service.test.ts`, `auth-helpers.test.ts`, `rbac-helpers.test.ts`, `event-assignment-policy.service.test.ts`, `attendance-validation.test.ts`, `attendance-live-window.service.test.ts`, `attendance-window-integration.test.ts`, `auth-recovery.service.test.ts`
 - **Integration Tests** (`packages/server/src/__tests__/`):
-  - `auth.integration.test.ts`: Login failure flow (mocked)
+  - `middleware.test.ts`: `requireAuth`, `requireRole`, `validate` middleware
+  - `auth.integration.test.ts`: Login failure flow (mocked — known failing test due to `rate-limit-redis` mock)
   - `api.integration.test.ts`: Health, share, rooms endpoints (mocked Redis/rate-limit)
 - **Mocking Strategy**:
   - `vi.mock()` at module level for `db`, `redis`, `@sentry/node`
   - `rate-limit-redis` mocked to avoid real Redis in integration tests
+- **Known Issue**: `auth.integration.test.ts` fails because the `rate-limit-redis` mock returns an unexpected response shape. This is unrelated to recent changes.
 - **Scripts**:
   - `npm run test` — run all server tests
 
@@ -76,6 +84,7 @@ E2E tests validate critical user journeys against a running server. They are org
   - Chromium only
   - HTML + list reporters
   - Retries in CI
+  - **Note**: WebRTC emulation flags (`--use-fake-device-for-media-stream`, `--use-fake-ui-for-media-stream`) are planned but not yet added to the config
 - **Test Files**:
   - `tests/auth.spec.ts`: Unauthenticated navigation, login/register page load
   - `tests/share-links.spec.ts`: Public share page loads, 404 for invalid token
@@ -84,6 +93,7 @@ E2E tests validate critical user journeys against a running server. They are org
   - `npm run test` — headless
   - `npm run test:headed` — headed browser
   - `npm run test:ui` — interactive UI mode
+- **CI Limitation**: The `webServer` config only starts the client dev server (`npm run dev --workspace=client`). The backend API server is not started in CI, so tests that make API requests (e.g., `health.spec.ts`) will fail. UI-only tests (`auth.spec.ts`, `share-links.spec.ts`) will work because the client SPA is served.
 
 #### Planned E2E Enhancements
 
@@ -92,6 +102,7 @@ E2E tests validate critical user journeys against a running server. They are org
 | `storageState` / `auth.setup.ts` | ⏳ Planned | Pre-authenticated sessions per role to avoid login per test |
 | Page Object Model (`packages/e2e/pages/`) | ⏳ Planned | Centralize locators and flows |
 | WebRTC / LiveKit assertions | ⏳ Planned | Video element visibility and `readyState` checks |
+| Start backend server in CI webServer | ⏳ Planned | Currently only client is started |
 | Critical journey coverage | ⏳ Planned | Registration, room scheduling, attendance, activity upload, PDF report |
 
 ### 2.5 Performance Testing (Grafana k6)
@@ -167,6 +178,9 @@ E2E tests validate critical user journeys against a running server. They are org
   - `FormFieldSchema` enforces `options` for `select` fields
 - **API Integration** (`api.integration.test.ts`):
   - Authenticated room endpoints enforce `401`/`403`
+- **Middleware** (`middleware.test.ts`):
+  - `requireAuth` throws 401 when no user
+  - `requireRole` throws 403 when role mismatches
 
 ### Journey 3: Attendee Check-In
 
@@ -373,7 +387,7 @@ All security vulnerabilities and performance regressions identified by automated
 |------|---------|
 | Client unit tests | Vitest + RTL + jsdom; `App.test.tsx` covering RouteErrorFallback, ErrorBoundary, useAuth |
 | Shared schema tests | 23 tests covering Zod schemas, RBAC utilities, URL extraction |
-| Server integration tests | 6 tests covering health, share, and rooms endpoints with Redis/rate-limit mocks |
+| Server tests | 75 tests across 12 files covering services, middleware, and API integration |
 | E2E package | Playwright scaffold with auth, share-links, and health specs |
 | CI/CD | `lint-and-audit`, `unit-tests`, `e2e-tests` jobs with Postgres + Redis services |
 | Bundle analysis | `rollup-plugin-visualizer` generating `dist/stats.html` |
@@ -382,10 +396,12 @@ All security vulnerabilities and performance regressions identified by automated
 
 | Priority | Item | Owner |
 |----------|------|-------|
+| P0 | Fix `rate-limit-redis` mock to resolve auth.integration.test.ts failure | Backend |
+| P0 | Add backend `webServer` to Playwright CI config | Frontend |
 | P0 | Expand client test coverage to all pages and hooks | Frontend |
-| P0 | Expand E2E suite to cover all 5 critical user journeys | QA / Frontend |
 | P1 | Add `storageState` auth setup for E2E tests | Frontend |
 | P1 | Implement Page Object Model for E2E | Frontend |
+| P1 | Add WebRTC emulation flags to Playwright config | Frontend |
 | P1 | Add database truncation hook to server vitest config | Backend |
 | P2 | Integrate k6 performance tests into CI/CD | DevOps |
 | P2 | Add Semgrep and Gitleaks to CI pipeline | Security |
