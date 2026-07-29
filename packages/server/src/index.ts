@@ -174,6 +174,17 @@ async function startServer() {
     logger.info(`[server] running on http://localhost:${env.PORT}${API_PREFIX}`);
   });
 
+  server.headersTimeout = env.SERVER_HEADERS_TIMEOUT_MS;
+  server.keepAliveTimeout = env.SERVER_KEEPALIVE_TIMEOUT_MS;
+
+  if (env.SERVER_REQUEST_TIMEOUT_MS > 0) {
+    server.requestTimeout = env.SERVER_REQUEST_TIMEOUT_MS;
+  }
+
+  server.on("timeout", () => {
+    logger.warn("server request timeout");
+  });
+
   const shutdown = async (signal: string) => {
     logger.info(`${signal} received, shutting down gracefully…`);
     

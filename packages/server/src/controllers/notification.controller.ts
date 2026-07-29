@@ -44,6 +44,8 @@ export const markAllNotificationsRead = async (req: Request, res: Response) => {
 export const streamNotifications = async (req: Request, res: Response) => {
   const userId = req.user!.id;
 
+  req.setTimeout(0);
+
   // Set SSE headers
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");

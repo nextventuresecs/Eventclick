@@ -84,6 +84,11 @@ const EnvSchema = z.object({
   SQS_QUEUE_URL: z.string().url().optional(),
   SQS_WORKER_ENABLED: z.string().optional(),
 
+  // ─── Server timeouts (production hardening) ─────────
+  SERVER_HEADERS_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+  SERVER_KEEPALIVE_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
+  SERVER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+
   // ─── Observability (optional) ──────────────────────
   SENTRY_DSN: z.string().optional(),
 });

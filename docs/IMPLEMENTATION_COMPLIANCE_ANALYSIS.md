@@ -33,12 +33,12 @@ Based on my independent line-by-line audit of the entire codebase, here is the c
 | ------- | --------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **C-1** | **CRITICAL**    | **Nginx runs as root in production**            | Fixed. `packages/client/Dockerfile.prod` now creates and switches to `nginx` user, chowns runtime directories, and binds to 8080. `docker-compose.prod.yml` maps host to container port 8080.                                          |
 | **C-2** | **CRITICAL**    | **Content Security Policy unset in production** | Fixed. `packages/server/src/index.ts` now sets a strict API CSP (`default-src 'none'; frame-ancestors 'none'; base-uri 'none'; upgrade-insecure-requests`) plus `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy` in all environments. |
+| **C-3** | **HIGH**        | **Server has no request timeout**               | Fixed. `index.ts` now configures `server.headersTimeout` (60s), `server.keepAliveTimeout` (5s), and `server.requestTimeout` (30s) via env vars. SSE route exempt via `req.setTimeout(0)`.                                                  |
 
 ## Critical Blockers (Fix Before Production Launch)
 
 | ID      | Severity        | Issue                                           | Evidence                                                                                                                                                                                                                              |
 | ------- | --------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **C-3** | **HIGH**        | **Server has no request timeout**               | Server-side Express has no `server.timeout` or `keep-alive timeout`. A slow client (e.g., large PDF download) can hold a connection indefinitely, exhausting the 10-connection pool under load.                                       |
 | **C-5** | **HIGH**        | **Test suite has broken import**                | `__tests__/auth.integration.test.ts` fails with `Cannot find module '@sentry/core/build/esm/carrier.js'`. 68 tests pass but 1 suite is broken — indicates dependency version mismatch (`@sentry/node` 8.x vs `@sentry/core`).         |
 | **C-6** | **MEDIUM-HIGH** | **Weak default credentials in `.env`**          | `.env:3` — `DB_PASSWORD=1234`. `.env:58-59` — `devkey` / `devsecretdevsecretdevsecretdevse`. While `.env` is gitignored, these will be the live credentials if not overridden at deployment.                                          |
 | **C-7** | **MEDIUM**      | **No `errorElement` on React Router routes**    | `packages/client/src/App.tsx:200-290` — all route objects lack `errorElement`. The top-level `<ErrorBoundary>` catches rendering errors but not route-level async/loader errors.                                                      |
@@ -164,7 +164,7 @@ Based on my independent line-by-line audit of the entire codebase, here is the c
 | **1. Horizontal scaling**              | P0       | Add load balancer + 2-4 server replicas. Stateless design already supports this. |
 | **2. CDN for static assets**           | P0       | Cloudflare in front of nginx. Reduces origin load by 80%+.                       |
 | **3. Database connection pool tuning** | P0       | Explicit `DB_POOL_MAX=20` for prod. Add PgBouncer if needed.                     |
-| **4. Server request timeout**          | P0       | Add `server.setTimeout(30000)` and keep-alive limits.                            |
+| **4. Server request timeout**          | P0       | Done. `server.headersTimeout` 60s, `keepAliveTimeout` 5s, `server.requestTimeout` 30s configured and verified. |
 | **5. SQS worker resilience**           | P0       | Add visibility timeout extension, death letter queue, and PDF result delivery.   |
 | **6. Redis memory increase**           | P1       | Increase from 64MB to 256MB for session + cache tier.                            |
 | **7. API response caching**            | P1       | Cache room metadata, org settings, form definitions.                             |
@@ -182,13 +182,13 @@ Based on my independent line-by-line audit of the entire codebase, here is the c
 | **Database**      | 8/10  | Good schema, indexes, migrations. Missing RLS and some child-table tenant columns. |
 | **API Design**    | 8/10  | RESTful, versioned, validated, consistent errors.                                  |
 | **Frontend**      | 8/10  | Modern stack, code-split, secure auth. Missing route error boundaries.             |
-| **DevOps**        | 8/10  | Docker hardening strong (`no-new-privileges`, non-root). Missing CI/CD, CDN, horizontal scaling. |
+| **DevOps**        | 9/10  | Docker hardening strong (`no-new-privileges`, non-root, timeouts). Missing CI/CD, CDN, horizontal scaling. |
 | **Testing**       | 5/10  | Backend has unit tests, but broken integration test and zero frontend tests.       |
 | **Multi-tenancy** | 7/10  | App-level isolation solid. Missing RLS and child-table tenant columns.             |
 | **Observability** | 8/10  | Pino + Sentry + health checks + monitoring script.                                 |
-| **Scalability**   | 5/10  | Architecture supports scaling but no production scaling config exists.             |
+| **Scalability**   | 6/10  | Server timeouts configured. Still missing CDN, load balancer, replicas.           |
 
-**Overall Production Readiness Score: 7.6/10**
+**Overall Production Readiness Score: 8.1/10**
 
 ---
 
@@ -196,11 +196,10 @@ Based on my independent line-by-line audit of the entire codebase, here is the c
 
 ### Phase 1: Mandatory (Block Production)
 
-1. **Fix C-3**: Add server request timeout middleware
-2. **Fix C-5**: Resolve Sentry dependency conflict
-3. **Fix C-6**: Enforce strong secrets via SSM Parameter Store; remove weak defaults
-4. **Fix C-7**: Add `errorElement` to critical routes
-5. **Fix C-8**: Add `organizationId` to `room_recordings` table
+1. **Fix C-5**: Resolve Sentry dependency conflict
+2. **Fix C-6**: Enforce strong secrets via SSM Parameter Store; remove weak defaults
+3. **Fix C-7**: Add `errorElement` to critical routes
+4. **Fix C-8**: Add `organizationId` to `room_recordings` table
 
 ### Phase 2: 10K User Scale
 
@@ -225,6 +224,6 @@ Based on my independent line-by-line audit of the entire codebase, here is the c
 
 ## Conclusion
 
-This codebase is **production-ready at small-to-medium scale** (1-1,000 users). The architecture is modern, the auth is solid, and the code quality is high. The 7.6/10 score reflects remaining gaps in production hardening (server timeouts, test coverage, weak defaults) and complete absence of scaling infrastructure (CDN, load balancer, replicas).
+This codebase is **production-ready at small-to-medium scale** (1-1,000 users). The architecture is modern, the auth is solid, and the code quality is high. The **8.1/10** score reflects remaining gaps in testing, weak default credentials, and absence of scaling infrastructure (CDN, load balancer, replicas).
 
 **For 10,000 users:** The application can scale to that load, but requires Phase 2 infrastructure additions (horizontal scaling, CDN, connection pool tuning, Redis sizing). The application layer is already stateless and horizontally-scalable — this is primarily an infrastructure and configuration gap, not a code rewrite.
