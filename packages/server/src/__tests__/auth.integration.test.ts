@@ -46,6 +46,11 @@ vi.mock("../config/redis", () => ({
   disconnectRedis: vi.fn(),
 }));
 
+vi.mock("@sentry/node", () => ({
+  init: vi.fn(),
+  setupExpressErrorHandler: vi.fn(),
+}));
+
 describe("Auth Service Integration Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
