@@ -61,9 +61,9 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run test --w=shared
-      - run: npm run test --w=client
-      - run: npm run test --w=server
+      - run: npm run test --workspace=shared
+      - run: npm run test --workspace=client
+      - run: npm run test --workspace=server
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
           REDIS_URL: redis://localhost:6379/1
@@ -84,7 +84,7 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
 
-      - run: npm run test --w=e2e
+      - run: npm run test --workspace=e2e
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
 
