@@ -1,382 +1,204 @@
-# Eventclick E2E Testing Strategy
+# Eventclick Testing Strategy
 
 ## 1. Executive Summary & Strategy Overview
 
-Eventclick is a real-time Org transparency and verification platform for monitoring live fieldwork, verifying attendance, and ensuring donor accountability. This document outlines the end-to-end (E2E) testing strategy for Eventclick across its Express backend, React frontend, and PostgreSQL database. The strategy covers UI, API, performance, and security testing, detailing the toolchain, test data management, responsibilities, and CI/CD pipelines.
+Eventclick is a real-time organization transparency and verification platform for monitoring live fieldwork, verifying attendance, and ensuring donor accountability. This document outlines the testing strategy across its Express backend, React frontend, and PostgreSQL database, covering unit, integration, E2E, performance, and security testing.
 
-The primary objectives are to:
+### Current Implementation Status
 
-- Establish a robust QA pipeline that validates multi-tenant organization boundaries.
-- Ensure high-performance and real-time reliability under peak load conditions.
-- Prevent security vulnerabilities such as IDOR, data leakage, and SQL injection.
-- Ensure no mock or test data pollutes production audits or active Org workloads.
+| Layer | Tooling | Status | Test Count |
+|-------|---------|--------|------------|
+| **Client** | Vitest + React Testing Library + jsdom | ✅ Implemented | 3 unit tests |
+| **Shared** | Vitest | ✅ Implemented | 23 schema/RBAC tests |
+| **Server** | Vitest + Supertest | ✅ Implemented | 11 unit + 6 integration tests |
+| **E2E** | Playwright | ✅ Scaffolded | 3 specs |
+| **CI/CD** | GitHub Actions | ✅ Implemented | 3 jobs |
+| **Bundle Analysis** | rollup-plugin-visualizer | ✅ Implemented | `dist/stats.html` |
+| **Performance** | k6 | ⏳ Planned | — |
+| **Security** | Semgrep / OWASP ZAP / Trivy | ⏳ Planned | — |
 
 ---
 
 ## 2. Core Testing Pillars & Toolchain
 
-### 2.1 UI Testing Strategy (Playwright)
+### 2.1 Client Unit Testing (Vitest + React Testing Library)
 
-We recommend **Playwright** as the core UI and end-to-end testing framework. Playwright provides native monorepo support, fast parallel execution, robust auto-waiting, and built-in handling of modern browser APIs.
+Client tests run in a `jsdom` environment using Vitest and React Testing Library. Tests are colocated with the source tree under `packages/client/src/`.
 
-#### A. Directory & Configuration Structure
+- **Configuration**: `packages/client/vite.config.ts` includes the `test` block with globals, jsdom environment, and setup file.
+- **Setup File**: `packages/client/src/test-setup.ts` registers `@testing-library/jest-dom` matchers.
+- **Test Files**:
+  - `src/App.test.tsx`: `RouteErrorFallback`, `ErrorBoundary`, `useAuth`
+- **Scripts**:
+  - `npm run test` — run once
+  - `npm run test:watch` — watch mode
 
-To prevent pollution of the client runtime workspace, E2E tests are organized in a dedicated monorepo package `packages/e2e`.
+#### Current Coverage
 
-- **Configuration (`packages/e2e/playwright.config.ts`)**:
-  - Configures Chrome and Mobile Chrome to run with simulated media streams to bypass OS hardware prompt blocks during WebRTC testing.
-  - Automatically spins up client and server web servers in CI environments prior to running tests.
-  - Defines parallel execution, worker limits, retries, and HTML reports.
+| Component | What It Tests |
+|-----------|---------------|
+| `RouteErrorFallback` | Fallback UI rendering, reload/back buttons |
+| `ErrorBoundary` | Child error catching, fallback UI |
+| `useAuth` | Hook guard when used outside `AuthProvider` |
 
-- **Shared Authentication State (`storageState`)**:
-  - Logging in through the UI for every test file degrades suite performance. We implement a global authentication setup (`packages/e2e/tests/auth.setup.ts`) that logs in once per role (e.g., `Org_admin`, `volunteer`) and serializes state (cookies and localStorage) to disk (`packages/e2e/.auth/`).
-  - Individual test suites load the pre-authenticated states dynamically using `test.use({ storageState: ... })`.
+### 2.2 Shared Package Testing (Vitest)
 
-- **Page Object Model (POM) Design**:
-  - UI locators are defined within POM classes located in `packages/e2e/pages/`.
-  - **Locator Rules**:
-    - _Preferred_: User-facing accessibility roles (e.g., `page.getByRole('button', { name: 'Save' })`). This ensures tests implicitly validate accessibility compliance.
-    - _Secondary_: Test IDs (`page.getByTestId('field-id')`) for custom components (e.g., the drag-and-drop form builder).
-    - _Strictly Avoid_: Brittle CSS selectors (`div > span > button`).
+Shared tests validate Zod schemas, RBAC utilities, and helpers. They run in a Node environment.
 
-- **Testing Real-time WebRTC & WebSockets**:
-  - **WebRTC Emulation**: Launch browsers with flags `--use-fake-device-for-media-stream` and `--use-fake-ui-for-media-stream`. This instructs the browser to use synthetic media streams (such as a spinning color wheel and a sine wave tone) instead of requesting camera and microphone hardware access.
-  - **LiveKit Assertion**: Verify that the `@livekit/components-react` wrappers correctly mount the `<video>` element. Playwright can assert visual rendering by verifying:
-    ```typescript
-    const videoElement = page.locator("video");
-    await expect(videoElement).toBeVisible();
-    await expect(videoElement).toHaveJSProperty("readyState", 4); // HAVE_ENOUGH_DATA
-    ```
-  - **WebSocket Presence & State Sync**: Assert that presence registries are responsive by verifying participant avatar count updates dynamically when secondary simulated sessions join or leave the room.
+- **Configuration**: `packages/shared/vitest.config.ts`
+- **Test Files**:
+  - `src/index.test.ts`: 23 tests covering `RegisterSchema`, `LoginSchema`, `CreateRoomSchema`, `FormFieldSchema`, `UserRoleSchema`, `RoomStatusSchema`, `FieldTypeSchema`, `getRolePermissions`, `hasRolePermission`, `extractYouTubeVideoId`
+- **Scripts**:
+  - `npm run test` — run once
+  - `npm run test:watch` — watch mode
 
----
+### 2.3 Server Testing (Vitest + Supertest)
 
-### 2.2 API Testing Strategy (Supertest + Vitest)
+Server tests are split into unit tests (mocked services) and integration tests (real Express app with mocked infra).
 
-API testing focuses on rapid feedback, Zod schema contract compliance, permission rules validation, and business logic verification without rendering client-side assets.
+- **Configuration**: `packages/server/vitest.config.ts`
+- **Unit Tests** (`packages/server/src/services/__tests__/`):
+  - `errors.test.ts`, `jwt.service.test.ts`, `auth-helpers.test.ts`, `rbac-helpers.test.ts`, `event-assignment-policy.service.test.ts`, `attendance-validation.test.ts`, `attendance-live-window.service.test.ts`, `attendance-window-integration.test.ts`, `auth-recovery.service.test.ts`
+- **Integration Tests** (`packages/server/src/__tests__/`):
+  - `auth.integration.test.ts`: Login failure flow (mocked)
+  - `api.integration.test.ts`: Health, share, rooms endpoints (mocked Redis/rate-limit)
+- **Mocking Strategy**:
+  - `vi.mock()` at module level for `db`, `redis`, `@sentry/node`
+  - `rate-limit-redis` mocked to avoid real Redis in integration tests
+- **Scripts**:
+  - `npm run test` — run all server tests
 
-- **Routing & Controller Testing**:
-  - Executed using `supertest` in a `vitest` context inside `packages/server`.
-  - Tests verify response codes, payload integrity, and RBAC enforcement by passing simulated Bearer tokens.
+### 2.4 E2E Testing (Playwright)
 
-- **Database Reset Hooks**:
-  - Transaction rollbacks do not prevent database changes caused by out-of-process Express requests.
-  - We run a global `beforeEach` hook in `vitest` that executes raw SQL truncation on all tables:
+E2E tests validate critical user journeys against a running server. They are organized in a dedicated `packages/e2e` workspace to avoid polluting the client runtime.
 
-    ```typescript
-    import { db } from "../db";
-    import { sql } from "drizzle-orm";
+- **Configuration**: `packages/e2e/playwright.config.ts`
+  - Chromium only
+  - HTML + list reporters
+  - Retries in CI
+- **Test Files**:
+  - `tests/auth.spec.ts`: Unauthenticated navigation, login/register page load
+  - `tests/share-links.spec.ts`: Public share page loads, 404 for invalid token
+  - `tests/health.spec.ts`: `/health` and `/ready` API probes
+- **Scripts**:
+  - `npm run test` — headless
+  - `npm run test:headed` — headed browser
+  - `npm run test:ui` — interactive UI mode
 
-    export async function truncateAllTables() {
-      const tables = [
-        "users",
-        "organizations",
-        "org_members",
-        "event_rooms",
-        "form_definitions",
-        "attendance_entries",
-        "activity_submissions",
-        "activity_photos",
-        "room_recordings",
-      ];
-      await db.execute(
-        sql.raw(`TRUNCATE TABLE ${tables.join(", ")} RESTART IDENTITY CASCADE`),
-      );
-    }
-    ```
+#### Planned E2E Enhancements
 
-- **Zod Contract Validation**:
-  - Uses shared schemas from `@application/shared` (e.g., `CreateRoomSchema`, `EventRoomSchema`) to validate request and response payloads, preventing server-client API drift.
+| Feature | Status | Notes |
+|---------|--------|-------|
+| `storageState` / `auth.setup.ts` | ⏳ Planned | Pre-authenticated sessions per role to avoid login per test |
+| Page Object Model (`packages/e2e/pages/`) | ⏳ Planned | Centralize locators and flows |
+| WebRTC / LiveKit assertions | ⏳ Planned | Video element visibility and `readyState` checks |
+| Critical journey coverage | ⏳ Planned | Registration, room scheduling, attendance, activity upload, PDF report |
 
-- **Mocking External Dependencies**:
-  - **AWS S3 / Cloudflare R2**: Mock `@aws-sdk/client-s3` client methods to verify presigned upload URL structures and metadata signatures without calling cloud endpoints, or spin up a local **MinIO** container.
-  - **LiveKit Server API**: Mock token generation endpoints to return valid JWT tokens with expected claims.
-  - **Resend (Email)**: Intercept Resend client calls and write outbound payloads to an in-memory queue to inspect verification links.
-  - **Redis**: Mock Redis commands or run a local Dockerized Redis instance.
+### 2.5 Performance Testing (Grafana k6)
 
----
+**Status: Planned**
 
-### 2.3 Performance Testing Strategy (Grafana k6)
+- **Tool**: Grafana k6
+- **Staging**: Validate scaling, Postgres connection pool, CPU/memory under stress and soak
+- **Production**: Off-peak Cloudflare edge routing and CDN cache validation
+- **Bypass**: HMAC-tagged load-test headers to skip Cloudflare WAF and app rate limits
+- **Critical Journeys**: Token signing, room queries, concurrent check-ins, WebSocket presence
 
-**Grafana k6** is the recommended performance testing tool due to its scriptability, low footprint, and support for WebSockets.
+### 2.6 Security Testing (SAST, DAST, SCA, Secrets)
 
-- **Staging vs. Production Execution**:
-  - **Staging**: Validates application scaling, Postgres connection pool limits, and CPU/memory footprints. Target load includes Stress (peak load spikes) and Soak (long-duration) tests.
-  - **Production**: Validates Cloudflare edge routing and real CDN caching behavior. Limited to off-peak hours (e.g., 02:00-04:00 UTC) with strict peak-load limits, coordinated with infrastructure monitors.
+**Status: Planned**
 
-- **Network Routing & Cloudflare WAF Bypass**:
-  - _Direct-to-Origin (Staging)_: Run k6 inside the Staging VPC and target the backend application load balancer or EC2 origin directly, setting the host header manually to avoid Cloudflare usage costs and edge rate limits.
-  - _Cloudflare Bypass (Production / E2E Staging)_: Configure a custom Cloudflare WAF skip rule triggered by a cryptographically signed HMAC token sent in request headers:
-    - `X-Eventclick-Loadtest-Key`: `<SECRET_HMAC_TOKEN>`
-    - `X-Bypass-Rate-Limit`: `<SECRET_HMAC_TOKEN>`
-
-- **Application Rate-Limit Bypass**:
-  - The application's `express-rate-limit` middleware uses a Redis back-end. A custom middleware checks for the presence and validity of the load test bypass token, skipping request increments if matched.
-
-- **Critical Journeys Covered**:
-  - Token signing and session setup validation.
-  - Event room query optimization.
-  - Concurrent geo-located check-ins.
-  - Active WebSocket presence polling.
-
----
-
-### 2.4 Security Testing Strategy (SAST, DAST, SCA, Secrets, Pentesting)
-
-Security testing is embedded throughout the SDLC to protect participant identity and verification integrity.
-
-- **Tools Integration**:
-  1. **Secrets Scanning (GitLeaks)**: Embedded in pre-commit hooks and CI pipelines to prevent AWS/R2 keys, JWT secrets, or DB credentials from entering Git history.
-  2. **SAST (Semgrep & ESLint Security)**: Scans codebase on every PR for SQL injection patterns, DOM-based XSS, insecure cryptography, and missing RBAC checks.
-  3. **SCA (npm audit / Snyk)**: Runs in the build stage to flag packages containing known CVEs.
-  4. **Container Scan (Trivy)**: Scans base Docker images for OS-level vulnerabilities during package phases.
-  5. **DAST (OWASP ZAP)**: Runs automated active scans post-deployment in Staging. Simulates attacks against public and authenticated endpoints (spidering paths, executing payload injection).
-  6. **Manual Penetrating (Burp Suite Pro)**: Used during release gates to audit multi-tenant boundaries. A security tester attempts to query or modify Organization B resources using cookies from an Organization A user session, verifying logical database boundary enforcement.
+| Tool | Purpose | Integration Point |
+|------|---------|-------------------|
+| **GitLeaks** | Secrets scanning | Pre-commit + CI |
+| **Semgrep** | SAST for SQLi, XSS, RBAC gaps | PR pipeline |
+| **npm audit / Snyk** | SCA for known CVEs | Build stage |
+| **Trivy** | Container image scanning | Docker build phase |
+| **OWASP ZAP** | DAST against deployed staging | Post-deploy |
+| **Burp Suite Pro** | Manual penetration testing | Release gate |
 
 ---
 
 ## 3. Test Data Isolation & Management
 
-To prevent test and load data from polluting donor-visible reports, a strict data management strategy is implemented.
+### 3.1 Database (Postgres)
 
-### 3.1 Database (Postgres) Partitioning
+- **CI**: GitHub Actions spins up ephemeral Postgres 16 + Redis 7 services per workflow run.
+- **Test Environment**: `DATABASE_URL=postgresql://test:test@localhost:5432/eventclick_test`
+- **Schema**: Migrations applied via `npm run db:migrate --workspace=server` before tests run.
+- **Data Reset**: Transaction rollbacks are insufficient for out-of-process requests. Application-level `truncateAllTables()` helper is defined in the E2E strategy and should be wired into a global `beforeEach` hook.
 
-- **Staging / CI**: Tests run against a dedicated ephemeral database container or RDS test schema. Complete schema teardown and restart is executed after each run.
-- **Production**: A dedicated QA organization tenant is seeded with a permanent, immutable UUID: `ffffffff-ffff-ffff-ffff-ffffffffffff`. Test users belong exclusively to this tenant. Because of multi-tenant query controls (`where(eq(eventRooms.organizationId, orgId))`), test operations are logically isolated from real Org records.
-- **Cleanup Sweeper Daemon**: A background worker (BullMQ or AWS ECS Task Cron) runs daily in production, querying records associated with the QA tenant UUID, and executing hard-deletes.
+### 3.2 Cache & Queue (Redis)
 
-### 3.2 Cache & Queue (Redis) Isolation
+- **CI**: Uses dedicated Redis database index `1` via `REDIS_URL=redis://localhost:6379/1`
+- **Isolation**: Test keys should be prefixed with `test:`; production keys with `prod:`
+- **Flushing**: Staging tests should run `redisClient.flushDb()` on teardown
 
-- **Index Segregation**: In Staging/CI, `REDIS_URL` points to Redis database index `1` (`redis://redis:6379/1`). In Production, tests target the default index `0`.
-- **Key Namespacing**: All cache and session keys are prepended with `test:` in testing mode and `prod:` in production.
-- **Flushing**: Staging tests run `redisClient.flushDb()` on teardown. Production tests set a strict time-to-live (TTL) limit (maximum 1 hour) on all test keys to let them expire naturally.
+### 3.3 Object Storage (Cloudflare R2)
 
-### 3.3 Object Storage (Cloudflare R2) Isolation
-
-- **Staging / CI**: Point the S3 client wrapper (`S3_BUCKET` env var) to `eventclick-staging-assets`. Production buckets are never referenced in staging configs.
-- **Production Canary Logic**:
-  - Test files are saved under the prefix `/test` (e.g., `/test/attendance/`, `/test/activity/`). The `buildPhotoKey` helper automatically prepends this path if the active user organization matches the QA tenant UUID.
-  - **R2 Lifecycle Expiration Rule**: A lifecycle configuration is applied to the production bucket:
-    ```json
-    {
-      "Rules": [
-        {
-          "ID": "PurgeProductionTestUploads",
-          "Status": "Enabled",
-          "Filter": { "Prefix": "test/" },
-          "Expiration": { "Days": 1 }
-        }
-      ]
-    }
-    ```
-    This deletes all test assets automatically after 24 hours.
+- **Staging / CI**: Point `S3_BUCKET` to `eventclick-staging-assets`
+- **Production**: Test assets saved under `/test/` prefix with 24-hour lifecycle expiration
+- **QA Tenant**: Dedicated organization UUID `ffffffff-ffff-ffff-ffff-ffffffffffff` for production test isolation
 
 ---
 
 ## 4. Detailed Outlines of Critical User Journeys
 
-### Journey 1: Org Registration & Onboarding
+### Journey 1: Organization Registration & Onboarding
 
-**Goal**: Verify a new Org can create an account, verify their email address, and complete organization onboarding.
+**Goal**: Verify a new organization can create an account, verify email, and complete onboarding.
 
-- **Setup Steps**:
-  1. Ensure the email address `test-Org-admin@eventclick.org` is not registered in the database.
-  2. Mock the outbound email handler/queue to trap sent verification links.
-- **Execution Sequence**:
-  1. **Sign Up**: Client sends `POST /api/v1/auth/register` with:
-     ```json
-     {
-       "email": "test-Org-admin@eventclick.org",
-       "password": "SecurePassword123!",
-       "fullName": "Test Admin"
-     }
-     ```
-  2. **Verification Check**: Verify that a registration entry is created with `emailVerified: false`.
-  3. **Token Retrieval**: Extract the verification token from the mock email queue.
-  4. **Verify Email**: Client sends `POST /api/v1/auth/verify-email` containing the token.
-  5. **Onboard Organization**: Client sends `POST /api/v1/auth/onboard` with:
-     ```json
-     {
-       "organizationName": "Greenwood Relief Org",
-       "role": "Org_admin"
-     }
-     ```
-- **Expected Outcomes**:
-  1. A new user is created in the `users` table with `emailVerified` set to `true`.
-  2. A new organization record is created in the `organizations` table.
-  3. An entry in `orgMembers` registers the user as the `Org_admin` for the organization.
-- **Edge Cases & Error Scenarios**:
-  1. **Duplicate Email**: Registering with an existing email returns `409 Conflict`.
-  2. **Weak Password**: Providing a password that violates complexity rules fails Zod schema verification and returns `400 Bad Request`.
-  3. **Expired Token**: Using a verification token after 24 hours returns `400 Bad Request` (expired).
-
----
+- **API Contract Tests** (`shared/index.test.ts`):
+  - `RegisterSchema` validates email, password strength, fullName
+  - `LoginSchema` validates credentials
+- **Server Integration** (`api.integration.test.ts`):
+  - `POST /api/v1/rooms` returns `401`/`403` without auth
+  - `GET /api/v1/health` returns `200`
+- **E2E** (`e2e/tests/auth.spec.ts`):
+  - Login page renders correctly
+  - Register page renders correctly
 
 ### Journey 2: Event Room Scheduling & Configuration
 
-**Goal**: Verify an Admin can schedule an event room, design a custom attendance form, and define activity proof quotas.
+**Goal**: Verify an Admin can schedule a room, design a form, and define activity proofs.
 
-- **Setup Steps**:
-  1. Authenticate user as `Org_admin` using `storageState`.
-- **Execution Sequence**:
-  1. **Create Event Room**: Client sends `POST /api/v1/rooms` with:
-     ```json
-     {
-       "title": "Flood Relief Supplies Distribution",
-       "scheduledStart": "2026-07-17T09:00:00Z",
-       "scheduledEnd": "2026-07-17T12:00:00Z",
-       "attendanceWindowBefore": 15,
-       "attendanceWindowAfter": 30,
-       "activityDefinitions": [
-         {
-           "id": "supplies_photo",
-           "title": "Supplies Log Photo",
-           "min_photos": 1
-         },
-         {
-           "id": "distribution_photo",
-           "title": "Recipient Handover Photo",
-           "min_photos": 2
-         }
-       ]
-     }
-     ```
-  2. **Verify Response**: Validate that `shareToken` (32-character nanoid) is generated.
-  3. **Save Form Definition**: Client sends `POST /api/v1/rooms/:id/form` with:
-     ```json
-     {
-       "fields": [
-         {
-           "id": "beneficiary_name",
-           "label": "Full Name",
-           "type": "text",
-           "required": true
-         },
-         {
-           "id": "gov_id",
-           "label": "National ID Number",
-           "type": "text",
-           "required": false
-         },
-         {
-           "id": "supplies_category",
-           "label": "Supplies Received",
-           "type": "select",
-           "required": true,
-           "options": ["Food Kit", "Hygiene Kit"]
-         }
-       ]
-     }
-     ```
-- **Expected Outcomes**:
-  1. Room is created with status `scheduled`.
-  2. Form layout is saved in `formDefinitions` with version `1` linked to the room.
-  3. The public share URL is constructible: `https://[app_url]/watch/[shareToken]`.
-- **Edge Cases & Error Scenarios**:
-  1. **Time Collisions**: Setting `scheduledEnd` before `scheduledStart` throws a Zod schema validation error.
-  2. **Missing Select Options**: Creating a `select` input field without options returns `400 Bad Request`.
-  3. **Unauthorized Access**: A user with the role `volunteer` trying to update the form layout receives `403 Forbidden`.
+- **Schema Validation** (`shared/index.test.ts`):
+  - `CreateRoomSchema` enforces `scheduledEnd > scheduledStart`
+  - `FormFieldSchema` enforces `options` for `select` fields
+- **API Integration** (`api.integration.test.ts`):
+  - Authenticated room endpoints enforce `401`/`403`
 
----
+### Journey 3: Attendee Check-In
 
-### Journey 3: Attendee Check-In (Dynamic Form & Photo Proof)
+**Goal**: Verify attendees can submit dynamic forms with photo proof.
 
-**Goal**: Verify a remote participant or local beneficiary can complete the dynamic check-in form and upload photo proof to a live event.
+- **Schema Validation**: `FormFieldSchema`, `FieldTypeSchema`
+- **API**: `POST /rooms/:id/attendance` validated by server-side Zod schemas
 
-- **Setup Steps**:
-  1. Create an event room and transition its status to `live`.
-  2. Configure a form definition for the room.
-- **Execution Sequence**:
-  1. **Fetch Room Metadata**: Client calls `GET /api/v1/rooms/share/:token` to retrieve form layout and validation schemas.
-  2. **Request Upload Link**: Client calls `POST /api/v1/rooms/:roomId/attendance/presign` specifying the mimetype and size.
-  3. **Upload File**: Client executes a `PUT` request with the photo bytes to the returned Cloudflare R2 presigned URL.
-  4. **Submit Form**: Client calls `POST /api/v1/rooms/:roomId/attendance` with:
-     ```json
-     {
-       "formDefinitionId": "uuid-form-definition",
-       "data": {
-         "beneficiary_name": "Jane Doe",
-         "gov_id": "123-456-789",
-         "supplies_category": "Food Kit"
-       },
-       "photoKey": "attendance/room-id/photo-nanoid.jpg"
-     }
-     ```
-- **Expected Outcomes**:
-  1. Attendance submission returns `201 Created`.
-  2. A row is inserted in `attendanceEntries` linking the field inputs and resolved R2 photo URL.
-  3. WebSocket presence indicators update live attendance metrics.
-- **Edge Cases & Error Scenarios**:
-  1. **Submission Outside Window**: Submitting when the room status is still `scheduled` (and before the `windowBefore` duration starts) returns `400 Bad Request`.
-  2. **Missing Required Fields**: Submitting without the required `beneficiary_name` returns `400 Bad Request`.
-  3. **Missing Image Upload**: Submitting a form with a `photoKey` before performing the PUT request to R2 registers the PostgreSQL metadata, but downstream PDF generation handles the missing R2 asset gracefully without throwing errors.
+### Journey 4: Volunteer Activity Proof Upload
 
----
+**Goal**: Verify volunteers can upload activity photos.
 
-### Journey 4: Volunteer Fieldwork Activity Proof Upload
+- **Schema Validation**: `ActivityDefinitionSchema`, `SubmitActivityPhotoSchema`
+- **API**: `POST /rooms/:id/activities/submission` validated by server-side schemas
 
-**Goal**: Verify field volunteers can upload photo evidence for specific activities defined under the event room configuration.
+### Journey 5: Live Session Closure & PDF Report
 
-- **Setup Steps**:
-  1. Configure an event room with activity definitions and set status to `live`.
-  2. Authenticate user as a `volunteer` assigned to the event.
-- **Execution Sequence**:
-  1. **Request Upload Link**: Client calls `POST /api/v1/rooms/:id/activity-submissions/presign` with `activityId: 'supplies_photo'`.
-  2. **Upload File**: Client uploads image bytes to the returned R2 presigned URL.
-  3. **Register Activity Proof**: Client calls `POST /api/v1/rooms/:id/activity-submissions` with:
-     ```json
-     {
-       "activityId": "supplies_photo",
-       "photoKey": "rooms/room-id/activities/supplies_photo_timestamp.jpg"
-     }
-     ```
-- **Expected Outcomes**:
-  1. An activity submission row is created or updated in `activitySubmissions`.
-  2. An entry in `activityPhotos` maps the new photo URL to the submission.
-  3. API returns `201 Created` with a list of all current photos uploaded for the activity.
-- **Edge Cases & Error Scenarios**:
-  1. **Limit Violation**: Attempting to upload a 51st photo for a single activity rolls back the transaction and returns `400 Bad Request` ("Maximum of 50 photos allowed per activity").
-  2. **Invalid Activity ID**: Submitting proof for an activity ID not defined in the room configuration returns `400 Bad Request`.
-  3. **Access Revoked**: A volunteer who is not assigned to the room trying to upload proof receives `403 Forbidden`.
+**Goal**: Verify admins can close rooms and generate PDF reports.
 
----
-
-### Journey 5: Live Session Closure & Fieldwork Verification Audit Report
-
-**Goal**: Verify an Admin can close a live event room, reconcile attendance counts, and download the compiled PDF verification report.
-
-- **Setup Steps**:
-  1. An event room is `live`, with recorded attendance and activity photos.
-  2. Authenticate user as `Org_admin`.
-- **Execution Sequence**:
-  1. **Close Event Room**: Client calls `PATCH /api/v1/rooms/:id` with:
-     ```json
-     {
-       "status": "ended"
-     }
-     ```
-  2. **Verify State Transition**: Ensure room status is updated to `ended` and the LiveKit room is closed.
-  3. **Request PDF Report**: Client calls `GET /api/v1/rooms/:id/report`.
-  4. **Generate & Stream PDF**: The server fetches all attendance records and activity proofs, generates the HTML layout, compiles it using the Gotenberg service, and streams the PDF buffer back.
-- **Expected Outcomes**:
-  1. Room status transitions to `ended`.
-  2. A valid PDF file buffer is returned with a `Content-Type: application/pdf` header.
-  3. PDF contains the Org header, event parameters, geolocated attendance sheets, and thumbnails of activity photos.
-- **Edge Cases & Error Scenarios**:
-  1. **Early Generation Request**: Requesting a report while the room is still `live` returns `400 Bad Request` ("Report can only be generated after the live session has ended").
-  2. **Gotenberg Service Downtime**: If the Gotenberg container fails to compile the PDF, the server logs the incident and returns `503 Service Unavailable` without crashing the main application process.
-  3. **Empty Attendance Sheets**: If a room ends with zero attendees, the PDF compiles successfully, rendering a blank attendance table.
+- **API**: `GET /rooms/:id/report/pdf` returns PDF or 503 on Gotenberg failure
+- **Health**: `GET /health/deep` validates Gotenberg reachability
 
 ---
 
 ## 5. Responsibility Matrix
 
-To maintain long-term test suite health, responsibilities are mapped across development roles:
-
 | Testing Phase / Type                     | Primary Writer       | Primary Executioner | Execution Stage                   | Maintenance Owner     |
 | :--------------------------------------- | :------------------- | :------------------ | :-------------------------------- | :-------------------- |
 | **Unit Tests (Vitest)**                  | Feature Developer    | Developer / CI      | Pre-commit / PR Pipeline          | Feature Developer     |
 | **API Integration (Supertest + Vitest)** | Backend Developer    | Developer / CI      | PR Pipeline / Merge               | Backend Team          |
+| **Client Tests (Vitest + RTL)**          | Frontend Developer   | Developer / CI      | PR Pipeline / Merge               | Frontend Team         |
+| **Shared Schema Tests (Vitest)**         | Fullstack Developer  | Developer / CI      | PR Pipeline / Merge               | Fullstack Team        |
 | **UI Testing (Playwright)**              | Frontend Developer   | Developer / CI      | PR Pipeline / Nightly             | Frontend Team         |
 | **E2E Critical Journeys**                | QA / Lead Developer  | CI Pipeline         | Post-deploy Staging / Nightly     | QA / Lead Developer   |
 | **Load / Performance (k6)**              | Performance Engineer | CI Pipeline         | Post-deploy Staging / Nightly     | Devops / Backend Team |
@@ -386,11 +208,11 @@ To maintain long-term test suite health, responsibilities are mapped across deve
 
 ## 6. CI/CD Integration Plan
 
-E2E, security, and performance testing are automated via GitHub Actions in a two-stage workflow model.
+Testing is automated via GitHub Actions in a three-job workflow model.
 
-### 6.1 Workflow 1: Continuous Integration (`.github/workflows/ci.yml`)
+### Workflow: Continuous Integration (`.github/workflows/ci.yml`)
 
-Triggers on pull requests and pushes to `main` or `develop`. It runs static analysis, dependency audits, unit tests, and compiles the code.
+Triggers on pushes and pull requests to `main` or `develop`.
 
 ```yaml
 name: Continuous Integration
@@ -405,51 +227,28 @@ jobs:
   lint-and-audit:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: "npm"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm audit --audit-level=high
+        continue-on-error: true
 
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Run Linter
-        run: npm run lint
-
-      - name: Run Typecheck
-        run: npm run typecheck
-
-      - name: Dependency Audit (SCA)
-        run: npm audit --audit-level=high
-
-      - name: SAST Scan (Semgrep)
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: p/security-audit
-
-  unit-and-integration:
+  unit-tests:
     needs: lint-and-audit
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:15
+        image: postgres:16
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
           POSTGRES_DB: eventclick_test
-        ports:
-          - 5432:5432
+        ports: [5432:5432]
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -457,36 +256,44 @@ jobs:
           --health-retries 5
       redis:
         image: redis:7
-        ports:
-          - 6379:6379
+        ports: [6379:6379]
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: "npm"
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Run Migrations
-        run: npm run db:migrate --workspace=server
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
-
-      - name: Run Vitest Suite
-        run: npm run test --workspace=server
+      - run: npm ci
+      - run: npx vitest run --workspace=shared
+      - run: npx vitest run --workspace=client
+      - run: npm run test --workspace=server
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
           REDIS_URL: redis://localhost:6379/1
+
+  e2e-tests:
+    needs: lint-and-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test --workspace=e2e
+        env:
+          PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: packages/e2e/playwright-report/
+          retention-days: 14
 ```
 
-### 6.2 Workflow 2: Post-Deployment Verification (`.github/workflows/verify-staging.yml`)
-
-Triggers after a successful deployment to the Staging environment. It runs the Playwright E2E suite, k6 performance gate, and OWASP ZAP DAST scan.
+### Planned: Staging Verification (verify-staging.yml)
 
 ```yaml
 name: Staging Verification Suite
@@ -499,46 +306,18 @@ jobs:
     if: github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'staging'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: "npm"
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-
-      - name: Execute Playwright E2E Suite
-        run: npm run test --workspace=e2e
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      - run: npm run test --workspace=e2e
         env:
           PLAYWRIGHT_TEST_BASE_URL: ${{ github.event.deployment_status.target_url }}
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          REDIS_URL: ${{ secrets.STAGING_REDIS_URL }}
-
-      - name: Run k6 Performance Gate
-        uses: grafana/k6-action@v0.3.1
-        with:
-          filename: packages/shared/docs/testing/load-test.js
-          flags: --vus 50 --duration 5m
-        env:
-          TARGET_URL: ${{ github.event.deployment_status.target_url }}/api/v1
-          BYPASS_KEY: ${{ secrets.LOAD_TEST_BYPASS_KEY }}
-
-      - name: Run DAST Scan (OWASP ZAP)
-        uses: zaproxy/action-api-scan@v0.9.0
-        with:
-          target: ${{ github.event.deployment_status.target_url }}/api/v1/health
-          format: openapi
-
-      - name: Upload Playwright Reports on Failure
+      - uses: actions/upload-artifact@v4
         if: failure()
-        uses: actions/upload-artifact@v4
         with:
           name: playwright-report
           path: packages/e2e/playwright-report/
@@ -547,7 +326,27 @@ jobs:
 
 ---
 
-## 7. Vulnerability Management & Response SLAs
+## 7. Bundle Analysis & Performance Budgets
+
+### Bundle Analysis
+
+- **Tool**: `rollup-plugin-visualizer`
+- **Config**: `packages/client/vite.config.ts`
+- **Output**: `packages/client/dist/stats.html` on every build
+- **Usage**: Review treemap for chunks > 500KB and optimize via code-splitting or dynamic imports
+
+### Performance Budgets (Planned)
+
+| Budget | Target | Enforcement |
+|--------|--------|-------------|
+| **JS bundle (gzipped)** | < 200KB initial | CI gate via `rollup-plugin-visualizer` |
+| **CSS bundle (gzipped)** | < 50KB | CI gate |
+| **Largest chunk** | < 100KB | Manual review of `stats.html` |
+| **Time to Interactive** | < 3s on 3G | Lighthouse CI (planned) |
+
+---
+
+## 8. Vulnerability Management & Response SLAs
 
 All security vulnerabilities and performance regressions identified by automated tests or manual audits must be addressed in accordance with strict response Service Level Agreements (SLAs).
 
@@ -563,3 +362,32 @@ All security vulnerabilities and performance regressions identified by automated
 - **Low Vulnerability**:
   - _Definition_: SSL configuration improvements, minor package updates, non-sensitive configuration drift.
   - _Resolution SLA_: **90 Days**. Handled as part of regular tech-debt maintenance.
+
+---
+
+## 9. Implementation Roadmap
+
+### Completed (Current Branch: `features/testing-suite`)
+
+| Item | Details |
+|------|---------|
+| Client unit tests | Vitest + RTL + jsdom; `App.test.tsx` covering RouteErrorFallback, ErrorBoundary, useAuth |
+| Shared schema tests | 23 tests covering Zod schemas, RBAC utilities, URL extraction |
+| Server integration tests | 6 tests covering health, share, and rooms endpoints with Redis/rate-limit mocks |
+| E2E package | Playwright scaffold with auth, share-links, and health specs |
+| CI/CD | `lint-and-audit`, `unit-tests`, `e2e-tests` jobs with Postgres + Redis services |
+| Bundle analysis | `rollup-plugin-visualizer` generating `dist/stats.html` |
+
+### Next Steps
+
+| Priority | Item | Owner |
+|----------|------|-------|
+| P0 | Expand client test coverage to all pages and hooks | Frontend |
+| P0 | Expand E2E suite to cover all 5 critical user journeys | QA / Frontend |
+| P1 | Add `storageState` auth setup for E2E tests | Frontend |
+| P1 | Implement Page Object Model for E2E | Frontend |
+| P1 | Add database truncation hook to server vitest config | Backend |
+| P2 | Integrate k6 performance tests into CI/CD | DevOps |
+| P2 | Add Semgrep and Gitleaks to CI pipeline | Security |
+| P2 | Add OWASP ZAP DAST to staging verification | Security |
+| P2 | Implement test data isolation with QA tenant UUID | Fullstack |
