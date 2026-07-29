@@ -40,6 +40,6 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "turbo": "^2.10.7",
-    "vite": "^8.0.8"
+    "vite": "^8.1.5"
   }
 }
