@@ -11,7 +11,7 @@ Eventclick is a real-time organization transparency and verification platform fo
 | **Client** | Vitest + React Testing Library + jsdom | ✅ Implemented | 3 unit tests |
 | **Shared** | Vitest | ✅ Implemented | 23 schema/RBAC tests |
 | **Server** | Vitest + Supertest | ✅ Implemented | 75 tests across 12 files |
-| **E2E** | Playwright | ✅ Scaffolded | 3 specs |
+| **E2E** | Playwright | ✅ Implemented | 7 passing specs |
 | **CI/CD** | GitHub Actions | ✅ Implemented | 3 jobs |
 | **Bundle Analysis** | rollup-plugin-visualizer | ✅ Implemented | `dist/stats.html` |
 | **Performance** | k6 | ⏳ Planned | — |
@@ -67,12 +67,11 @@ Server tests are split into unit tests (mocked services) and integration tests (
   - `errors.test.ts`, `jwt.service.test.ts`, `auth-helpers.test.ts`, `rbac-helpers.test.ts`, `event-assignment-policy.service.test.ts`, `attendance-validation.test.ts`, `attendance-live-window.service.test.ts`, `attendance-window-integration.test.ts`, `auth-recovery.service.test.ts`
 - **Integration Tests** (`packages/server/src/__tests__/`):
   - `middleware.test.ts`: `requireAuth`, `requireRole`, `validate` middleware
-  - `auth.integration.test.ts`: Login failure flow (mocked — known failing test due to `rate-limit-redis` mock)
+  - `auth.integration.test.ts`: Login failure flow (service-layer unit test, 1 test)
   - `api.integration.test.ts`: Health, share, rooms endpoints (mocked Redis/rate-limit)
 - **Mocking Strategy**:
   - `vi.mock()` at module level for `db`, `redis`, `@sentry/node`
   - `rate-limit-redis` mocked to avoid real Redis in integration tests
-- **Known Issue**: `auth.integration.test.ts` fails because the `rate-limit-redis` mock returns an unexpected response shape. This is unrelated to recent changes.
 - **Scripts**:
   - `npm run test` — run all server tests
 
@@ -396,7 +395,6 @@ All security vulnerabilities and performance regressions identified by automated
 
 | Priority | Item | Owner |
 |----------|------|-------|
-| P0 | Fix `rate-limit-redis` mock to resolve auth.integration.test.ts failure | Backend |
 | P0 | Add backend `webServer` to Playwright CI config | Frontend |
 | P0 | Expand client test coverage to all pages and hooks | Frontend |
 | P1 | Add `storageState` auth setup for E2E tests | Frontend |
