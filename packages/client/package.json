@@ -39,7 +39,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
-    "turbo": "^2.9.6",
+    "turbo": "^2.10.7",
     "vite": "^8.0.8"
   }
 }
