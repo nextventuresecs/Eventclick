@@ -30,6 +30,7 @@ import {
   Command,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 
 const HelpDropdown = () => {
@@ -105,7 +106,7 @@ export const DashboardLayout = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [addonsOpen, setAddonsOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
+  const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
 
   useEffect(() => {
     localStorage.setItem("sidebar_collapsed", String(isCollapsed));
@@ -488,8 +489,9 @@ export const DashboardLayout = () => {
                     <span className="font-bold text-gray-900 font-display">System Notifications</span>
                     {unreadCount > 0 && (
                       <button
-                        onClick={() => setUnreadCount(0)}
+                        onClick={() => markAllAsRead.mutate()}
                         className="text-[11px] font-semibold text-purple-600 hover:underline cursor-pointer"
+                        disabled={markAllAsRead.isPending}
                       >
                         Mark all as read
                       </button>
@@ -497,23 +499,33 @@ export const DashboardLayout = () => {
                   </div>
 
                   <div className="p-2 space-y-1.5 max-h-72 overflow-y-auto">
-                    <div className="p-2.5 rounded-xl bg-purple-50/60 border border-purple-100 space-y-1">
-                      <div className="flex items-center justify-between font-semibold text-purple-900">
-                        <span className="flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" /> Attendance Check-in
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-mono">10m ago</span>
-                      </div>
-                      <p className="text-[11px] text-gray-600">New verified GPS attendance submitted for Community Outreach event.</p>
-                    </div>
-
-                    <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 space-y-1">
-                      <div className="flex items-center justify-between font-semibold text-gray-900">
-                        <span>New Room Scheduled</span>
-                        <span className="text-[10px] text-gray-400 font-mono">1h ago</span>
-                      </div>
-                      <p className="text-[11px] text-gray-500">Event room "Annual Health Camp" was scheduled for tomorrow.</p>
-                    </div>
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 text-xs">No notifications</div>
+                    ) : (
+                      notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`p-2.5 rounded-xl border space-y-1 transition-colors ${
+                            !notif.isRead ? "bg-purple-50/60 border-purple-100" : "bg-gray-50 border-gray-100"
+                          }`}
+                          onClick={() => {
+                            if (!notif.isRead) markAsRead.mutate(notif.id);
+                          }}
+                        >
+                          <div className="flex items-center justify-between font-semibold">
+                            <span className={`flex items-center gap-1.5 ${!notif.isRead ? "text-purple-900" : "text-gray-900"}`}>
+                              {!notif.isRead && <span className="w-1.5 h-1.5 rounded-full bg-purple-600 shrink-0" />}
+                              {notif.type === "attendance_checkin" && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                              {notif.title}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-mono shrink-0">
+                              {new Date(notif.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          <p className={`text-[11px] ${!notif.isRead ? "text-gray-600" : "text-gray-500"}`}>{notif.message}</p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               )}

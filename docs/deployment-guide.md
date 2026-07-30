@@ -255,6 +255,15 @@ crontab -e
 3. Add `SENTRY_DSN` to your `.env`
 4. (Future) Add `@sentry/node` to the server package
 
+### SSE (Server-Sent Events) Monitoring
+
+With the real-time notification system, Nginx holds open long-lived HTTP connections (`proxy_read_timeout 86400s;`).
+**Failure Modes to Monitor:**
+- **File Descriptor Exhaustion:** 10k users = 10k open TCP connections. Monitor EC2 open file limits (`ulimit -n`).
+- **Nginx Worker Connections:** May need to increase `worker_connections` in Nginx if `502` or connection dropped errors appear.
+- **Client Reconnect Storms:** If the server restarts, all clients disconnect and reconnect simultaneously. SSE clients have built-in exponential backoff, but monitor CPU usage during restarts.
+- **Backups & Failover:** Redis Pub/Sub handles the event broadcasting. If Redis crashes, messages in transit are lost (PubSub is fire-and-forget). The frontend will recover by fetching the standard REST `/api/v1/notifications` endpoint on next reconnect or page load.
+
 ---
 
 ## Ongoing Operations

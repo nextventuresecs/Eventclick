@@ -152,6 +152,7 @@ apiRouter.get("/health/deep", async (_req, res) => {
 import { settingsRouter } from "./settings.routes";
 import { feedbackRouter } from "./feedback.routes";
 import { bugReportRouter } from "./bug-report.routes";
+import { notificationRoutes } from "./notification.routes";
 
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/share", shareRouter);
@@ -162,4 +163,5 @@ apiRouter.use("/event-assignments", eventAssignmentRouter);
 apiRouter.use(settingsRouter);
 apiRouter.use("/feedback", feedbackRouter);
 apiRouter.use("/bug-reports", bugReportRouter);
+apiRouter.use("/notifications", notificationRoutes);
 
