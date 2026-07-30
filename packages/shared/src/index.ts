@@ -88,7 +88,7 @@ export const RegisterSchema = z.object({
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 
 export const LoginSchema = z.object({
-  email: z.email().toLowerCase(),
+  email: z.string().email().toLowerCase(),
   password: z.string().min(1).max(128),
 });
 export type LoginInput = z.infer<typeof LoginSchema>;
@@ -122,6 +122,8 @@ export interface AuthUser {
   role: UserRole;
   organizationId: string | null;
   organizationName?: string | null;
+  photoUrl?: string | null;
+  createdAt?: string | null;
   emailVerified: boolean;
 }
 
@@ -170,6 +172,8 @@ export type ActivityDefinition = z.infer<typeof ActivityDefinitionSchema>;
 export const SubmitActivityPhotoSchema = z.object({
   activityId: z.string().min(1),
   photoKey: z.string().min(1).max(256),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
 });
 export type SubmitActivityPhotoInput = z.infer<
   typeof SubmitActivityPhotoSchema
@@ -194,6 +198,8 @@ export interface ActivitySubmissionPhoto {
   url: string;
   key: string;
   uploadedAt: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface ActivitySubmission {
@@ -214,6 +220,9 @@ export const CreateRoomSchema = z.object({
   maxParticipants: z.number().int().positive().max(10000).optional(),
   attendanceWindowBefore: z.number().int().nonnegative().optional(),
   attendanceWindowAfter: z.number().int().nonnegative().optional(),
+  location: z.string().max(300).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
   activityDefinitions: z.array(ActivityDefinitionSchema).optional(),
 });
 export type CreateRoomInput = z.infer<typeof CreateRoomSchema>;
@@ -247,6 +256,9 @@ export interface EventRoom {
   youtubeEmbedUrl: string | null;
   attendanceWindowBefore: number;
   attendanceWindowAfter: number;
+  location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   attendanceCount?: number;
   activityDefinitions: ActivityDefinition[];
   createdAt: string;
@@ -300,6 +312,28 @@ export const CreateOrgUserSchema = z.object({
 });
 export type CreateOrgUserInput = z.infer<typeof CreateOrgUserSchema>;
 
+export const DeleteUserSchema = z.object({
+  confirmEmail: z.string().email(),
+});
+export type DeleteUserInput = z.infer<typeof DeleteUserSchema>;
+
+export const UpdateUserProfileSchema = z.object({
+  fullName: z.string().min(1).max(120).optional(),
+  photoUrl: z.string().url().max(500).nullable().optional(),
+});
+export type UpdateUserProfileInput = z.infer<typeof UpdateUserProfileSchema>;
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: PasswordSchema,
+});
+export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
+
+export const UpdateOrganizationSchema = z.object({
+  name: z.string().min(1).max(160),
+});
+export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationSchema>;
+
 // Public view for unauth attendees joining via share token
 export interface SharedRoom {
   id: string;
@@ -314,6 +348,9 @@ export interface SharedRoom {
   youtubeEmbedUrl: string | null;
   attendanceWindowBefore: number;
   attendanceWindowAfter: number;
+  location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 // ─── Generic Responses ──────────────────────────────

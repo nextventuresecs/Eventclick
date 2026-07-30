@@ -4,7 +4,8 @@
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # This script is the SINGLE SOURCE OF TRUTH bridge between SSM and Docker.
-# It fetches all parameters under /eventclick/prod/* and writes them to .env
+# It fetches all parameters under /eventclick/prod/* and writes them to
+# /etc/eventclick/.env (runtime-only, not committed to git)
 #
 # Prerequisites:
 #   - AWS CLI v2 installed
@@ -14,8 +15,8 @@
 #   - Parameters stored in SSM under /eventclick/prod/*
 #
 # Usage (called automatically by deploy.sh, or manually):
-#   ./scripts/fetch-secrets.sh              # writes to .env in project root
-#   ./scripts/fetch-secrets.sh /tmp/.env    # writes to custom path
+#   ./scripts/fetch-secrets.sh                  # writes to /etc/eventclick/.env
+#   ./scripts/fetch-secrets.sh /tmp/.env        # writes to custom path
 #
 # How to populate SSM (from your local machine with AWS credentials):
 #   aws ssm put-parameter --name "/eventclick/prod/JWT_SECRET" \
@@ -36,7 +37,7 @@ set -euo pipefail
 # ── Config ────────────────────────────────────────────────────────────────────
 SSM_PATH="/eventclick/prod"
 AWS_REGION="${AWS_REGION:-ap-south-1}"
-OUTPUT_FILE="${1:-.env}"
+OUTPUT_FILE="${1:-/etc/eventclick/.env}"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 GREEN='\033[0;32m'
@@ -123,9 +124,14 @@ if [[ "$PARAM_COUNT" -eq 0 ]]; then
   exit 1
 fi
 
+# ── Ensure runtime-only directory exists ────────────────────────────────
+SECRETS_DIR="$(dirname "$OUTPUT_FILE")"
+mkdir -p "$SECRETS_DIR"
+chmod 700 "$SECRETS_DIR"
+
 log "Found ${PARAM_COUNT} parameters from SSM. Writing to ${OUTPUT_FILE}..."
 
-# ── Write .env file ────────────────────────────────────────────────────────────
+# ── Write .env file ──────────────────────────────────────────────────────
 # Remove existing file first (security: don't append stale values)
 rm -f "$OUTPUT_FILE"
 touch "$OUTPUT_FILE"
@@ -158,6 +164,35 @@ for item in sorted(data, key=lambda x: x['Name']):
 " >> "$OUTPUT_FILE"
 
 log "SSM secrets written to ${OUTPUT_FILE} (${PARAM_COUNT} variables, mode 600)"
+
+# ── Extract individual secret files for Docker secrets ──────────────
+SECRETS_DIR="/etc/eventclick/secrets"
+mkdir -p "$SECRETS_DIR"
+chmod 700 "$SECRETS_DIR"
+
+# Sensitive keys that should be Docker secrets (not environment variables)
+SECRET_KEYS=(
+  "JWT_SECRET"
+  "JWT_REFRESH_SECRET"
+  "DB_PASSWORD"
+  "REDIS_PASSWORD"
+  "S3_ACCESS_KEY"
+  "S3_SECRET_KEY"
+  "LIVEKIT_API_KEY"
+  "LIVEKIT_API_SECRET"
+  "RESEND_API_KEY"
+  "SQS_QUEUE_URL"
+)
+
+for key in "${SECRET_KEYS[@]}"; do
+  value=$(grep "^${key}=" "$OUTPUT_FILE" 2>/dev/null | cut -d'"' -f2)
+  if [[ -n "$value" ]]; then
+    echo "$value" > "${SECRETS_DIR}/${key}"
+    chmod 600 "${SECRETS_DIR}/${key}"
+  fi
+done
+
+log "Secret files created in ${SECRETS_DIR} for Docker secrets"
 
 # ── Append hardcoded defaults for non-secret values ──────────────────────────
 # These are internal Docker network values that never change and don't belong in SSM

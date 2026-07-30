@@ -2,9 +2,10 @@ import "dotenv/config";
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { env } from "../config/env";
 
 async function main() {
-  const url = process.env.DATABASE_URL;
+  const url = env.DATABASE_URL;
   if (!url) {
     console.error("DATABASE_URL is required");
     process.exit(1);

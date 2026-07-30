@@ -1,5 +1,14 @@
-import "dotenv/config";
+import path from "node:path";
+import dotenv from "dotenv";
 import { z } from "zod";
+
+const candidates = [
+  path.resolve(process.cwd(), ".env"),
+  path.resolve(process.cwd(), "../../.env"),
+];
+for (const p of candidates) {
+  dotenv.config({ path: p });
+}
 
 const EnvSchema = z.object({
   NODE_ENV: z

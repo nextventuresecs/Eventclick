@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Camera, Check, Clock, Loader2, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Calendar, Camera, Check, Clock, Loader2, RefreshCw, X } from "lucide-react";
 import { ROLE_LABELS, type FormField, type FormDefinition, type EventRoom } from "@application/shared";
 import {
   ApiClientError,
@@ -406,25 +406,29 @@ export const Attendance = () => {
   }
 
   return (
-    <div className="max-w-md mx-auto p-3 sm:p-6 space-y-4" data-form-key={fieldsLabel}>
-      <div className="flex items-center gap-2">
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center justify-center w-9 h-9 rounded-md text-foreground hover:bg-muted transition-colors shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div className="min-w-0">
-          <h2 className="text-lg font-bold truncate">Attendance</h2>
-          <p className="text-xs text-muted-foreground">
-            Form v{form.version} · {user ? ROLE_LABELS[user.role] : "User"} workflow
-          </p>
+    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in" data-form-key={fieldsLabel}>
+      {/* Header Banner Tile */}
+      <div className="rounded-3xl bg-brand-gradient-tile p-6 md:p-8 text-white shadow-lg space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-white/15 text-white hover:bg-white/25 backdrop-blur-md transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur-md text-white border border-white/20">
+              Form v{form.version} · {user ? ROLE_LABELS[user.role] : "User"} Workflow
+            </span>
+          </div>
         </div>
-      </div>
 
-      <div className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-        Record attendance on behalf of village attendees during the live session. Volunteers can
-        capture a supporting photo before submitting the attendance record.
+        <h1 className="text-2xl md:text-3xl font-bold font-display text-white tracking-tight">
+          Submit Attendance Record
+        </h1>
+        <p className="text-xs text-white/80 leading-relaxed">
+          Record attendee details and optional GPS geotag photo evidence on behalf of participants for {room?.title || "this event"}.
+        </p>
       </div>
 
       {windowCheck && (
@@ -434,11 +438,11 @@ export const Attendance = () => {
               ? windowCheck.status === "live"
                 ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
                 : "bg-amber-500/10 text-amber-700 border-amber-500/20"
-              : "bg-destructive/10 text-destructive border-destructive/20"
+              : "bg-status-cancelled-bg text-(--color-error) border-(--color-gray-200)"
           }`}
         >
           {windowCheck.isAllowed ? (
-            <Clock className="w-5 h-5 mt-0.5 shrink-0 animate-pulse" />
+            <Clock className="w-5 h-5 mt-0.5 shrink-0" />
           ) : (
             <AlertTriangle className="w-5 h-5 mt-0.5 shrink-0" />
           )}
@@ -512,15 +516,21 @@ export const Attendance = () => {
               />
             )}
             {f.type === "date" && (
-              <Input
-                id={f.id}
-                type="date"
-                value={(data[f.id] as string) ?? ""}
-                onChange={(e) => setFieldValue(f.id, e.target.value)}
-                placeholder={f.placeholder}
-                required={f.required}
-                disabled={submitting || !windowCheck?.isAllowed}
-              />
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-(--color-gray-600)">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <Input
+                  id={f.id}
+                  type="date"
+                  value={(data[f.id] as string) ?? ""}
+                  onChange={(e) => setFieldValue(f.id, e.target.value)}
+                  placeholder={f.placeholder}
+                  required={f.required}
+                  disabled={submitting || !windowCheck?.isAllowed}
+                  className="pl-10"
+                />
+              </div>
             )}
             {f.type === "select" && (
               <select
@@ -648,18 +658,18 @@ export const Attendance = () => {
         </div>
 
         {error && (
-          <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm border border-destructive/20">
+          <div className="p-3 rounded-md bg-status-cancelled-bg text-(--color-error) text-sm border border-(--color-gray-200)">
             {error}
           </div>
         )}
         {lastSubmitted && !error && (
-          <div className="p-3 rounded-md bg-emerald-500/10 text-emerald-700 text-sm border border-emerald-500/20 flex items-center gap-2">
+          <div className="p-3 rounded-md bg-status-live-bg text-status-live text-sm border border-(--color-gray-200) flex items-center gap-2">
             <Check className="w-4 h-4" />
             Submitted at {lastSubmitted}
           </div>
         )}
 
-        <Button type="submit" disabled={submitting || !windowCheck?.isAllowed} className="w-full" size="lg">
+        <Button type="submit" disabled={submitting || !windowCheck?.isAllowed} className="w-full bg-brand-gradient h-11 rounded-xl text-sm font-semibold shadow-md hover:shadow-lg transition-all" size="lg">
           {submitting ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />

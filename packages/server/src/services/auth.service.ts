@@ -30,6 +30,8 @@ import { cacheGet, cacheSet, cacheDel } from "./cache.service";
 
 const slugify = (name: string): string =>
   name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
@@ -55,16 +57,18 @@ export const invalidateUserCache = async (userId: string, email?: string): Promi
   }
 };
 
-const findUserById = async (id: string): Promise<UserWithOrg | null> => {
+export const findUserById = async (id: string): Promise<UserWithOrg | null> => {
   const cacheKey = `user:${id}`;
-  const cached = await cacheGet<UserWithOrg>(cacheKey);
+  const cached = await cacheGet<UserWithOrg | string>(cacheKey);
   if (cached !== null) {
-    if ((cached as any).__is_null) return null;
-    if (cached.createdAt) cached.createdAt = new Date(cached.createdAt);
-    if (cached.updatedAt) cached.updatedAt = new Date(cached.updatedAt);
-    if (cached.emailVerifiedAt) cached.emailVerifiedAt = new Date(cached.emailVerifiedAt);
-    if (cached.lastLoginAt) cached.lastLoginAt = new Date(cached.lastLoginAt);
-    return cached;
+    if (cached === "__null__") return null;
+    if (typeof cached === "object") {
+      if (cached.createdAt) cached.createdAt = new Date(cached.createdAt);
+      if (cached.updatedAt) cached.updatedAt = new Date(cached.updatedAt);
+      if (cached.emailVerifiedAt) cached.emailVerifiedAt = new Date(cached.emailVerifiedAt);
+      if (cached.lastLoginAt) cached.lastLoginAt = new Date(cached.lastLoginAt);
+      return cached;
+    }
   }
 
   const [row] = await db
@@ -78,7 +82,7 @@ const findUserById = async (id: string): Promise<UserWithOrg | null> => {
     .limit(1);
 
   if (!row) {
-    await cacheSet(cacheKey, { __is_null: true }, 30);
+    await cacheSet(cacheKey, "__null__", 30);
     return null;
   }
 
@@ -142,7 +146,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
   }
 
   // Deep Email Validation with 5s timeout
-  const emailValResult = await Promise.race([
+  const emailValResult = await Promise.race<{ valid: boolean; reason?: string }>([
     emailValidator({
       email: input.email,
       validateRegex: true,
@@ -150,8 +154,10 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
       validateTypo: true,
       validateDisposable: true,
       validateSMTP: false,
-    }),
-    new Promise<any>((resolve) => setTimeout(() => resolve({ valid: true, reason: "timeout" }), 5000))
+    }).catch(() => ({ valid: true, reason: "validator_error" })),
+    new Promise<{ valid: boolean; reason?: string }>((resolve) =>
+      setTimeout(() => resolve({ valid: true, reason: "timeout" }), 5000)
+    )
   ]);
 
   if (!emailValResult.valid) {
@@ -167,7 +173,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
 
   const passwordHash = await hashPassword(input.password);
 
-  const created = await db.transaction(async (tx) => {
+  const { user: created, verificationToken } = await db.transaction(async (tx) => {
     let orgId: string | null = null;
     let role: "ngo_admin" | "volunteer" = "volunteer";
 
@@ -214,9 +220,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
       expiresAt,
     });
 
-    (user as any)._verificationToken = token;
-
-    return user;
+    return { user, verificationToken: token };
   });
 
   logger.info(
@@ -227,7 +231,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
   await enqueueEmail({
     type: "verification",
     email: created.email,
-    token: (created as any)._verificationToken,
+    token: verificationToken,
   });
 
   const userWithOrg = await findUserById(created.id);

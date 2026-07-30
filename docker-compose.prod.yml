@@ -137,9 +137,8 @@ services:
   # ─── Database Migration (run-once init) ──────────────────────────────────
   # Runs Drizzle migrations before server starts, then exits
   migrate:
-    build:
-      context: .
-      dockerfile: packages/server/Dockerfile.prod
+    image: ghcr.io/owner/eventclick/server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    pull_policy: always
     container_name: eventclick_migrate_prod
     environment:
       NODE_ENV: production
@@ -149,7 +148,7 @@ services:
       const { drizzle } = require('drizzle-orm/node-postgres');
       const { migrate } = require('drizzle-orm/node-postgres/migrator');
       async function run() {
-        const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
+        const pool = new Pool({ connectionString: env.DATABASE_URL, max: 1 });
         await pool.query('CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"');
         await pool.query('CREATE EXTENSION IF NOT EXISTS \"pgcrypto\"');
         const db = drizzle(pool);
@@ -172,10 +171,8 @@ services:
 
   # ─── Backend API ─────────────────────────────────────────────────────────
   server:
-    build:
-      context: .
-      dockerfile: packages/server/Dockerfile.prod
-    image: eventclick/server:${IMAGE_TAG:-latest}
+    image: ghcr.io/owner/eventclick/server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    pull_policy: always
     container_name: Eventclick_server_prod
     restart: always
     expose:
@@ -228,7 +225,7 @@ services:
       gotenberg:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/v1/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/v1/health/deep || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -250,20 +247,11 @@ services:
   # ─── Frontend (Nginx + Vite static build) ────────────────────────────────
   # Also acts as the reverse proxy for API + Gotenberg
   client:
-    build:
-      context: .
-      dockerfile: packages/client/Dockerfile.prod
-      args:
-        VITE_API_URL: ${VITE_API_URL}
-        VITE_LIVEKIT_URL: ${VITE_LIVEKIT_URL}
-        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
-    image: eventclick/client:${IMAGE_TAG:-latest}
+    image: ghcr.io/owner/eventclick/client:${IMAGE_TAG:?IMAGE_TAG must be set}
+    pull_policy: always
     container_name: Eventclick_client_prod
     restart: always
     volumes:
-      - ./packages/client/src:/app/packages/client/src
-      - ./packages/shared/src:/app/packages/shared/src
-      - ./packages/shared/dist:/app/packages/shared/dist
       - /etc/ssl/cloudflare/origin-cert.pem:/etc/nginx/ssl/origin-cert.pem:ro
       - /etc/ssl/cloudflare/origin-key.pem:/etc/nginx/ssl/origin-key.pem:ro
     ports:

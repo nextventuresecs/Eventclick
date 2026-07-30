@@ -65,7 +65,7 @@ export const findActiveSessionByToken = async (raw: string): Promise<Session | n
 
   const cached = await cacheGet<Session>(cacheKey);
   if (cached !== null) {
-    if ((cached as any).__is_null) return null;
+    if (cached === "__null__") return null;
     if (cached.expiresAt) cached.expiresAt = new Date(cached.expiresAt);
     if (cached.createdAt) cached.createdAt = new Date(cached.createdAt);
     if (cached.revokedAt) cached.revokedAt = new Date(cached.revokedAt);
@@ -75,7 +75,7 @@ export const findActiveSessionByToken = async (raw: string): Promise<Session | n
 
   const [row] = await db.select().from(sessions).where(eq(sessions.tokenHash, tokenHash)).limit(1);
   if (!row) {
-    await cacheSet(cacheKey, { __is_null: true }, 30);
+    await cacheSet(cacheKey, "__null__", 30);
     return null;
   }
 

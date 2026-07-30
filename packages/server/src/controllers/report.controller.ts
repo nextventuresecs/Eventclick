@@ -1,6 +1,8 @@
 import type { RequestHandler } from "express";
 import { ApiError } from "../utils/errors";
 import { generateVerificationReportPdf } from "../services/report.service";
+import { enqueuePdfJob } from "../queues/sqs.client";
+import { env } from "../config/env";
 import { logger } from "../utils/logger";
 
 const requireOrgId = (organizationId: string | null): string => {
@@ -8,12 +10,6 @@ const requireOrgId = (organizationId: string | null): string => {
   return organizationId;
 };
 
-/**
- * Downloads a fieldwork verification PDF report for a specific event room.
- *
- * Generates the report synchronously via Gotenberg and streams the resulting
- * PDF buffer back as an `application/pdf` response.
- */
 export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user!.organizationId);
@@ -23,6 +19,11 @@ export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
       { roomId, orgId, userId: req.user!.id },
       "PDF report generation requested"
     );
+
+    if (env.SQS_QUEUE_URL) {
+      const job = await enqueuePdfJob({ roomId, orgId, userId: req.user!.id });
+      return res.status(202).json({ jobId: job.jobId });
+    }
 
     const pdfBuffer = await generateVerificationReportPdf(roomId, orgId, req.user!);
 

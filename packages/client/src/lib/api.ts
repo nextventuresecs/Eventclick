@@ -65,29 +65,61 @@ const refreshOnce = (): Promise<string | null> => {
 
 type Body = Record<string, unknown> | undefined;
 
-const request = async <T>(
+const DEFAULT_TIMEOUT_MS = 15_000;
+let requestIdCounter = 0;
+const nextRequestId = () => `req-${Date.now()}-${++requestIdCounter}`;
+
+const fetchWithAuth = async (
+  path: string,
+  init?: RequestInit,
+  retry = true,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<Response> => {
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string>),
+  };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  headers["x-request-id"] = headers["x-request-id"] ?? nextRequestId();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers,
+    credentials: "include",
+    signal: controller.signal,
+  });
+
+  clearTimeout(timeoutId);
+
+  if (res.status === 401 && retry && !path.startsWith("/auth/")) {
+    const newToken = await refreshOnce();
+    if (newToken) return fetchWithAuth(path, init, false, timeoutMs);
+    onUnauthorized?.();
+  }
+
+  return res;
+};
+
+const request = async <T = void>(
   method: string,
   path: string,
   body?: Body,
   retry = true,
 ): Promise<T> => {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const res = await fetchWithAuth(
+    path,
+    {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    },
+    retry,
+  );
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    credentials: "include",
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (res.status === 401 && retry && !path.startsWith("/auth/")) {
-    const newToken = await refreshOnce();
-    if (newToken) return request<T>(method, path, body, false);
-    onUnauthorized?.();
-  }
-
-  if (res.status === 204) return undefined as T;
+  // Return null safely for 204 No Content (cast to T safely)
+  if (res.status === 204) return null as unknown as T;
 
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
@@ -105,11 +137,11 @@ const request = async <T>(
 };
 
 export const api = {
-  get: <T>(path: string) => request<T>("GET", path),
-  post: <T>(path: string, body?: Body) => request<T>("POST", path, body),
-  put: <T>(path: string, body?: Body) => request<T>("PUT", path, body),
-  patch: <T>(path: string, body?: Body) => request<T>("PATCH", path, body),
-  delete: <T>(path: string) => request<T>("DELETE", path),
+  get: <T = unknown>(path: string) => request<T>("GET", path),
+  post: <T = void>(path: string, body?: Body) => request<T>("POST", path, body),
+  put: <T = void>(path: string, body?: Body) => request<T>("PUT", path, body),
+  patch: <T = void>(path: string, body?: Body) => request<T>("PATCH", path, body),
+  delete: <T = void>(path: string, body?: Body) => request<T>("DELETE", path, body),
 };
 
 export const authApi = {
@@ -163,33 +195,10 @@ export const roomsApi = {
     api.post<EventRoom>(`/rooms/${id}/fallback/youtube`, { youtubeWatchUrl }),
   clearFallback: (id: string) => api.post<EventRoom>(`/rooms/${id}/fallback/clear`),
   downloadReportPdf: async (id: string): Promise<Blob> => {
-    const headers: Record<string, string> = {};
-    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-
-    let res = await fetch(`${API_URL}/rooms/${id}/report/pdf`, {
-      method: "GET",
-      headers,
-      credentials: "include",
-    });
-
-    if (res.status === 401) {
-      const newToken = await refreshOnce();
-      if (newToken) {
-        headers.Authorization = `Bearer ${newToken}`;
-        res = await fetch(`${API_URL}/rooms/${id}/report/pdf`, {
-          method: "GET",
-          headers,
-          credentials: "include",
-        });
-      } else {
-        onUnauthorized?.();
-      }
-    }
-
+    const res = await fetchWithAuth(`/rooms/${id}/report/pdf`, { method: "GET" });
     if (!res.ok) {
       throw new ApiClientError(res.status, "PDF_DOWNLOAD_FAILED", "Failed to download PDF report");
     }
-
     return res.blob();
   },
 };
@@ -260,6 +269,8 @@ export const adminApi = {
   listUsers: () => api.get<{ items: OrgUserSummary[] }>("/admin/users"),
   createUser: (body: CreateOrgUserInput) =>
     api.post<OrgUserSummary>("/admin/users", body),
+  deleteUser: (userId: string, confirmEmail: string) =>
+    api.delete<{ success: boolean; message: string }>(`/admin/users/${userId}`, { confirmEmail }),
 };
 
 export const uploadToPresignedUrl = async (

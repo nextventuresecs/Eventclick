@@ -17,6 +17,7 @@ import { VerifyEmailPage } from "./pages/VerifyEmail";
 import { OnboardingPage } from "./pages/Onboarding";
 import { DashboardLayout } from "./components/layouts/DashboardLayout";
 import { Dashboard } from "./pages/Dashboard";
+import { Rooms } from "./pages/Rooms";
 import { CreateRoom } from "./pages/CreateRoom";
 import { RoomFormBuilder } from "./pages/RoomFormBuilder";
 import { Attendance } from "./pages/Attendance";
@@ -25,13 +26,20 @@ import { RoomLive } from "./pages/RoomLive";
 import { RoomWatch } from "./pages/RoomWatch";
 import { AdminUsers } from "./pages/AdminUsers";
 import { EventAssignments } from "./pages/EventAssignments";
+import { Forms } from "./pages/Forms";
+import { Reports } from "./pages/Reports";
+import { Profile } from "./pages/Profile";
+import { HelpCenter } from "./pages/HelpCenter";
+import { Feedback } from "./pages/Feedback";
+import { ReportBug } from "./pages/ReportBug";
+import { Settings } from "./pages/Settings";
 
 const ConnectionError = () => {
   const { retryAuth } = useAuth();
   return (
     <div className="flex min-h-screen items-center justify-center p-8">
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-4">Connection Lost</h2>
+        <h2 className="text-2xl font-bold tracking-tight font-display mb-4">Connection Lost</h2>
         <p className="text-muted-foreground mb-6">
           Unable to verify your session.
         </p>
@@ -83,7 +91,7 @@ const ProtectedRoute = () => {
 const AccessDenied = ({ permission }: { permission: RolePermission }) => (
   <div className="mx-auto flex min-h-[50vh] max-w-lg items-center justify-center p-6">
     <div className="space-y-3 text-center">
-      <h2 className="text-2xl font-semibold">Access limited</h2>
+      <h2 className="text-2xl font-semibold tracking-tight font-display">Access limited</h2>
       <p className="text-sm text-muted-foreground">
         Your role does not allow this action yet (
         {permission.replaceAll("_", " ")}).
@@ -210,6 +218,12 @@ const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { path: "dashboard", element: <Dashboard /> },
+          { path: "profile", element: <Profile /> },
+          { path: "settings", element: <Settings /> },
+          { path: "help", element: <HelpCenter /> },
+          { path: "feedback", element: <Feedback /> },
+          { path: "report-bug", element: <ReportBug /> },
+          { path: "rooms", element: <Rooms /> },
           {
             element: <PermissionRoute permission="manage_rooms" />,
             children: [{ path: "rooms/create", element: <CreateRoom /> }],
@@ -218,6 +232,13 @@ const router = createBrowserRouter([
             element: <PermissionRoute permission="create_attendance_form" />,
             children: [
               { path: "rooms/:id/form-builder", element: <RoomFormBuilder /> },
+            ],
+          },
+          { path: "forms", element: <Forms /> },
+          {
+            element: <PermissionRoute permission="view_reports" />,
+            children: [
+              { path: "reports", element: <Reports /> },
             ],
           },
           {
@@ -259,6 +280,12 @@ const router = createBrowserRouter([
   },
 ]);
 
+import { ErrorBoundary } from "./components/ErrorBoundary";
+
 export function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
+  );
 }

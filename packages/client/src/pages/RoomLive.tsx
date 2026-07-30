@@ -19,6 +19,7 @@ import {
   Upload,
   ChevronRight,
   ImageIcon,
+  MapPin,
 } from "lucide-react";
 import {
   EventRoom,
@@ -198,85 +199,114 @@ export const RoomLive = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 px-4 lg:px-6">
-      <div className="flex items-center gap-3">
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center justify-center w-10 h-10 rounded-md hover:bg-muted shrink-0 -ml-2"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold tracking-tight truncate">{room.title}</h2>
-          <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-            <span
-              className={`inline-block w-2 h-2 rounded-full ${
-                room.status === "live"
-                  ? "bg-red-500 animate-pulse"
-                  : "bg-muted-foreground"
-              }`}
-            />
-            {room.status.toUpperCase()} · provider: {room.streamProvider}
-            {room.streamProvider === "livekit" && presence && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-border bg-muted/40 text-foreground">
-                <Users className="w-3 h-3" />
-                {presence.count} in room
-              </span>
-            )}
-          </p>
-        </div>
-
-        {canPublish && room.streamProvider === "livekit" && (
-          <div className="flex gap-2">
-            {room.status === "live" && !activeRecording && (
-              <Button onClick={handleStartRecording} disabled={recordBusy === "start"} variant="outline" className="border-red-500/20 text-red-500 hover:bg-red-500/10">
-                {recordBusy === "start" ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 mr-2" />
-                )}
-                Record
-              </Button>
-            )}
-            {room.status === "live" && activeRecording && (
-              <Button onClick={handleStopRecording} disabled={recordBusy === "stop"} variant="outline" className="border-red-500/50 bg-red-500/10 text-red-500 hover:bg-red-500/20">
-                {recordBusy === "stop" ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <div className="w-2.5 h-2.5 rounded-sm bg-red-500 mr-2" />
-                )}
-                Stop Recording
-              </Button>
-            )}
-            {room.status !== "live" ? (
-              <Button onClick={handleStart} disabled={actionBusy === "start"}>
-                {actionBusy === "start" ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <PlayCircle className="w-4 h-4" />
-                )}
-                Go Live
-              </Button>
-            ) : (
-              <Button
-                variant="destructive"
-                onClick={handleStop}
-                disabled={actionBusy === "stop"}
+    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in">
+      {/* Hero Header Banner */}
+      <div className="rounded-3xl bg-brand-gradient-tile p-6 md:p-8 text-white shadow-lg space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-white/15 text-white hover:bg-white/25 backdrop-blur-md transition-colors"
               >
-                {actionBusy === "stop" ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <StopCircle className="w-4 h-4" />
-                )}
-                End Live
-              </Button>
-            )}
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border ${
+                room.status === "live"
+                  ? "bg-red-500/20 text-white border-red-400/40"
+                  : "bg-white/15 text-white border-white/20"
+              }`}>
+                <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${
+                  room.status === "live" ? "bg-red-400 animate-pulse" : "bg-white/60"
+                }`} />
+                {room.status.toUpperCase()} · Provider: {room.streamProvider}
+              </span>
+
+              {room.location && (
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur-md text-white border border-white/20 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-purple-300" />
+                  {room.location}
+                </span>
+              )}
+
+              {room.streamProvider === "livekit" && presence && (
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 backdrop-blur-md text-white border border-white/20 flex items-center gap-1">
+                  <Users className="w-3.5 h-3.5 text-purple-300" />
+                  {presence.count} Active Viewers
+                </span>
+              )}
+            </div>
+
+            <h1 className="text-2xl md:text-3xl font-bold font-display text-white tracking-tight">
+              {room.title}
+            </h1>
           </div>
-        )}
+
+          {canPublish && room.streamProvider === "livekit" && (
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              {room.status === "live" && !activeRecording && (
+                <Button
+                  onClick={handleStartRecording}
+                  disabled={recordBusy === "start"}
+                  className="bg-white/15 hover:bg-white/25 text-white font-semibold text-xs rounded-xl border border-white/20 h-10 px-4 backdrop-blur-md"
+                >
+                  {recordBusy === "start" ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-400 mr-2 animate-pulse" />
+                  )}
+                  Start Recording
+                </Button>
+              )}
+              {room.status === "live" && activeRecording && (
+                <Button
+                  onClick={handleStopRecording}
+                  disabled={recordBusy === "stop"}
+                  className="bg-red-600/90 hover:bg-red-600 text-white font-semibold text-xs rounded-xl h-10 px-4 shadow-sm"
+                >
+                  {recordBusy === "stop" ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <div className="w-2.5 h-2.5 rounded-xs bg-white mr-2" />
+                  )}
+                  Stop Recording
+                </Button>
+              )}
+
+              {room.status !== "live" ? (
+                <Button
+                  onClick={handleStart}
+                  disabled={actionBusy === "start"}
+                  className="bg-white text-purple-950 hover:bg-purple-50 font-bold text-xs rounded-xl h-10 px-5 shadow-md gap-1.5"
+                >
+                  {actionBusy === "start" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <PlayCircle className="w-4 h-4 text-purple-700" />
+                  )}
+                  Go Live Broadcast
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleStop}
+                  disabled={actionBusy === "stop"}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl h-10 px-5 shadow-md gap-1.5"
+                >
+                  {actionBusy === "stop" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <StopCircle className="w-4 h-4" />
+                  )}
+                  End Live Session
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {error && (
-        <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm border border-destructive/20">
+        <div className="p-3 rounded-md bg-status-cancelled-bg text-(--color-error) text-sm border border-(--color-gray-200)">
           {error}
         </div>
       )}
@@ -685,7 +715,7 @@ export const ActivityTrackerPanel: React.FC<ActivityTrackerPanelProps> = ({
                       {/* Controls (camera / upload) */}
                       <div className="space-y-2 pt-2 border-t border-border/50">
                         {error && (
-                          <div className="p-2 rounded bg-destructive/10 text-destructive text-xs border border-destructive/20 flex items-center gap-1.5">
+                          <div className="p-2 rounded bg-status-cancelled-bg text-(--color-error) text-xs border border-(--color-gray-200) flex items-center gap-1.5">
                             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                             <span>{error}</span>
                           </div>

@@ -3,14 +3,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
   {
     variants: {
       variant: {
-        primary: "bg-primary text-primary-foreground hover:opacity-90",
-        outline: "border border-border bg-transparent text-foreground hover:bg-muted",
-        ghost: "text-foreground hover:bg-muted",
-        destructive: "bg-destructive text-destructive-foreground hover:opacity-90",
+        primary:
+          "bg-brand-gradient text-white shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.98]",
+        outline:
+          "border border-(--color-gray-200) bg-transparent text-gray-700 hover:bg-(--color-gray-50) hover:border-[var(--color-gray-300)] active:bg-(--color-gray-100)",
+        ghost:
+          "text-gray-700 hover:bg-(--color-gray-100) hover:text-(--color-gray-900) active:bg-(--color-gray-200)",
+        destructive:
+          "bg-[var(--color-error)] text-white shadow-sm hover:brightness-110 active:scale-[0.98]",
       },
       size: {
         sm: "h-8 px-3 text-xs",

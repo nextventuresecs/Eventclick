@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Loader2, Plus, Trash2, Sparkles, ClipboardList } from "lucide-react";
+import { ArrowLeft, Calendar, Loader2, Plus, Trash2, Camera, ClipboardList, MapPin, Navigation } from "lucide-react";
 import { roomsApi, ApiClientError } from "@/lib/api";
 import { CreateRoomSchema, hasRolePermission } from "@application/shared";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +18,10 @@ export const CreateRoom = () => {
   // Form State
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [latitude, setLatitude] = useState<number | undefined>();
+  const [longitude, setLongitude] = useState<number | undefined>();
+  const [locating, setLocating] = useState(false);
   const [scheduledStart, setScheduledStart] = useState("");
   const [scheduledEnd, setScheduledEnd] = useState("");
   const [maxParticipants, setMaxParticipants] = useState("");
@@ -26,6 +30,26 @@ export const CreateRoom = () => {
 
   // Activities State
   const [activityDefinitions, setActivityDefinitions] = useState<{ id: string; title: string; description?: string; min_photos: number }[]>([]);
+
+  const handleGetGPS = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(pos.coords.latitude);
+        setLongitude(pos.coords.longitude);
+        setLocating(false);
+      },
+      (err) => {
+        setError(`GPS error: ${err.message}`);
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // Defensive programming: Verify permission even though routing layer already checks
   const canCreateRooms = user ? hasRolePermission(user.role, "manage_rooms") : false;
@@ -85,6 +109,9 @@ export const CreateRoom = () => {
     const parsed = CreateRoomSchema.safeParse({
       title,
       description: description || undefined,
+      location: location || undefined,
+      latitude,
+      longitude,
       scheduledStart: scheduledStart ? new Date(scheduledStart).toISOString() : "",
       scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : "",
       maxParticipants: maxParticipants ? parseInt(maxParticipants, 10) : undefined,
@@ -119,49 +146,105 @@ export const CreateRoom = () => {
       <div className="flex items-center gap-4">
         <Link
           to="/dashboard"
-          className="inline-flex items-center justify-center w-10 h-10 rounded-md text-foreground hover:bg-muted transition-colors shrink-0 -ml-2"
+          className="inline-flex items-center justify-center w-10 h-10 rounded-lg text-foreground hover:bg-muted transition-colors shrink-0 -ml-2"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Create New Room</h2>
-          <p className="text-muted-foreground text-sm">
+          <h2 className="text-2xl font-bold tracking-tight font-display text-(--color-gray-900)">Create New Room</h2>
+          <p className="text-sm text-muted-foreground">
             Set up a new event or webinar room for {user?.organizationName || "your organization"}.
           </p>
         </div>
       </div>
 
-      <Card>
+      <Card className="card-static rounded-2xl">
         <form onSubmit={onSubmit}>
           <CardContent className="space-y-6 pt-6">
             <div className="space-y-2">
               <Label htmlFor="title">Event Title <span className="text-destructive">*</span></Label>
               <Input
                 id="title"
-                placeholder="e.g. Finance Mela"
+                placeholder="e.g. Annual Community Health & Finance Mela"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={submitting}
                 required
+                className="input-premium"
               />
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="description">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Label htmlFor="description">Event Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <textarea
                 id="description"
-                placeholder="Brief description of the event..."
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                placeholder="Describe the objective, key agenda, target audience, and instructions for volunteers..."
+                rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={submitting}
+                className="w-full rounded-xl border border-input bg-background p-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all resize-y min-h-24"
               />
+              <p className="text-[11px] text-muted-foreground flex justify-between">
+                <span>Provide context to help attendees and volunteers understand the scope.</span>
+                <span>{description.length}/1000</span>
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="location">Event Location & Geo-Pinning <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <Input
+                    id="location"
+                    placeholder="e.g. City Hall Auditorium, 123 Main St, New York"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    disabled={submitting}
+                    className="pl-10 input-premium"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGetGPS}
+                  disabled={locating || submitting}
+                  className="flex items-center gap-1.5 shrink-0"
+                  title="Capture current GPS coordinates"
+                >
+                  {locating ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Navigation className="w-4 h-4 text-purple-600" />}
+                  <span className="hidden sm:inline text-xs font-semibold">Get GPS</span>
+                </Button>
+              </div>
+
+              {latitude !== undefined && longitude !== undefined && (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-purple-50/60 border border-purple-200/80 text-xs text-purple-900 animate-in fade-in">
+                  <MapPin className="w-4 h-4 text-purple-600 shrink-0" />
+                  <div className="flex-1 font-mono text-[11px]">
+                    Pinned Coordinates: <strong className="text-purple-950">{latitude.toFixed(6)}, {longitude.toFixed(6)}</strong>
+                  </div>
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=16/${latitude}/${longitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] font-semibold text-purple-700 hover:underline"
+                  >
+                    View Map ↗
+                  </a>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="scheduledStart">Start Time <span className="text-destructive">*</span></Label>
                 <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-(--color-gray-600)">
+                    <Calendar className="w-4 h-4" />
+                  </div>
                   <Input
                     id="scheduledStart"
                     type="datetime-local"
@@ -169,12 +252,16 @@ export const CreateRoom = () => {
                     onChange={(e) => setScheduledStart(e.target.value)}
                     disabled={submitting}
                     required
+                    className="pl-10 input-premium"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="scheduledEnd">End Time <span className="text-destructive">*</span></Label>
                 <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-(--color-gray-600)">
+                    <Calendar className="w-4 h-4" />
+                  </div>
                   <Input
                     id="scheduledEnd"
                     type="datetime-local"
@@ -182,6 +269,7 @@ export const CreateRoom = () => {
                     onChange={(e) => setScheduledEnd(e.target.value)}
                     disabled={submitting}
                     required
+                    className="pl-10 input-premium"
                   />
                 </div>
               </div>
@@ -199,6 +287,7 @@ export const CreateRoom = () => {
                   value={attendanceWindowBefore}
                   onChange={(e) => setAttendanceWindowBefore(e.target.value)}
                   disabled={submitting}
+                  className="input-premium"
                 />
                 <p className="text-xs text-muted-foreground">
                   Minutes before start time that attendance can be taken (default 15).
@@ -214,6 +303,7 @@ export const CreateRoom = () => {
                   value={attendanceWindowAfter}
                   onChange={(e) => setAttendanceWindowAfter(e.target.value)}
                   disabled={submitting}
+                  className="input-premium"
                 />
                 <p className="text-xs text-muted-foreground">
                   Minutes after event ends that attendance can still be taken (default 30).
@@ -233,6 +323,7 @@ export const CreateRoom = () => {
                 value={maxParticipants}
                 onChange={(e) => setMaxParticipants(e.target.value)}
                 disabled={submitting}
+                className="input-premium"
               />
             </div>
 
@@ -282,8 +373,8 @@ export const CreateRoom = () => {
                       ])}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-background border border-border hover:bg-muted/50 rounded-full transition-colors"
                     >
-                      <Sparkles className="w-3 h-3 text-yellow-500" />
-                      📸 Banner & Group Photo (1 proof)
+                      <Camera className="w-3 h-3 text-purple-600" />
+                      Banner & Group Photo (1 proof)
                     </button>
                     <button
                       type="button"
@@ -297,8 +388,8 @@ export const CreateRoom = () => {
                       ])}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium bg-background border border-border hover:bg-muted/50 rounded-full transition-colors"
                     >
-                      <Sparkles className="w-3 h-3 text-yellow-500" />
-                      📝 Attendee Logs (2 proofs)
+                      <Camera className="w-3 h-3 text-purple-600" />
+                      Attendee Logs (2 proofs)
                     </button>
                   </div>
                 </div>
@@ -352,7 +443,7 @@ export const CreateRoom = () => {
                           <textarea
                             id={`act-desc-${act.id}`}
                             placeholder="Add guidelines for volunteers uploading proofs..."
-                            className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            className="flex min-h-15 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             value={act.description || ""}
                             onChange={(e) => updateActivity(act.id, "description", e.target.value)}
                             disabled={submitting}
@@ -367,7 +458,7 @@ export const CreateRoom = () => {
                           variant="ghost"
                           size="icon"
                           onClick={() => deleteActivity(act.id)}
-                          className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          className="h-9 w-9 text-muted-foreground hover:text-(--color-error) hover:bg-status-cancelled-bg transition-colors"
                           title="Delete Activity"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -393,7 +484,7 @@ export const CreateRoom = () => {
             </div>
 
             {error && (
-              <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm border border-destructive/20">
+              <div className="p-3 rounded-md bg-status-cancelled-bg text-(--color-error) text-sm border border-(--color-gray-200)">
                 {error}
               </div>
             )}
@@ -406,7 +497,7 @@ export const CreateRoom = () => {
             >
               Cancel
             </Link>
-            <Button type="submit" disabled={submitting} className="min-w-[120px]">
+            <Button type="submit" disabled={submitting} className="min-w-30">
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

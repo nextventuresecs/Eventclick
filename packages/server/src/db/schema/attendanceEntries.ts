@@ -6,6 +6,7 @@ import {
   timestamp,
   jsonb,
   index,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { eventRooms } from "./eventRooms";
@@ -26,6 +27,8 @@ export const attendanceEntries = pgTable(
     data: jsonb("data").$type<Record<string, string | number | boolean | null>>().notNull(),
     photoKey: varchar("photo_key", { length: 256 }),
     photoUrl: text("photo_url"),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
     ipAddress: varchar("ip_address", { length: 45 }),
     userAgent: text("user_agent"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),

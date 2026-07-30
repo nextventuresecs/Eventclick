@@ -9,11 +9,12 @@
 #
 # What this does:
 #   1. Pull latest code (or checkout tag)
-#   2. Build Docker images
-#   3. Run database migrations (via init container)
-#   4. Rolling restart of services
-#   5. Health check verification
-#   6. Rollback on failure
+#   2. Start infrastructure (postgres, redis, gotenberg)
+#   3. Pull Docker images from registry (or build locally)
+#   4. Run database migrations
+#   5. Rolling restart of services
+#   6. Health check verification
+#   7. Rollback on failure
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -39,6 +40,11 @@ warn() { echo -e "${YELLOW}[WARN]${NC}   $(date +%H:%M:%S) $1" | tee -a "$DEPLOY
 err()  { echo -e "${RED}[ERROR]${NC}  $(date +%H:%M:%S) $1" | tee -a "$DEPLOY_LOG" >&2; }
 info() { echo -e "${BLUE}[INFO]${NC}   $(date +%H:%M:%S) $1" | tee -a "$DEPLOY_LOG"; }
 
+# Docker compose wrapper that always reads secrets from the runtime-only path.
+dc() {
+  docker compose --env-file "$SECRETS_FILE" -f "$COMPOSE_FILE" "$@"
+}
+
 # ── Navigate to project root ───────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -52,22 +58,25 @@ log "Deploy log: ${DEPLOY_LOG}"
 # 0. Fetch secrets from AWS SSM Parameter Store
 # ═══════════════════════════════════════════════════════════════════════════
 # SSM is the single source of truth for production environment variables.
-# fetch-secrets.sh pulls all params under /eventclick/prod/* and writes .env
-# If fetch-secrets.sh is missing or fails, we fall back to the existing .env
+# fetch-secrets.sh pulls all params under /eventclick/prod/* and writes
+# /etc/eventclick/.env (runtime-only, never committed to git).
+# If fetch-secrets.sh is missing or fails, we fall back to the existing file.
+
+SECRETS_FILE="/etc/eventclick/.env"
 
 if [[ -x "${SCRIPT_DIR}/fetch-secrets.sh" ]]; then
   log "Fetching environment from SSM Parameter Store..."
-  if "${SCRIPT_DIR}/fetch-secrets.sh" "${PROJECT_ROOT}/.env"; then
-    log "SSM secrets fetched → .env generated ✅"
+  if "${SCRIPT_DIR}/fetch-secrets.sh" "$SECRETS_FILE"; then
+    log "SSM secrets fetched → /etc/eventclick/.env generated ✅"
   else
-    warn "fetch-secrets.sh failed (exit $?) — falling back to existing .env"
-    if [[ ! -f .env ]]; then
-      err "No existing .env to fall back to. Cannot continue."
+    warn "fetch-secrets.sh failed (exit $?) — falling back to existing file"
+    if [[ ! -f "$SECRETS_FILE" ]]; then
+      err "No existing /etc/eventclick/.env to fall back to. Cannot continue."
       exit 1
     fi
   fi
 else
-  warn "fetch-secrets.sh not found or not executable — using existing .env"
+  warn "fetch-secrets.sh not found or not executable — using existing /etc/eventclick/.env"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -75,9 +84,10 @@ fi
 # ═══════════════════════════════════════════════════════════════════════════
 log "Running pre-flight checks..."
 
-# Check .env exists
-if [[ ! -f .env ]]; then
-  err ".env file not found! Either populate SSM Parameter Store or manually create .env."
+# Check secrets file exists
+if [[ ! -f "$SECRETS_FILE" ]]; then
+  err "Secrets file not found at ${SECRETS_FILE}!"
+  err "Either populate SSM Parameter Store or manually create the file."
   err "SSM: Ensure params exist under /eventclick/prod/* and EC2 IAM role has SSM read access."
   exit 1
 fi
@@ -121,21 +131,30 @@ info "Previous server image: ${PREV_SERVER_IMAGE:0:12}"
 info "Previous client image: ${PREV_CLIENT_IMAGE:0:12}"
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 2. Build Docker images (skipped when images pre-pulled from ghcr.io)
+# 1. Start Infrastructure
 # ═══════════════════════════════════════════════════════════════════════════
-if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
-  log "Building Docker images..."
-  docker compose -f "$COMPOSE_FILE" build --no-cache server client
-  log "Docker images built ✅"
+log "Starting infrastructure services..."
+dc up -d postgres redis gotenberg
+sleep 5
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 2. Pull/Build Docker Images
+# ═══════════════════════════════════════════════════════════════════════════
+if [[ "${SKIP_BUILD:-1}" != "0" ]]; then
+  log "pulling Docker images..."
+  dc pull && dc up -d --no-deps client server
+  log "Docker images pulled & restarted ✅"
 else
-  warn "SKIP_BUILD=1 — using pre-pulled images (ghcr.io)"
+  log "Building Docker images..."
+  dc build --no-cache server client
+  log "Docker images built ✅"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 3. Run database migrations
 # ═══════════════════════════════════════════════════════════════════════════
 log "Running database migrations..."
-docker compose -f "$COMPOSE_FILE" up migrate --build --abort-on-container-exit
+dc up migrate --pull --abort-on-container-exit
 MIGRATE_EXIT=$?
 if [[ $MIGRATE_EXIT -ne 0 ]]; then
   err "Database migration failed with exit code ${MIGRATE_EXIT}!"
@@ -149,13 +168,9 @@ log "Migrations complete ✅"
 # ═══════════════════════════════════════════════════════════════════════════
 log "Starting rolling restart..."
 
-# Start infrastructure first (postgres, redis, gotenberg should already be running)
-docker compose -f "$COMPOSE_FILE" up -d postgres redis gotenberg
-sleep 5
-
 # Restart the server
 log "Restarting server..."
-docker compose -f "$COMPOSE_FILE" up -d --no-deps server
+dc up -d --no-deps server
 sleep 3
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -176,18 +191,18 @@ done
 if [[ "$HEALTHY" != "true" ]]; then
   err "Health check failed after ${HEALTH_RETRIES} attempts!"
   err "Server logs:"
-  docker compose -f "$COMPOSE_FILE" logs --tail=50 server | tee -a "$DEPLOY_LOG"
+  dc logs --tail=50 server | tee -a "$DEPLOY_LOG"
 
   # ═══════════════════════════════════════════════════════════════════════
   # Rollback
   # ═══════════════════════════════════════════════════════════════════════
   warn "Rolling back to previous version..."
   if [[ "$PREV_SERVER_IMAGE" != "none" ]]; then
-    docker compose -f "$COMPOSE_FILE" stop server
+    dc stop server
     # git reset --hard moves HEAD back cleanly (no dirty working tree)
     # git checkout HEAD~1 -- was leaving repo in dirty state, breaking next deploy
     git reset --hard HEAD~1
-    docker compose -f "$COMPOSE_FILE" up -d --no-deps --build server
+    dc up -d --no-deps server
     warn "Rollback complete. Previous version restored."
     warn "Check the deploy log: ${DEPLOY_LOG}"
   else
@@ -198,9 +213,44 @@ fi
 
 log "Server health check passed ✅"
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Smoke test — verify the deep health endpoint responds correctly from outside
+# the container (confirms secrets are loaded and all dependencies are reachable)
+# ═══════════════════════════════════════════════════════════════════════════
+log "Running deep health smoke test..."
+SMOKE_OK=false
+for i in $(seq 1 5); do
+  SMOKE_RESP=$(curl -sf http://localhost:4000/api/v1/health/deep 2>/dev/null || true)
+  if [[ -n "$SMOKE_RESP" ]]; then
+    SMOKE_OK=true
+    break
+  fi
+  info "Smoke test attempt ${i}/5 — no response, waiting 3s..."
+  sleep 3
+done
+
+if [[ "$SMOKE_OK" != "true" ]]; then
+  err "Deep health smoke test failed — server is not responding correctly"
+  # Show the raw output for debugging
+  curl -v http://localhost:4000/api/v1/health/deep 2>&1 | tee -a "$DEPLOY_LOG" || true
+  warn "Rolling back to previous version..."
+  if [[ "$PREV_SERVER_IMAGE" != "none" ]]; then
+    dc stop server
+    git reset --hard HEAD~1
+    dc up -d --no-deps --build server
+    warn "Rollback complete. Previous version restored."
+    warn "Check the deploy log: ${DEPLOY_LOG}"
+  else
+    err "No previous image to rollback to!"
+  fi
+  exit 1
+fi
+
+log "Deep health smoke test passed ✅"
+
 # Restart the client
 log "Restarting client..."
-docker compose -f "$COMPOSE_FILE" up -d --no-deps client
+dc up -d --no-deps client
 sleep 3
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -212,13 +262,13 @@ echo "════════════════════════�
 echo -e "${GREEN} Deployment Successful! ✅${NC}"
 echo "═══════════════════════════════════════════════════════════════════"
 echo ""
-docker compose -f "$COMPOSE_FILE" ps
+dc ps
 echo ""
 
 # Show resource usage
 info "Container resource usage:"
 docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}" \
-  $(docker compose -f "$COMPOSE_FILE" ps -q) 2>/dev/null || true
+  $(dc ps -q) 2>/dev/null || true
 
 echo ""
 log "Deploy log saved to: ${DEPLOY_LOG}"

@@ -6,15 +6,9 @@ import { ApiClientError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { AuthLayout } from "@/components/layout/AuthLayout";
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 
 export const LoginPage = () => {
   const { login, loginWithGoogle } = useAuth();
@@ -25,6 +19,7 @@ export const LoginPage = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -65,23 +60,24 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Welcome back</CardTitle>
-          <CardDescription>Sign in to your Eventclick account</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <GoogleSignInButton onToken={onGoogle} disabled={submitting} />
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs uppercase text-muted-foreground">or</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
+    <AuthLayout>
+      <div className="flex flex-col gap-6">
+        <div className="text-center lg:text-left">
+          <h2 className="text-2xl lg:text-3xl font-bold tracking-tight font-display text-gray-900">
+            Sign in
+          </h2>
+          <p className="text-sm text-gray-500 mt-1.5 font-normal">
+            Welcome back! Sign in to access your workspace.
+          </p>
+        </div>
 
-          <form onSubmit={onSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Email</Label>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="email" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              Email Address
+            </Label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <Input
                 id="email"
                 type="email"
@@ -90,46 +86,91 @@ export const LoginPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={submitting}
+                className="input-premium pl-10 h-11 text-sm bg-gray-50/50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 rounded-xl transition-all"
+                placeholder="Enter email"
               />
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                Password
+              </Label>
+              <Link
+                to="/forgot-password"
+                className="text-xs font-semibold text-purple-700 hover:text-purple-900 transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={submitting}
+                className="input-premium pl-10 pr-10 h-11 text-sm bg-gray-50/50 border-gray-200 focus:bg-white focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 rounded-xl transition-all"
+                placeholder="Enter Password"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
+          </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs font-medium text-red-600 animate-in fade-in">
+              {error}
+            </div>
+          )}
 
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="justify-center text-sm text-muted-foreground">
-          Don't have an account?&nbsp;
-          <Link
-            to="/register"
-            className="font-medium text-primary hover:underline"
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="w-full mt-2 h-11 text-sm font-semibold bg-brand-gradient border-0 rounded-xl hover:shadow-lg hover:shadow-purple-900/25 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2 group text-white"
           >
-            Create one
-          </Link>
-        </CardFooter>
-      </Card>
-    </div>
+            {submitting ? (
+              "Signing in…"
+            ) : (
+              <>
+                <span>Sign In</span>
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </>
+            )}
+          </Button>
+        </form>
+
+        <div className="flex items-center gap-3 my-1">
+          <div className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Or continue with</span>
+          <div className="h-px flex-1 bg-gray-200" />
+        </div>
+        
+        <div className="flex justify-center">
+          <GoogleSignInButton onToken={onGoogle} disabled={submitting} />
+        </div>
+
+        <div className="text-center text-sm text-gray-500 pt-2">
+          <span>Don't have an account?&nbsp;
+            <Link
+              to="/register"
+              className="font-semibold text-purple-700 hover:text-purple-900 hover:underline transition-colors"
+            >
+              Sign up
+            </Link>
+          </span>
+        </div>
+      </div>
+    </AuthLayout>
   );
 };

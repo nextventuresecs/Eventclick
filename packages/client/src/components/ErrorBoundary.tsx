@@ -1,51 +1,61 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
-import { clientLog } from "../lib/log";
+import { Component, ReactNode, ErrorInfo } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
 }
 
 interface State {
   hasError: boolean;
+  error: Error | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  override state: State = { hasError: false };
+  public override state: State = {
+    hasError: false,
+    error: null,
+  };
 
-  static getDerivedStateFromError(): State {
-    return { hasError: true };
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
   }
 
-  override componentDidCatch(error: Error, info: ErrorInfo): void {
-    clientLog.error(error.message, error.stack, {
-      componentStack: info.componentStack ?? undefined,
-    });
+  public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught application error:", error, errorInfo);
   }
 
-  handleReload = (): void => {
+  private handleReset = () => {
+    this.setState({ hasError: false, error: null });
     window.location.reload();
   };
 
-  override render(): ReactNode {
-    if (!this.state.hasError) return this.props.children;
-    if (this.props.fallback) return this.props.fallback;
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-slate-100">
-        <div className="max-w-md text-center">
-          <h1 className="text-2xl font-semibold">Something went wrong</h1>
-          <p className="mt-2 text-sm text-slate-400">
-            An unexpected error occurred. Please reload to continue.
-          </p>
-          <button
-            type="button"
-            onClick={this.handleReload}
-            className="mt-6 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-          >
-            Reload
-          </button>
+  public override render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex min-h-screen items-center justify-center p-6 bg-gray-50">
+          <div className="max-w-md w-full text-center space-y-4 bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h2 className="text-xl font-bold tracking-tight text-gray-900 font-display">
+              Something went wrong
+            </h2>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              {this.state.error?.message || "An unexpected error occurred while rendering the application."}
+            </p>
+            <Button
+              onClick={this.handleReset}
+              className="w-full flex items-center justify-center gap-2 bg-brand-gradient"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Reload Application</span>
+            </Button>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+
+    return this.props.children;
   }
 }

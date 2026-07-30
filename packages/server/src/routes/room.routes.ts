@@ -109,7 +109,7 @@ roomRouter.post(
   postAttendance,
 );
 roomRouter.get("/:id/attendance", canViewAttendance, listRoomAttendance);
-roomRouter.get("/:id/report/pdf", requireRole("ngo_admin"), downloadRoomReportPdf);
+roomRouter.get("/:id/report/pdf", requirePermission("view_reports"), downloadRoomReportPdf);
 
 roomRouter.get("/:id/activities", canTakeAttendance, getActivitiesAndSubmissions);
 roomRouter.post(

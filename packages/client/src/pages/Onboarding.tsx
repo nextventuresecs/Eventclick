@@ -70,14 +70,10 @@ export const OnboardingPage = () => {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-6 bg-radial-[circle_at_top_right,_var(--color-primary)_0%,_transparent_40%] md:bg-radial-[circle_at_top_right,_var(--color-primary)_0%,_transparent_35%]">
-      {/* Sleek blurred decorative glass circles */}
-      <div className="absolute top-1/4 left-1/4 h-72 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-[80px]" />
-      <div className="absolute bottom-1/4 right-1/4 h-72 w-72 translate-x-1/2 rounded-full bg-primary/5 blur-[100px]" />
-
-      <Card className="relative z-10 w-full max-w-xl border-border/80 bg-card/85 backdrop-blur-md shadow-2xl transition-all duration-300 hover:shadow-primary/5">
+    <div className="relative flex min-h-screen items-center justify-center p-6">
+      <Card className="relative z-10 w-full max-w-xl border border-(--color-border) bg-(--color-card) shadow-2xl">
         <CardHeader className="text-center pb-2">
-          <CardTitle className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
+          <CardTitle className="text-3xl font-extrabold tracking-tight font-display text-(--color-gray-900)">
             Welcome to Eventclick
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
@@ -94,17 +90,13 @@ export const OnboardingPage = () => {
                 setError(null);
               }}
               className={`group relative flex flex-col gap-3 rounded-xl border p-5 cursor-pointer transition-all duration-200 select-none ${
-                role === "ngo_admin"
-                  ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
+                role === "ngo_admin" ? "role-card-active" : "role-card-inactive"
               }`}
             >
               <div className="flex items-center gap-3">
                 <div
                   className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
-                    role === "ngo_admin"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                    role === "ngo_admin" ? "role-icon-active" : "role-icon-inactive"
                   }`}
                 >
                   <svg
@@ -140,17 +132,13 @@ export const OnboardingPage = () => {
                 setOrganizationName("");
               }}
               className={`group relative flex flex-col gap-3 rounded-xl border p-5 cursor-pointer transition-all duration-200 select-none ${
-                role === "volunteer"
-                  ? "border-primary bg-primary/5 shadow-md shadow-primary/5 ring-1 ring-primary"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
+                role === "volunteer" ? "role-card-active" : "role-card-inactive"
               }`}
             >
               <div className="flex items-center gap-3">
                 <div
                   className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
-                    role === "volunteer"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                    role === "volunteer" ? "role-icon-active" : "role-icon-inactive"
                   }`}
                 >
                   <svg
@@ -181,7 +169,7 @@ export const OnboardingPage = () => {
 
           {/* Conditional NGO Admin fields */}
           {role === "ngo_admin" && (
-            <div className="flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/0 p-4 transition-all duration-300 animate-in fade-in slide-in-from-top-4">
+            <div className="flex flex-col gap-2 rounded-xl border border-(--color-gray-200) bg-(--color-gray-50) p-4">
               <Label htmlFor="orgName" className="font-semibold">
                 Organization Name
               </Label>
@@ -203,16 +191,16 @@ export const OnboardingPage = () => {
           )}
 
           {error && (
-            <p className="text-sm text-destructive text-center font-medium animate-bounce">
+            <p className="text-sm text-destructive text-center font-medium">
               {error}
             </p>
           )}
         </CardContent>
-        <CardFooter className="flex flex-col gap-3 justify-center border-t border-border/50 pt-6">
+        <CardFooter className="flex flex-col gap-3 justify-center border-t border-(--color-gray-200) pt-6">
           <Button
             onClick={handleSubmit}
             disabled={submitting || !role}
-            className="w-full h-11 text-sm font-semibold shadow-lg shadow-primary/20 transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99]"
+            className="w-full h-11"
           >
             {submitting ? "Processing…" : "Complete Onboarding"}
           </Button>
