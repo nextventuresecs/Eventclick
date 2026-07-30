@@ -16,3 +16,4 @@ export * from "./feedback";
 export * from "./bugReports";
 export * from "./notifications";
 export * from "./pdfJobs";
+export * from "./auditLogs";

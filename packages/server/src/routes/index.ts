@@ -160,6 +160,7 @@ import { settingsRouter } from "./settings.routes";
 import { feedbackRouter } from "./feedback.routes";
 import { bugReportRouter } from "./bug-report.routes";
 import { notificationRoutes } from "./notification.routes";
+import { profileRouter } from "./profile.routes";
 
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/share", shareRouter);
@@ -171,4 +172,5 @@ apiRouter.use(settingsRouter);
 apiRouter.use("/feedback", feedbackRouter);
 apiRouter.use("/bug-reports", bugReportRouter);
 apiRouter.use("/notifications", notificationRoutes);
+apiRouter.use("/profile", profileRouter);
 

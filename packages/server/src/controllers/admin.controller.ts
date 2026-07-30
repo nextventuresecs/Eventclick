@@ -56,6 +56,7 @@ export const deleteUser: RequestHandler = async (req, res, next) => {
       requester.organizationId,
       targetUserId,
       confirmEmail,
+      req,
     );
 
     // If self deletion, clear refresh cookie
