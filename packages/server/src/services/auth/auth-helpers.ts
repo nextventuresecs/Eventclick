@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { AuthUser } from "@application/shared";
-import { db } from "../../db";
+import { authDb } from "../../db";
 import { users, organizations, type User } from "../../db/schema";
 import { signAccessToken } from "../jwt.service";
 import { issueRefreshToken, type SessionMeta } from "../session.service";
@@ -74,7 +74,7 @@ export const findUserById = async (id: string): Promise<UserWithOrg | null> => {
     }
   }
 
-  const [row] = await db
+  const [row] = await authDb
     .select({
       user: users,
       orgName: organizations.name,
@@ -115,7 +115,7 @@ export const findUserByEmail = async (email: string): Promise<UserWithOrg | null
     if (user) return user;
   }
 
-  const [row] = await db
+  const [row] = await authDb
     .select({
       user: users,
       orgName: organizations.name,
@@ -158,6 +158,6 @@ export const issueTokensFor = async (user: UserWithOrg, meta: SessionMeta): Prom
     orgId: user.organizationId,
   });
   const refresh = await issueRefreshToken(user.id, meta);
-  await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+  await authDb.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
   return { user: toAuthUser(user, user.organizationName), accessToken, refreshToken: refresh.raw };
 };

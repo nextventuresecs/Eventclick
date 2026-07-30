@@ -3,20 +3,22 @@ import { loginUser } from "../services/auth/auth-login.service";
 
 vi.mock("../db", () => {
   const eq = (...args: any[]) => ({ type: "eq", args });
+  const mockDb = {
+    select: vi.fn().mockReturnThis(),
+    from: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    insert: vi.fn().mockReturnThis(),
+    values: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    delete: vi.fn().mockReturnThis(),
+    leftJoin: vi.fn().mockReturnThis(),
+  };
   return {
-    db: {
-      select: vi.fn().mockReturnThis(),
-      from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-      insert: vi.fn().mockReturnThis(),
-      values: vi.fn().mockReturnThis(),
-      returning: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      set: vi.fn().mockReturnThis(),
-      delete: vi.fn().mockReturnThis(),
-      leftJoin: vi.fn().mockReturnThis(),
-    },
+    db: mockDb,
+    authDb: mockDb,
     pool: {
       query: vi.fn(),
     },

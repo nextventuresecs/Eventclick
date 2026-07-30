@@ -9,7 +9,18 @@ export const pool = new Pool({
   idleTimeoutMillis: 30_000,
 });
 
+export const authPool = env.AUTH_DATABASE_URL
+  ? new Pool({
+      connectionString: env.AUTH_DATABASE_URL,
+      max: Math.max(2, Math.floor((env.DB_POOL_MAX || 10) / 2)),
+      idleTimeoutMillis: 30_000,
+    })
+  : pool;
+
 export const db = drizzle(pool, { schema, logger: env.NODE_ENV === "development" });
+export const authDb = env.AUTH_DATABASE_URL
+  ? drizzle(authPool, { schema, logger: env.NODE_ENV === "development" })
+  : db;
 
 export type Database = typeof db;
 export { schema };

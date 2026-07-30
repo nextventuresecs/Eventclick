@@ -8,7 +8,7 @@ import type {
   RegisterInput,
   OnboardingInput,
 } from "@application/shared";
-import { db } from "../../db";
+import { authDb } from "../../db";
 import { users, organizations, orgMembers, emailVerifications } from "../../db/schema";
 import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
@@ -59,7 +59,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
 
   const passwordHash = await argon2.hash(input.password);
 
-  const { user: created, verificationToken } = await db.transaction(async (tx) => {
+  const { user: created, verificationToken } = await authDb.transaction(async (tx) => {
     let orgId: string | null = null;
     let role: "admin" | "volunteer" = "volunteer";
 
@@ -135,9 +135,9 @@ export const completeOnboarding = async (
 ): Promise<AuthResult> => {
   const user = await findUserById(userId);
   if (!user) throw ApiError.notFound("User not found");
-  if (!user.isActive) throw ApiError.forbidden("This account is disabled");
+  if (!user.isActive) throw ApiError.forbidden("Account is disabled");
 
-  await db.transaction(async (tx) => {
+  await authDb.transaction(async (tx) => {
     let orgId: string | null = null;
 
     if (input.role === "admin") {
@@ -185,7 +185,7 @@ export const completeOnboarding = async (
 export const verifyEmailToken = async (token: string, meta: SessionMeta): Promise<AuthResult> => {
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
-  const [verifyReq] = await db
+  const [verifyReq] = await authDb
     .select()
     .from(emailVerifications)
     .where(
@@ -202,7 +202,7 @@ export const verifyEmailToken = async (token: string, meta: SessionMeta): Promis
     throw ApiError.badRequest("Invalid or expired verification token");
   }
 
-  await db.transaction(async (tx) => {
+  await authDb.transaction(async (tx) => {
     await tx
       .update(emailVerifications)
       .set({ usedAt: new Date() })
@@ -226,7 +226,7 @@ export const resendVerificationToken = async (email: string): Promise<void> => {
   const user = await findUserByEmail(email);
   if (!user || user.emailVerifiedAt) return; // Silent return for security
 
-  await db.update(emailVerifications)
+  await authDb.update(emailVerifications)
     .set({ usedAt: new Date() })
     .where(and(eq(emailVerifications.userId, user.id), isNull(emailVerifications.usedAt)));
 
@@ -234,7 +234,7 @@ export const resendVerificationToken = async (email: string): Promise<void> => {
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_24H_MS);
 
-  await db.insert(emailVerifications).values({
+  await authDb.insert(emailVerifications).values({
     userId: user.id,
     tokenHash,
     expiresAt,
