@@ -49,9 +49,35 @@ profileRouter.get("/me/export", requireAuth, async (req, res, next) => {
     const memberships = await db.select().from(orgMembers).where(eq(orgMembers.userId, userId));
     const rooms = await db.select().from(eventRooms).where(eq(eventRooms.organizationId, orgId));
     const roomIds = rooms.map((r) => r.id);
-    const attendance = await db.select().from(attendanceEntries).where(eq(attendanceEntries.submittedBy, userId));
+    const attendance = await db.select({
+      id: attendanceEntries.id,
+      roomId: attendanceEntries.roomId,
+      formDefinitionId: attendanceEntries.formDefinitionId,
+      submittedBy: attendanceEntries.submittedBy,
+      data: attendanceEntries.data,
+      photoKey: attendanceEntries.photoKey,
+      photoUrl: attendanceEntries.photoUrl,
+      latitude: attendanceEntries.latitude,
+      longitude: attendanceEntries.longitude,
+      location: attendanceEntries.location,
+      ipAddress: attendanceEntries.ipAddress,
+      userAgent: attendanceEntries.userAgent,
+      submittedAt: attendanceEntries.submittedAt,
+    }).from(attendanceEntries).where(eq(attendanceEntries.submittedBy, userId));
     const submissions = roomIds.length ? await db.select().from(activitySubmissions).where(inArray(activitySubmissions.roomId, roomIds)) : [];
-    const photos = await db.select().from(activityPhotos).where(eq(activityPhotos.submittedBy, userId));
+    const photos = await db.select({
+      id: activityPhotos.id,
+      submissionId: activityPhotos.submissionId,
+      roomId: activityPhotos.roomId,
+      activityId: activityPhotos.activityId,
+      photoKey: activityPhotos.photoKey,
+      photoUrl: activityPhotos.photoUrl,
+      latitude: activityPhotos.latitude,
+      longitude: activityPhotos.longitude,
+      location: activityPhotos.location,
+      submittedBy: activityPhotos.submittedBy,
+      createdAt: activityPhotos.createdAt,
+    }).from(activityPhotos).where(eq(activityPhotos.submittedBy, userId));
 
     const safe = {
       ...user,
