@@ -90,9 +90,9 @@
 | **Auth state**       | ✅ Secure                | Access token in memory, refresh via httpOnly cookie. No localStorage token storage. |
 | **Onboarding gate**  | ✅ Backend-driven        | `ProtectedRoute` now uses `user.organizationId` from API, not localStorage.         |
 | **CSV injection**    | ✅ Fixed                 | `AttendanceRecords.tsx:241-243` prefix formula chars with `'`.                      |
-| **Error boundaries** | ⚠️ Partial               | Top-level exists but no per-route `errorElement`.                                   |
-| **Bundle size**      | ⚠️ Unknown               | No bundle analysis configured. 23 lazy chunks is reasonable.                        |
-| **PWA**              | ⚠️ Configured but unused | `vite-plugin-pwa` in devDependencies but no service worker strategy visible.        |
+| **Error boundaries** | ✅ Implemented | `ErrorBoundary` wraps `RouterProvider`; per-route `errorElement` set on root, auth group, protected group, `watch/:token`, and `verify-email`. |
+| **Bundle size**      | ✅ Tracked      | `rollup-plugin-visualizer` configured; outputs `dist/stats.html` on every build. Lazy chunks reviewed via treemap. |
+| **PWA**              | ⚠️ Configured  | `vite-plugin-pwa` installed and configured with manifest and `autoUpdate` registration. Service worker is generated; offline strategy not yet enforced in app shell. |
 
 ---
 
