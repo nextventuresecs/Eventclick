@@ -218,6 +218,7 @@ export const SubmitActivityPhotoSchema = z.object({
   photoKey: z.string().min(1).max(256),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  idempotencyKey: z.string().max(100).optional(),
 });
 export type SubmitActivityPhotoInput = z.infer<
   typeof SubmitActivityPhotoSchema
@@ -473,6 +474,7 @@ export const SubmitAttendanceSchema = z.object({
   formDefinitionId: z.uuid(),
   data: z.record(z.string().min(1).max(64), ATTENDANCE_VALUE),
   photoKey: z.string().min(1).max(200).optional(),
+  idempotencyKey: z.string().max(100).optional(),
 });
 export type SubmitAttendanceInput = z.infer<typeof SubmitAttendanceSchema>;
 
