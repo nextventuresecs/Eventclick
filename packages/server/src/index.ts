@@ -14,11 +14,30 @@ import { redisClient, connectRedis, disconnectRedis } from "./config/redis";
 import { apiRouter } from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { API_PREFIX } from "@application/shared";
+import * as Sentry from "@sentry/node";
+import { nodeProfilingIntegration } from "@sentry/profiling-node";
+
+if (env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    integrations: [
+      nodeProfilingIntegration(),
+    ],
+    tracesSampleRate: 1.0,
+    profilesSampleRate: 1.0,
+  });
+}
 
 const app = express();
 
+if (env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+app.set("etag", "weak");
 
 const allowedOrigins = env.CORS_ORIGIN.split(",").map((s) => s.trim());
 app.use(
@@ -112,29 +131,50 @@ app.use(
   }),
 );
 
+import { csrfProtection } from "./middleware/csrf";
+
+app.use(csrfProtection);
 app.use(API_PREFIX, apiRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+import { startSqsWorker } from "./queues/worker";
+import { startSessionCleanupJob } from "./jobs/sessionCleanup";
+
 async function startServer() {
   await connectRedis();
+  startSessionCleanupJob();
 
   const server = app.listen(env.PORT, () => {
     logger.info(`[server] running on http://localhost:${env.PORT}${API_PREFIX}`);
   });
 
+  startSqsWorker().catch((err) => {
+    logger.error({ err }, "SQS worker crashed");
+  });
+
   const shutdown = async (signal: string) => {
     logger.info(`${signal} received, shutting down gracefully…`);
-    await disconnectRedis();
-    server.close(() => {
-      logger.info("server closed");
-      process.exit(0);
-    });
+    
     setTimeout(() => {
       logger.warn("forced shutdown after timeout");
       process.exit(1);
     }, 10_000).unref();
+
+    server.close(async (err) => {
+      if (err) {
+        logger.error({ err }, "Error during server close");
+      } else {
+        logger.info("server closed");
+      }
+      try {
+        await disconnectRedis();
+      } catch (redisErr) {
+        logger.error({ err: redisErr }, "Error disconnecting Redis");
+      }
+      process.exit(err ? 1 : 0);
+    });
   };
 
   process.on("SIGTERM", () => shutdown("SIGTERM"));

@@ -15,11 +15,13 @@ const EnvSchema = z.object({
     .enum(["development", "test", "production"])
     .default("development"),
   PORT: z.coerce.number().int().nonnegative().default(4000),
+  API_PORT: z.coerce.number().int().nonnegative().default(4000),
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .optional(),
 
   DATABASE_URL: z.url(),
+  DB_POOL_MAX: z.coerce.number().int().positive().default(10),
   REDIS_URL: z.url(),
 
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 chars"),

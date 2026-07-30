@@ -14,14 +14,26 @@ async function main() {
   const pool = new Pool({ connectionString: url, max: 1 });
   const db = drizzle(pool);
 
-  console.log("[migrate] ensuring required extensions…");
-  await pool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-  await pool.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+  const client = await pool.connect();
+  const lockId = 7777777; // arbitrary lock ID for migrations
 
-  console.log("[migrate] running migrations…");
-  await migrate(db, { migrationsFolder: "./drizzle" });
-  console.log("[migrate] ✅ done");
-  await pool.end();
+  try {
+    console.log("[migrate] acquiring advisory lock…");
+    await client.query("SELECT pg_advisory_lock($1)", [lockId]);
+
+    console.log("[migrate] ensuring required extensions…");
+    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    await client.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+
+    console.log("[migrate] running migrations…");
+    await migrate(db, { migrationsFolder: "./drizzle" });
+    console.log("[migrate] ✅ done");
+  } finally {
+    console.log("[migrate] releasing advisory lock…");
+    await client.query("SELECT pg_advisory_unlock($1)", [lockId]);
+    client.release();
+    await pool.end();
+  }
 }
 
 main().catch((err) => {

@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler, Request, RequestHandler } from "express";
 import { ZodError } from "zod";
+import * as Sentry from "@sentry/node";
 import { ApiError } from "../utils/errors";
 import { logger, type Logger } from "../utils/logger";
 import { env } from "../config/env";
@@ -36,6 +37,10 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof ApiError) {
     if (err.statusCode >= 500) {
       log.error({ err, code: err.code }, "api error (5xx)");
+      Sentry.captureException(err, {
+        tags: { code: err.code },
+        extra: { route: `${req.method} ${req.originalUrl}` },
+      });
     } else {
       log.warn(
         { code: err.code, status: err.statusCode, msg: err.message },
@@ -51,8 +56,12 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   }
 
   log.error({ err }, "unhandled error");
+  Sentry.captureException(err, {
+    extra: { route: `${req.method} ${req.originalUrl}` },
+  });
   res.status(500).json({
     error: "INTERNAL",
     message: env.NODE_ENV === "production" ? "Internal server error" : (err as Error).message,
   });
 };
+

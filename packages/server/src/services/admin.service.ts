@@ -140,15 +140,15 @@ export const deleteUserAccount = async (
       throw ApiError.forbidden("Target user belongs to another organization");
     }
 
-    if (requesterRole === "ngo_admin") {
-      // NGO Admin can delete event_admin or volunteer, but not another ngo_admin
-      if (targetUser.role === "ngo_admin") {
-        throw ApiError.forbidden("Cannot delete another Organization Admin account");
+    if (requesterRole === "admin") {
+      // NGO Admin can delete event_manager or volunteer, but not another admin
+      if (targetUser.role === "admin") {
+        throw ApiError.forbidden("Cannot delete another administrator");
       }
-    } else if (requesterRole === "event_admin") {
+    } else if (requesterRole === "event_manager") {
       // Event Admin can ONLY delete volunteers added by them
       if (targetUser.role !== "volunteer") {
-        throw ApiError.forbidden("Event Admins can only delete Volunteer accounts");
+        throw ApiError.forbidden("Event Managers can only delete Volunteer accounts");
       }
 
       const [membership] = await db
@@ -170,6 +170,16 @@ export const deleteUserAccount = async (
       }
     } else {
       throw ApiError.forbidden("Volunteers cannot delete other user accounts");
+    }
+  } else if (requesterRole === "admin" && orgId) {
+    // Self-deletion for admin: check if sole admin
+    const admins = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.organizationId, orgId), eq(users.role, "admin"), isNull(users.deletedAt)));
+    
+    if (admins.length <= 1) {
+      throw ApiError.badRequest("Cannot delete account: you are the sole active administrator of this organization.");
     }
   }
 

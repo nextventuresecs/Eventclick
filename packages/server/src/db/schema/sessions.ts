@@ -19,6 +19,7 @@ export const sessions = pgTable(
   (t) => [
     index("sessions_user_idx").on(t.userId),
     index("sessions_family_idx").on(t.familyId),
+    index("sessions_replaced_by_idx").on(t.replacedById),
     index("sessions_expires_at_idx").on(t.expiresAt),
   ],
 );

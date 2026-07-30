@@ -16,7 +16,7 @@ import {
 import { ROLE_LABELS } from "@application/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
-import { adminApi, ApiClientError } from "@/lib/api";
+import { adminApi, settingsApi, ApiClientError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,9 +33,26 @@ export const Settings = () => {
   const [copiedId, setCopiedId] = useState(false);
 
   // Notification Toggles
-  const [notifyRoomCreated, setNotifyRoomCreated] = useState(true);
-  const [notifyLiveStart, setNotifyLiveStart] = useState(true);
-  const [notifyAttendance, setNotifyAttendance] = useState(false);
+  const [notifyRoomCreated, setNotifyRoomCreated] = useState(user?.preferences?.notifyRoomCreated ?? true);
+  const [notifyLiveStart, setNotifyLiveStart] = useState(user?.preferences?.notifyLiveStart ?? true);
+  const [notifyAttendance, setNotifyAttendance] = useState(user?.preferences?.notifyAttendance ?? false);
+
+  const handleTogglePreference = async (key: string, value: boolean) => {
+    try {
+      if (key === 'notifyRoomCreated') setNotifyRoomCreated(value);
+      if (key === 'notifyLiveStart') setNotifyLiveStart(value);
+      if (key === 'notifyAttendance') setNotifyAttendance(value);
+
+      await settingsApi.updatePreferences({ [key]: value });
+      toast("Preferences updated", "success");
+    } catch (err: any) {
+      toast(err.message || "Failed to update preferences", "error");
+      // Revert state
+      if (key === 'notifyRoomCreated') setNotifyRoomCreated(!value);
+      if (key === 'notifyLiveStart') setNotifyLiveStart(!value);
+      if (key === 'notifyAttendance') setNotifyAttendance(!value);
+    }
+  };
 
   // Account Deletion Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -45,16 +62,20 @@ export const Settings = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const isNgoAdmin = user?.role === "ngo_admin";
-  const isEventAdmin = user?.role === "event_admin";
+  const isAdmin = user?.role === "admin";
+  const isEventManager = user?.role === "event_manager";
 
-  const handleSaveOrg = (e: React.FormEvent) => {
+  const handleSaveOrg = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingOrg(true);
-    setTimeout(() => {
-      setSavingOrg(false);
+    try {
+      await settingsApi.updateOrganization({ name: orgName });
       toast("Organization settings updated", "success");
-    }, 600);
+    } catch (err: any) {
+      toast(err.message || "Failed to update organization", "error");
+    } finally {
+      setSavingOrg(false);
+    }
   };
 
   const copyOrgId = () => {
@@ -120,7 +141,7 @@ export const Settings = () => {
       {/* Grid Layout */}
       <div className="space-y-6">
         {/* Organization Settings (NGO Admin) */}
-        {isNgoAdmin && (
+        {isAdmin && (
           <Card className="card-static rounded-2xl border-purple-100">
             <CardContent className="p-6 space-y-5">
               <div>
@@ -198,7 +219,7 @@ export const Settings = () => {
                 <input
                   type="checkbox"
                   checked={notifyRoomCreated}
-                  onChange={(e) => setNotifyRoomCreated(e.target.checked)}
+                  onChange={(e) => handleTogglePreference('notifyRoomCreated', e.target.checked)}
                   className="w-5 h-5 rounded accent-purple-600 cursor-pointer"
                 />
               </div>
@@ -211,7 +232,7 @@ export const Settings = () => {
                 <input
                   type="checkbox"
                   checked={notifyLiveStart}
-                  onChange={(e) => setNotifyLiveStart(e.target.checked)}
+                  onChange={(e) => handleTogglePreference('notifyLiveStart', e.target.checked)}
                   className="w-5 h-5 rounded accent-purple-600 cursor-pointer"
                 />
               </div>
@@ -224,7 +245,7 @@ export const Settings = () => {
                 <input
                   type="checkbox"
                   checked={notifyAttendance}
-                  onChange={(e) => setNotifyAttendance(e.target.checked)}
+                  onChange={(e) => handleTogglePreference('notifyAttendance', e.target.checked)}
                   className="w-5 h-5 rounded accent-purple-600 cursor-pointer"
                 />
               </div>
@@ -252,10 +273,10 @@ export const Settings = () => {
                 <span>Your Permission Level: {user ? ROLE_LABELS[user.role] : "Member"}</span>
               </div>
               <p className="text-gray-600 leading-relaxed">
-                {isNgoAdmin ? (
-                  "As an Organization Admin, you have authority to delete any Event Admin or Volunteer account in your organization."
-                ) : isEventAdmin ? (
-                  "As an Event Admin, you can delete Volunteer accounts that you personally created or added to the organization."
+                {isAdmin ? (
+                  "As an Organization Admin, you have authority to delete any Event Manager or Volunteer account in your organization."
+                ) : isEventManager ? (
+                  "As an Event Manager, you can delete Volunteer accounts that you personally created or added to the organization."
                 ) : (
                   "As a Volunteer, you have permission to delete your own account at any time."
                 )}

@@ -33,6 +33,7 @@ export const activityPhotos = pgTable(
   (t) => [
     index("activity_photos_submission_idx").on(t.submissionId),
     index("activity_photos_room_activity_idx").on(t.roomId, t.activityId),
+    index("activity_photos_submitted_by_idx").on(t.submittedBy),
   ],
 );
 

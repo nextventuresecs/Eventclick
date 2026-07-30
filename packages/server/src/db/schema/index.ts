@@ -11,4 +11,6 @@ export * from "./eventAdminAssignments";
 export * from "./activitySubmissions";
 export * from "./passwordResets";
 export * from "./emailVerifications";
+export * from "./feedback";
+export * from "./bugReports";
 export * from "./activityPhotos";

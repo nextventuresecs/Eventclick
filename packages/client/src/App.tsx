@@ -8,31 +8,43 @@ import {
 import { hasRolePermission, type RolePermission } from "@application/shared";
 import { useAuth } from "./hooks/useAuth";
 
-// Pages
-import { LoginPage } from "./pages/Login";
-import { RegisterPage } from "./pages/Register";
-import { ForgotPasswordPage } from "./pages/ForgotPassword";
-import { ResetPasswordPage } from "./pages/ResetPassword";
-import { VerifyEmailPage } from "./pages/VerifyEmail";
-import { OnboardingPage } from "./pages/Onboarding";
-import { DashboardLayout } from "./components/layouts/DashboardLayout";
-import { Dashboard } from "./pages/Dashboard";
-import { Rooms } from "./pages/Rooms";
-import { CreateRoom } from "./pages/CreateRoom";
-import { RoomFormBuilder } from "./pages/RoomFormBuilder";
-import { Attendance } from "./pages/Attendance";
-import { AttendanceRecords } from "./pages/AttendanceRecords";
-import { RoomLive } from "./pages/RoomLive";
-import { RoomWatch } from "./pages/RoomWatch";
-import { AdminUsers } from "./pages/AdminUsers";
-import { EventAssignments } from "./pages/EventAssignments";
-import { Forms } from "./pages/Forms";
-import { Reports } from "./pages/Reports";
-import { Profile } from "./pages/Profile";
-import { HelpCenter } from "./pages/HelpCenter";
-import { Feedback } from "./pages/Feedback";
-import { ReportBug } from "./pages/ReportBug";
-import { Settings } from "./pages/Settings";
+import React, { Suspense } from "react";
+
+const lazyLoad = (importFunc: () => Promise<any>, exportName: string) => {
+  const LazyComponent = React.lazy(() => importFunc().then((m) => ({ default: m[exportName] })));
+  return function WrappedComponent(props: any) {
+    return (
+      <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading...</div>}>
+        <LazyComponent {...props} />
+      </Suspense>
+    );
+  };
+};
+
+const LoginPage = lazyLoad(() => import("./pages/Login"), "LoginPage");
+const RegisterPage = lazyLoad(() => import("./pages/Register"), "RegisterPage");
+const ForgotPasswordPage = lazyLoad(() => import("./pages/ForgotPassword"), "ForgotPasswordPage");
+const ResetPasswordPage = lazyLoad(() => import("./pages/ResetPassword"), "ResetPasswordPage");
+const VerifyEmailPage = lazyLoad(() => import("./pages/VerifyEmail"), "VerifyEmailPage");
+const OnboardingPage = lazyLoad(() => import("./pages/Onboarding"), "OnboardingPage");
+const DashboardLayout = lazyLoad(() => import("./components/layouts/DashboardLayout"), "DashboardLayout");
+const Dashboard = lazyLoad(() => import("./pages/Dashboard"), "Dashboard");
+const Rooms = lazyLoad(() => import("./pages/Rooms"), "Rooms");
+const CreateRoom = lazyLoad(() => import("./pages/CreateRoom"), "CreateRoom");
+const RoomFormBuilder = lazyLoad(() => import("./pages/RoomFormBuilder"), "RoomFormBuilder");
+const Attendance = lazyLoad(() => import("./pages/Attendance"), "Attendance");
+const AttendanceRecords = lazyLoad(() => import("./pages/AttendanceRecords"), "AttendanceRecords");
+const RoomLive = lazyLoad(() => import("./pages/RoomLive"), "RoomLive");
+const RoomWatch = lazyLoad(() => import("./pages/RoomWatch"), "RoomWatch");
+const AdminUsers = lazyLoad(() => import("./pages/AdminUsers"), "AdminUsers");
+const EventAssignments = lazyLoad(() => import("./pages/EventAssignments"), "EventAssignments");
+const Forms = lazyLoad(() => import("./pages/Forms"), "Forms");
+const Reports = lazyLoad(() => import("./pages/Reports"), "Reports");
+const Profile = lazyLoad(() => import("./pages/Profile"), "Profile");
+const HelpCenter = lazyLoad(() => import("./pages/HelpCenter"), "HelpCenter");
+const Feedback = lazyLoad(() => import("./pages/Feedback"), "Feedback");
+const ReportBug = lazyLoad(() => import("./pages/ReportBug"), "ReportBug");
+const Settings = lazyLoad(() => import("./pages/Settings"), "Settings");
 
 const ConnectionError = () => {
   const { retryAuth } = useAuth();
@@ -76,10 +88,7 @@ const ProtectedRoute = () => {
 
   if (
     user &&
-    user.role === "volunteer" &&
     !user.organizationId &&
-    localStorage.getItem("Eventclick_onboarding_completed_or_skipped") !==
-      "true" &&
     location.pathname !== "/onboarding"
   ) {
     return <Navigate to="/onboarding" replace />;
@@ -265,7 +274,7 @@ const router = createBrowserRouter([
             children: [{ path: "rooms/:id/live", element: <RoomLive /> }],
           },
           {
-            element: <RoleRoute role="ngo_admin" />,
+            element: <RoleRoute role="admin" />,
             children: [
               { path: "admin/users", element: <AdminUsers /> },
               {

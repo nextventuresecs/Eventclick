@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MessageSquare, Star, Send, CheckCircle2, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
+import { feedbackApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,14 +27,23 @@ export const Feedback = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      await feedbackApi.submit({
+        category,
+        rating,
+        subject,
+        comments,
+      });
       setSubmitted(true);
       toast("Thank you! Your feedback has been received.", "success");
-    }, 700);
+    } catch (err: any) {
+      toast(err.message || "Failed to submit feedback", "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

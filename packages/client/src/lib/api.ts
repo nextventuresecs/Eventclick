@@ -1,4 +1,4 @@
-import type { AuthUser } from "@application/shared";
+import type { AuthUser, UpdateProfileInput, ChangePasswordInput, UpdateOrganizationInput, UpdatePreferencesInput, SubmitFeedbackInput, SubmitBugReportInput } from "@application/shared";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
@@ -157,6 +157,8 @@ export const authApi = {
   resetPassword: (body: ResetPasswordInput) => api.post<void>("/auth/reset-password", body),
   verifyEmail: (token: string) => api.post<AuthSuccess>("/auth/verify-email", { token }),
   completeOnboarding: (body: OnboardingInput) => api.post<AuthSuccess>("/auth/onboarding", body),
+  updateProfile: (body: UpdateProfileInput) => api.patch<{ user: AuthUser }>("/auth/profile", body),
+  changePassword: (body: ChangePasswordInput) => api.post<{ message: string }>("/auth/change-password", body),
 };
 
 import type {
@@ -263,6 +265,19 @@ export const eventAssignmentsApi = {
   update: (id: string, body: UpdateEventAdminAssignmentInput) =>
     api.patch<EventAdminAssignment>(`/event-assignments/${id}`, body),
   revoke: (id: string) => api.delete<void>(`/event-assignments/${id}`),
+};
+
+export const settingsApi = {
+  updateOrganization: (body: UpdateOrganizationInput) => api.patch("/organizations", body),
+  updatePreferences: (body: UpdatePreferencesInput) => api.patch("/auth/preferences", body),
+};
+
+export const feedbackApi = {
+  submit: (body: SubmitFeedbackInput) => api.post("/feedback", body),
+};
+
+export const bugReportsApi = {
+  submit: (body: SubmitBugReportInput) => api.post("/bug-reports", body),
 };
 
 export const adminApi = {

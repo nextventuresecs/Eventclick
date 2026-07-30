@@ -5,13 +5,13 @@ export const API_VERSION = "v1";
 export const API_PREFIX = `/api/${API_VERSION}`;
 
 // ─── Role Enum ──────────────────────────────────────
-export const USER_ROLES = ["ngo_admin", "event_admin", "volunteer"] as const;
+export const USER_ROLES = ["admin", "event_manager", "volunteer"] as const;
 export const UserRoleSchema = z.enum(USER_ROLES);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 export const ROLE_LABELS = {
-  ngo_admin: "NGO Admin",
-  event_admin: "Event Admin",
+  admin: "NGO Admin",
+  event_manager: "Event Admin",
   volunteer: "Volunteer",
 } as const satisfies Record<UserRole, string>;
 
@@ -29,7 +29,7 @@ export const RolePermissionSchema = z.enum(ROLE_PERMISSIONS);
 export type RolePermission = z.infer<typeof RolePermissionSchema>;
 
 const ROLE_PERMISSION_MAP: Record<UserRole, readonly RolePermission[]> = {
-  ngo_admin: [
+  admin: [
     "manage_rooms",
     "manage_live_session",
     "create_attendance_form",
@@ -39,7 +39,7 @@ const ROLE_PERMISSION_MAP: Record<UserRole, readonly RolePermission[]> = {
     "share_live_link",
     "manage_users",
   ],
-  event_admin: [
+  event_manager: [
     "manage_rooms",
     "manage_live_session",
     "create_attendance_form",
@@ -111,9 +111,52 @@ export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 
 export const OnboardingSchema = z.object({
   organizationName: z.string().min(1).max(160).optional(),
-  role: z.enum(["ngo_admin", "volunteer"]),
+  role: z.enum(["admin", "volunteer"]),
 });
 export type OnboardingInput = z.infer<typeof OnboardingSchema>;
+
+export const UpdateProfileSchema = z.object({
+  fullName: z.string().min(1).max(120).optional(),
+  photoUrl: z.string().url().max(1000).or(z.literal("")).optional(),
+});
+export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: PasswordSchema,
+});
+export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
+
+export const UpdateOrganizationSchema = z.object({
+  name: z.string().min(1).max(160).optional(),
+});
+export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationSchema>;
+
+export const UpdatePreferencesSchema = z.object({
+  notifyRoomCreated: z.boolean().optional(),
+  notifyLiveStart: z.boolean().optional(),
+  notifyAttendance: z.boolean().optional(),
+});
+export type UpdatePreferencesInput = z.infer<typeof UpdatePreferencesSchema>;
+
+export const SubmitFeedbackSchema = z.object({
+  category: z.string().min(1).max(100),
+  rating: z.number().int().min(1).max(5),
+  subject: z.string().min(1).max(200),
+  comments: z.string().min(1).max(5000),
+});
+export type SubmitFeedbackInput = z.infer<typeof SubmitFeedbackSchema>;
+
+export const SubmitBugReportSchema = z.object({
+  severity: z.string().min(1).max(50),
+  component: z.string().min(1).max(100),
+  title: z.string().min(1).max(200),
+  steps: z.string().min(1).max(2000),
+  expected: z.string().min(1).max(2000),
+  actual: z.string().min(1).max(2000),
+  systemInfo: z.string().optional(),
+});
+export type SubmitBugReportInput = z.infer<typeof SubmitBugReportSchema>;
 
 export interface AuthUser {
   id: string;
@@ -123,6 +166,7 @@ export interface AuthUser {
   organizationId: string | null;
   organizationName?: string | null;
   photoUrl?: string | null;
+  preferences?: any | null;
   createdAt?: string | null;
   emailVerified: boolean;
 }
@@ -212,7 +256,7 @@ export interface ActivitySubmission {
 }
 
 // ─── Event Room DTOs ────────────────────────────────
-export const CreateRoomSchema = z.object({
+const CreateRoomBase = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
   scheduledStart: z.string().datetime(),
@@ -225,9 +269,14 @@ export const CreateRoomSchema = z.object({
   longitude: z.number().min(-180).max(180).optional(),
   activityDefinitions: z.array(ActivityDefinitionSchema).optional(),
 });
+
+export const CreateRoomSchema = CreateRoomBase.refine(
+  (data) => new Date(data.scheduledEnd) > new Date(data.scheduledStart),
+  { message: "Scheduled end must be after scheduled start", path: ["scheduledEnd"] }
+);
 export type CreateRoomInput = z.infer<typeof CreateRoomSchema>;
 
-export const UpdateRoomSchema = CreateRoomSchema.partial().extend({
+export const UpdateRoomSchema = CreateRoomBase.partial().extend({
   status: RoomStatusSchema.optional(),
 });
 export type UpdateRoomInput = z.infer<typeof UpdateRoomSchema>;
@@ -308,7 +357,7 @@ export const CreateOrgUserSchema = z.object({
   email: z.string().email(),
   fullName: z.string().min(1).max(120),
   password: PasswordSchema,
-  role: z.enum(["event_admin", "volunteer"]).optional(),
+  role: z.enum(["event_manager", "volunteer"]).optional(),
 });
 export type CreateOrgUserInput = z.infer<typeof CreateOrgUserSchema>;
 
@@ -323,16 +372,7 @@ export const UpdateUserProfileSchema = z.object({
 });
 export type UpdateUserProfileInput = z.infer<typeof UpdateUserProfileSchema>;
 
-export const ChangePasswordSchema = z.object({
-  currentPassword: z.string().min(1),
-  newPassword: PasswordSchema,
-});
-export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
 
-export const UpdateOrganizationSchema = z.object({
-  name: z.string().min(1).max(160),
-});
-export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationSchema>;
 
 // Public view for unauth attendees joining via share token
 export interface SharedRoom {
@@ -457,6 +497,11 @@ export interface LiveTokenResponse {
   roomName: string;
   role: LiveRole;
 }
+
+export const ShareLiveTokenSchema = z.object({
+  name: z.string().min(1).max(60).optional(),
+});
+export type ShareLiveTokenInput = z.infer<typeof ShareLiveTokenSchema>;
 
 // ─── Photo Upload (presigned PUT) ───────────────────
 export const PhotoUploadRequestSchema = z.object({

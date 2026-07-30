@@ -15,7 +15,7 @@ describe("jwt.service", () => {
     it("returns a signed JWT string", () => {
       const token = signAccessToken({
         sub: "user-123",
-        role: "event_admin",
+        role: "event_manager",
         orgId: "org-456",
       });
       expect(typeof token).toBe("string");
@@ -39,12 +39,12 @@ describe("jwt.service", () => {
     it("round-trips sign → verify", () => {
       const token = signAccessToken({
         sub: "u1",
-        role: "event_admin",
+        role: "event_manager",
         orgId: "o1",
       });
       const decoded = verifyAccessToken(token);
       expect(decoded.sub).toBe("u1");
-      expect(decoded.role).toBe("event_admin");
+      expect(decoded.role).toBe("event_manager");
       expect(decoded.orgId).toBe("o1");
     });
 

@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, boolean, index, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { userRoleEnum } from "./enums";
 import { organizations } from "./organizations";
@@ -11,6 +11,8 @@ export const users = pgTable(
     passwordHash: text("password_hash"),
     fullName: varchar("full_name", { length: 120 }).notNull(),
     role: userRoleEnum("role").notNull().default("volunteer"),
+    photoUrl: text("photo_url"),
+    preferences: jsonb("preferences"), // JSONB for notifyRoomCreated etc
     organizationId: uuid("organization_id").references(() => organizations.id, { onDelete: "set null" }),
     googleId: varchar("google_id", { length: 128 }).unique(),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),

@@ -123,6 +123,25 @@ apiRouter.get("/health/deep", async (_req, res) => {
     healthy = false;
   }
 
+  // LiveKit connectivity
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    // the LK endpoint could just be a fetch or using LiveKit server-sdk roomServiceClient
+    const url = new URL(env.LIVEKIT_URL);
+    const lkProtocol = url.protocol === 'wss:' || url.protocol === 'https:' ? 'https:' : 'http:';
+    const lkHealthUrl = `${lkProtocol}//${url.host}/`; // Typically LK returns 200 on base route
+    
+    const lkResponse = await fetch(lkHealthUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+    // As long as we can reach it, it's fine.
+    checks.livekit = lkResponse.ok ? "ok" : "degraded";
+    if (!lkResponse.ok) healthy = false;
+  } catch {
+    checks.livekit = "error";
+    healthy = false;
+  }
+
   res.status(healthy ? 200 : 503).json({
     status: healthy ? "ok" : "degraded",
     timestamp: new Date().toISOString(),
@@ -130,10 +149,17 @@ apiRouter.get("/health/deep", async (_req, res) => {
   });
 });
 
+import { settingsRouter } from "./settings.routes";
+import { feedbackRouter } from "./feedback.routes";
+import { bugReportRouter } from "./bug-report.routes";
+
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/share", shareRouter);
 apiRouter.use("/rooms", roomRouter);
 apiRouter.use("/logs", logRouter);
 apiRouter.use("/admin", adminRouter);
 apiRouter.use("/event-assignments", eventAssignmentRouter);
+apiRouter.use(settingsRouter);
+apiRouter.use("/feedback", feedbackRouter);
+apiRouter.use("/bug-reports", bugReportRouter);
 

@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { authApi } from "@/lib/api";
 
 const AVATAR_PRESETS = [
   "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
@@ -49,34 +50,43 @@ export const Profile = () => {
     .toUpperCase()
     .slice(0, 2) || "?";
 
-  // Joining date fallback
   const joinedDate = user?.createdAt
     ? format(new Date(user.createdAt), "MMMM d, yyyy")
     : format(new Date(), "MMMM d, yyyy");
 
-  const handleSaveDetails = (e: React.FormEvent) => {
+  const handleSaveDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingDetails(true);
-    setTimeout(() => {
-      setSavingDetails(false);
+    try {
+      await authApi.updateProfile({ fullName, photoUrl });
       toast("Profile details updated successfully", "success");
-    }, 600);
+      // Could also update useAuth state, but simple reload or wait for next fetch is ok,
+      // or we can import retryAuth if exposed from useAuth context. Let's rely on reload or it just stays local for now.
+    } catch (err: any) {
+      toast(err.message || "Failed to update profile", "error");
+    } finally {
+      setSavingDetails(false);
+    }
   };
 
-  const handleUpdatePassword = (e: React.FormEvent) => {
+  const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       toast("New passwords do not match", "error");
       return;
     }
     setSavingPassword(true);
-    setTimeout(() => {
-      setSavingPassword(false);
+    try {
+      await authApi.changePassword({ currentPassword, newPassword });
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       toast("Password changed successfully", "success");
-    }, 600);
+    } catch (err: any) {
+      toast(err.message || "Failed to change password", "error");
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   return (
@@ -322,9 +332,9 @@ export const Profile = () => {
                   <div>
                     <p className="font-bold text-purple-900">{user ? ROLE_LABELS[user.role] : "Member"}</p>
                     <p className="text-purple-700/80 mt-0.5">
-                      {user?.role === "ngo_admin"
+                      {user?.role === "admin"
                         ? "Full organization administration, team member management, and report export."
-                        : user?.role === "event_admin"
+                        : user?.role === "event_manager"
                         ? "Room creation, live streaming management, and form building privileges."
                         : "Field attendance check-ins, activity submission, and room access."}
                     </p>

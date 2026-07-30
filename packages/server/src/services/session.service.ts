@@ -63,7 +63,7 @@ export const findActiveSessionByToken = async (raw: string): Promise<Session | n
   const tokenHash = hashToken(raw);
   const cacheKey = `session:token:${tokenHash}`;
 
-  const cached = await cacheGet<Session>(cacheKey);
+  const cached = await cacheGet<Session | "__null__">(cacheKey);
   if (cached !== null) {
     if (cached === "__null__") return null;
     if (cached.expiresAt) cached.expiresAt = new Date(cached.expiresAt);

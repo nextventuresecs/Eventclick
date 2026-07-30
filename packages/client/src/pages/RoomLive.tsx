@@ -61,7 +61,7 @@ export const RoomLive = () => {
       setActivities(actData.activityDefinitions);
       setSubmissions(actData.submissions);
     } catch (err) {
-      console.error("Failed to refresh activities:", err);
+      // Silently fail — activities will show stale data until next refresh
     }
   };
 
@@ -89,7 +89,7 @@ export const RoomLive = () => {
             const recording = await liveApi.getActiveRecording(id);
             if (!cancelled) setActiveRecording(recording);
           } catch (err) {
-            console.error("Failed to fetch recording status:", err);
+            // Non-critical — recording status badge may be stale
           }
         }
       } catch (err) {
@@ -555,7 +555,7 @@ export const ActivityTrackerPanel: React.FC<ActivityTrackerPanelProps> = ({
       setSuccess("Photo proof successfully saved!");
       await onRefresh();
     } catch (err) {
-      console.error(err);
+      // Error already surfaced via setError below
       setError(err instanceof ApiClientError ? err.message : "Upload failed. Try again.");
     } finally {
       setUploading(false);
