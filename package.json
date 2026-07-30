@@ -24,6 +24,5 @@
   },
   "dependencies": {
     "nanoid": "^6.0.0"
-    "turbo": "^2.10.7"
   }
 }
