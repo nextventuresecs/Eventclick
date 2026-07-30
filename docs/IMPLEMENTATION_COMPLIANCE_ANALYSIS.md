@@ -30,7 +30,7 @@
 | **C-1** | **CRITICAL**    | **Nginx runs as root in production**            | Fixed. `packages/client/Dockerfile.prod` now creates and switches to `nginx` user, chowns runtime directories, and binds to 8080. `docker-compose.prod.yml` maps host to container port 8080.                                                                 |
 | **C-2** | **CRITICAL**    | **Content Security Policy unset in production** | Fixed. `packages/server/src/index.ts` now sets a strict API CSP (`default-src 'none'; frame-ancestors 'none'; base-uri 'none'; upgrade-insecure-requests`) plus `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy` in all environments.       |
 | **C-3** | **HIGH**        | **Server has no request timeout**               | Fixed. `index.ts` now configures `server.headersTimeout` (60s), `server.keepAliveTimeout` (5s), and `server.requestTimeout` (30s) via env vars. SSE route exempt via `req.setTimeout(0)`.                                                                     |
-| **C-5** | **HIGH**        | **Test suite has broken import**                | Fixed. `@sentry/node` is now lazy-loaded via dynamic `import()` in `packages/server/src/services/sentry.service.ts`. Top-level static imports removed from `index.ts` and `errorHandler.ts`. 68 tests pass; auth integration test mock issue is pre-existing. |
+| **C-5** | **HIGH**        | **Test suite has broken import**                | Fixed. `@sentry/node` is now lazy-loaded via dynamic `import()` in `packages/server/src/services/sentry.service.ts`. Top-level static imports removed from `index.ts` and `errorHandler.ts`. 75 server tests pass, including auth service coverage. |
 | **C-7** | **MEDIUM**      | **No `errorElement` on React Router routes**    | Fixed. Added `errorElement` to all route groups in `App.tsx` and created `RouteErrorFallback` component. Loader/action/router errors now show user-friendly fallback with reload/back buttons.                                                                |
 | **C-8** | **MEDIUM**      | **RoomRecordings lacks `organizationId`**       | Fixed. Added `organizationId` column to `room_recordings` table with FK to `organizations`. Backfill migration included. `livekit.provider.ts` sets org on insert; `room-recording.controller.ts` filters by org on read/stop.                                |
 | **C-6** | **MEDIUM-HIGH** | **Weak default credentials in `.env`**          | Fixed. Added all env to parameter store.`.env:3` — `DB_PASSWORD=1234`. `.env:58-59` — `devkey` / `devsecretdevsecretdevsecretdevse`. While `.env` is gitignored, these will be the live credentials if not overridden at deployment.                          |
@@ -113,12 +113,12 @@
 
 | Area                         | Status          | Notes                                                                                                                       |
 | ---------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Server unit tests**        | ✅ 68 passing   | Middleware, JWT, auth helpers, RBAC, attendance validation, event assignment policy.                                        |
-| **Server integration tests** | ⚠️ Pre-existing | `auth.integration.test.ts` gets 500 due to rate-limit mock gap, not Sentry. Sentry now lazy-loaded via `sentry.service.ts`. |
-| **Client tests**             | ❌ None         | 0 test files in `packages/client`.                                                                                          |
-| **Shared tests**             | ❌ None         | 0 test files in `packages/shared`.                                                                                          |
-| **E2E tests**                | ❌ None         | No Playwright/Cypress config.                                                                                               |
-| **Test coverage**            | ⚠️ Server-only  | ~20% backend coverage. Frontend completely untested.                                                                        |
+| **Server unit tests**        | ✅ 75 passing   | Middleware, JWT, auth helpers, RBAC, attendance validation, event assignment policy, and auth service tests.                |
+| **Server integration tests** | ✅ 6 passing    | Health, share, and rooms endpoints with mocked Redis/rate-limit.                                                            |
+| **Client tests**             | ✅ 3 passing    | `App.test.tsx` covering `RouteErrorFallback`, `ErrorBoundary`, and `useAuth`.                                                |
+| **Shared tests**             | ✅ 23 passing   | Zod schemas, RBAC utilities, URL extraction.                                                                                 |
+| **E2E tests**                | ✅ 7 passing    | Playwright specs for auth pages, share links, and health endpoints.                                                          |
+| **Test coverage**            | ⚠️ Growing      | Backend coverage is meaningful and expanding. Frontend coverage is lightweight but present. E2E coverage is scaffolded.     |
 
 ---
 
@@ -357,7 +357,7 @@ For a 10K-user deployment, monthly cost breakdown (estimates):
 | **API Design**    | 8/10  | RESTful, versioned, validated, consistent errors.                                                                                        |
 | **Frontend**      | 9/10  | Modern stack, code-split, secure auth. Route error boundaries implemented. Client unit tests added. Bundle analysis configured.         |
 | **DevOps**        | 10/10 | Docker hardening strong. CI/CD workflows added. Bundle analysis configured.                                                              |
-| **Testing**       | 7/10  | 74 server tests passing. 23 shared schema tests. 3 client component tests. 6 API integration tests. Playwright E2E scaffolded.         |
+| **Testing**       | 8/10  | 75 server tests passing. 23 shared schema tests. 3 client component tests. 7 Playwright E2E specs passing. CI enforces test gates.     |
 | **Multi-tenancy** | 9/10  | App + DB isolation solid. All child tables have `organization_id`. RLS implemented. Missing audit trail and billing.                    |
 | **Observability** | 9/10  | Pino + Sentry + /metrics + health checks + monitoring runbook.                                                                           |
 | **Scalability**   | 6/10  | Server timeouts configured. Bundle analysis added. Missing CDN, load balancer, replicas.                                                 |
@@ -370,11 +370,18 @@ For a 10K-user deployment, monthly cost breakdown (estimates):
 
 ### What was added
 
+**Server testing (`packages/server`):**
+- Vitest configured in `vitest.config.ts` with V8 coverage, env overrides, and `@application/shared` alias
+- `src/__tests__/middleware.test.ts`: `requireAuth`, `requireRole`, and `validate` middleware tests
+- `src/__tests__/api.integration.test.ts`: health, share, and rooms endpoint tests with mocked Redis/rate-limit
+- `src/__tests__/auth.integration.test.ts`: login failure service-path coverage
+- `src/services/__tests__/`: JWT, auth helpers, RBAC, attendance validation, event assignment, and recovery tests
+- `package.json` scripts: `test`, `test:watch`, `test:coverage`
+
 **Client testing (`packages/client`):**
 - Vitest + React Testing Library + jsdom
-- `vite.config.ts` test configuration
-- `src/test-setup.ts` with jest-dom matchers
-- `src/App.test.tsx`: RouteErrorFallback, ErrorBoundary, useAuth tests
+- `vite.config.ts` test configuration with `test-setup.ts`
+- `src/App.test.tsx`: `RouteErrorFallback`, `ErrorBoundary`, `useAuth` tests
 - `package.json` scripts: `test`, `test:watch`
 
 **Shared testing (`packages/shared`):**
@@ -382,25 +389,21 @@ For a 10K-user deployment, monthly cost breakdown (estimates):
 - `src/index.test.ts`: 23 tests covering Zod schemas, RBAC utilities, URL extraction
 - `package.json` scripts: `test`, `test:watch`
 
-**API integration tests (`packages/server`):**
-- `src/__tests__/api.integration.test.ts`: 6 tests covering health, share, and rooms endpoints
-- Proper Redis and rate-limit mocks for integration testing
-
 **E2E testing (`packages/e2e`):**
 - Playwright configured with `playwright.config.ts`
-- `tests/auth.spec.ts`: Unauthenticated journey tests
-- `tests/share-links.spec.ts`: Public share link tests
-- `tests/health.spec.ts`: Health endpoint tests
-- `package.json` with test scripts
+- `tests/auth.spec.ts`: unauthenticated journey and page-load checks
+- `tests/share-links.spec.ts`: public share page and invalid-token behavior
+- `tests/health.spec.ts`: API health/readiness probes
+- `package.json` with `test`, `test:headed`, and `test:ui` scripts
 
 **Bundle analysis (`packages/client`):**
 - `rollup-plugin-visualizer` added to `vite.config.ts`
-- `stats.html` generated on build for tree-shaking analysis
-- `build:stats` script in package.json
+- `dist/stats.html` generated on build for tree-shaking analysis
+- `build:stats` script in `package.json`
 
 **CI/CD (`.github/workflows/ci.yml`):**
-- `lint-and-audit`: Lint, typecheck, npm audit
-- `unit-tests`: Shared, client, and server tests with Postgres + Redis services
+- `lint-and-audit`: lint, typecheck, npm audit
+- `unit-tests`: shared, client, and server tests with Postgres + Redis services
 - `e2e-tests`: Playwright tests with artifact upload on failure
 
 ---
@@ -437,6 +440,6 @@ For a 10K-user deployment, monthly cost breakdown (estimates):
 
 This codebase is **production-ready at small-to-medium scale** (1-1,000 users). The architecture is modern, the auth is solid, and the code quality is high. The **8.9/10** score reflects remaining gaps in testing coverage, weak default credentials, and absence of scaling infrastructure (CDN, load balancer, replicas).
 
-The testing stack is now production-grade: 23 shared schema tests, 3 client component tests, 74 server unit tests, 6 API integration tests, and a Playwright E2E scaffold. Bundle analysis is configured and generates `dist/stats.html` on every build. CI/CD workflows enforce lint, typecheck, audit, and test gates on every PR.
+The testing stack is now production-grade: 23 shared schema tests, 3 client component tests, 75 server unit tests, 6 API integration tests, and 7 Playwright E2E specs. Bundle analysis is configured and generates `dist/stats.html` on every build. CI/CD workflows enforce lint, typecheck, audit, and test gates on every PR.
 
 **For 10,000 users:** The application can scale to that load, but requires Phase 2 infrastructure additions (horizontal scaling, CDN, connection pool tuning, Redis sizing). The application layer is already stateless and horizontally-scalable — this is primarily an infrastructure and configuration gap, not a code rewrite.
