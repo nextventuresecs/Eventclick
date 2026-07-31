@@ -21,8 +21,6 @@ scratch/
 .gstack/
 .kilo/
 .playwright-*/
-test-results/packages/e2e/playwright-report/
-
-# E2E auth state
-packages/e2e/.auth/
-packages/e2e/.auth/*.json
+playwright-report/
+packages/e2e/
+test-results/
