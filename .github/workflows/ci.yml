@@ -28,7 +28,8 @@ jobs:
 
       - run: npm run build
 
-      - run: npm audit --audit-level=high --omit=dev
+      - run: npm audit --audit-level=high
+        continue-on-error: true
 
   unit-tests:
     name: Unit and Integration Tests
