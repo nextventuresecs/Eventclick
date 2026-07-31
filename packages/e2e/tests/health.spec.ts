@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000";
+const API_BASE =  process.env.PLAYWRIGHT_API_BASE_URL || process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:4000";
 
 test.describe("Health endpoints", () => {
   test("health endpoint responds", async ({ request }) => {
