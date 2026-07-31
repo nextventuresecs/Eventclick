@@ -20,3 +20,5 @@ scratch/
 .agents/
 .gstack/
 .kilo/
+.playwright-*/
+test-results/

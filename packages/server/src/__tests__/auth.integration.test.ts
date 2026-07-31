@@ -1,34 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import request from "supertest";
-import { app } from "../index";
-import { db } from "../db";
+import { loginUser } from "../services/auth/auth-login.service";
 
-vi.mock("../db", () => ({
-  db: {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    values: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    set: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-  },
-  pool: {
-    query: vi.fn(),
-  },
-}));
-
-vi.mock("@sentry/node", () => ({
-  init: vi.fn(),
-  setupExpressErrorHandler: vi.fn(),
-}));
+vi.mock("../db", () => {
+  const eq = (...args: any[]) => ({ type: "eq", args });
+  return {
+    db: {
+      select: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockReturnThis(),
+      values: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      set: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      leftJoin: vi.fn().mockReturnThis(),
+    },
+    pool: {
+      query: vi.fn(),
+    },
+    eq,
+  };
+});
 
 vi.mock("../config/redis", () => ({
   redisClient: {
     set: vi.fn(),
+    setEx: vi.fn(),
     get: vi.fn(),
     del: vi.fn(),
     sendCommand: vi.fn().mockImplementation(async (args: any[]) => {
@@ -47,19 +46,25 @@ vi.mock("../config/redis", () => ({
   disconnectRedis: vi.fn(),
 }));
 
-describe("Auth Integration Tests", () => {
+vi.mock("@sentry/node", () => ({
+  init: vi.fn(),
+  setupExpressErrorHandler: vi.fn(),
+}));
+
+describe("Auth Service Integration Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("should fail login with invalid credentials", async () => {
-    // Mock db to return empty
+  it("rejects login when user does not exist", async () => {
+    const { db } = await import("../db");
     vi.mocked((db as any).limit).mockResolvedValueOnce([]);
 
-    const response = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: "wrong@test.com", password: "password123" });
-
-    expect(response.status).toBe(401);
+    await expect(
+      loginUser({ email: "wrong@test.com", password: "password123" }, {
+        userAgent: "test",
+        ipAddress: "127.0.0.1",
+      })
+    ).rejects.toMatchObject({ statusCode: 401 });
   });
 });

@@ -36,6 +36,8 @@ export default defineConfig({
       S3_ACCESS_KEY: "minioadmin",
       S3_SECRET_KEY: "minioadmin",
       S3_FORCE_PATH_STYLE: "true",
+      RATE_LIMIT_MAX: "999999",
+      RATE_LIMIT_WINDOW_MS: "60000",
     },
   },
   resolve: {

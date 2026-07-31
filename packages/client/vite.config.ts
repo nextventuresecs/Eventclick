@@ -1,8 +1,10 @@
+/// <reference types="vitest" />
 import path from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig({
   plugins: [
@@ -34,6 +36,18 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      plugins: [
+        visualizer({
+          open: false,
+          gzipSize: true,
+          brotliSize: true,
+          filename: "dist/stats.html",
+        }),
+      ],
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -46,5 +60,13 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 3000,
+  },
+  test: {
+    globals: true,
+    environment: "jsdom",
+    setupFiles: ["./src/test-setup.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
+    exclude: ["node_modules"],
+    css: true,
   },
 });

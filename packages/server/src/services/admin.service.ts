@@ -1,5 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { CreateOrgUserInput, OrgUserSummary, UserRole } from "@application/shared";
+import type { Request } from "express";
 import crypto from "crypto";
 import argon2 from "argon2";
 import { invalidateUserCache } from "./auth";
@@ -7,6 +8,7 @@ import { db } from "../db";
 import { users, orgMembers, emailVerifications } from "../db/schema";
 import { ApiError } from "../utils/errors";
 import { enqueueEmail } from "../queues/sqs.client";
+import { recordAudit } from "./audit.service";
 
 export type { CreateOrgUserInput };
 
@@ -116,6 +118,7 @@ export const deleteUserAccount = async (
   orgId: string | null,
   targetUserId: string,
   confirmEmail: string,
+  req?: Request,
 ): Promise<{ success: boolean; message: string }> => {
   // 1. Fetch target user
   const [targetUser] = await db
@@ -195,6 +198,22 @@ export const deleteUserAccount = async (
 
   // 4. Invalidate auth cache
   await invalidateUserCache(targetUserId, targetUser.email);
+
+  const auditOrgId = orgId ?? targetUser.organizationId;
+  if (!auditOrgId) {
+    throw ApiError.internal("Cannot record audit log: missing organization context");
+  }
+
+  await recordAudit({
+    organizationId: auditOrgId,
+    actorUserId: requesterId,
+    action: "user.deleted",
+    resourceType: "user",
+    resourceId: targetUserId,
+    oldValues: { email: targetUser.email, role: targetUser.role },
+    ipAddress: req ? (req as any).ip : undefined,
+    userAgent: req ? (req as any).get("user-agent") : undefined,
+  });
 
   return { success: true, message: "User account deleted successfully" };
 };
