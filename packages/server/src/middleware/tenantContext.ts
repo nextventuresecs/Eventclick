@@ -10,7 +10,7 @@ export async function setTenantContext(req: Request, _res: Response, next: NextF
   }
 
   try {
-    await db.execute(sql`SET app.current_tenant = ${orgId}`);
+    await db.execute(sql`SET LOCAL app.current_tenant = ${orgId}`);
   } catch (error) {
     req.log?.warn({ error, orgId }, "Failed to set tenant context");
   }

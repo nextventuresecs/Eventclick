@@ -79,8 +79,8 @@ if command -v aws &>/dev/null && [[ -n "${S3_ENDPOINT:-}" ]]; then
 
   log "Uploaded to R2: s3://${R2_BUCKET}/${R2_PATH} ✅"
 else
-  log "AWS CLI not installed or S3_ENDPOINT not set — skipping R2 upload"
-  log "Backup stored locally: ${BACKUP_DIR}/${BACKUP_FILE}"
+  err "AWS CLI not installed or S3_ENDPOINT not set — backup upload FAILED"
+  exit 1
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════

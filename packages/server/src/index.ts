@@ -16,15 +16,13 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { API_PREFIX } from "@application/shared";
 import { initSentry, setupSentryExpressErrorHandler } from "./services/sentry.service";
 
+const app = express();
+
 if (env.SENTRY_DSN) {
   initSentry(env.SENTRY_DSN, env.NODE_ENV).then(() => {
-    if (env.SENTRY_DSN) {
-      setupSentryExpressErrorHandler(app);
-    }
+    setupSentryExpressErrorHandler(app);
   });
 }
-
-const app = express();
 
 if (env.SENTRY_DSN) {
   setupSentryExpressErrorHandler(app);

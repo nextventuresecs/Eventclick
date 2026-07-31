@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 import { app } from "../index";
 import { verifyAccessToken } from "../services/jwt.service";
+import { recordAudit } from "../services/audit.service";
+import { deleteUserAccount } from "../services/admin.service";
 
 vi.mock("rate-limit-redis", () => ({
   default: class MockRedisStore {
@@ -13,25 +15,42 @@ vi.mock("rate-limit-redis", () => ({
   },
 }));
 
-vi.mock("../db", () => ({
-  db: {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    values: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    set: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    leftJoin: vi.fn().mockReturnThis(),
-    inArray: vi.fn().mockReturnThis(),
-  },
-  pool: {
-    query: vi.fn(),
-  },
-}));
+function makeChain(limitReturn?: any) {
+  const chain: any = {};
+  const methods = [
+    "select",
+    "from",
+    "where",
+    "insert",
+    "values",
+    "returning",
+    "update",
+    "set",
+    "delete",
+    "leftJoin",
+    "inArray",
+    "transaction",
+  ];
+  for (const method of methods) {
+    chain[method] = vi.fn().mockReturnValue(chain);
+  }
+  if (limitReturn !== undefined) {
+    chain.limit = vi.fn().mockReturnValue(limitReturn);
+  } else {
+    chain.limit = vi.fn().mockReturnValue(chain);
+  }
+  return chain;
+}
+
+vi.mock("../db", () => {
+  const db = makeChain();
+  return {
+    db,
+    pool: {
+      query: vi.fn(),
+    },
+  };
+});
 
 vi.mock("../config/redis", () => ({
   redisClient: {
@@ -61,12 +80,16 @@ vi.mock("@sentry/node", () => ({
 }));
 
 vi.mock("../services/jwt.service", () => ({
-  verifyAccessToken: vi.fn().mockReturnValue({
-    sub: "user-123",
-    role: "volunteer",
-    orgId: "org-123",
-  }),
+  verifyAccessToken: vi.fn(),
   signAccessToken: vi.fn(),
+}));
+
+vi.mock("../services/admin.service", () => ({
+  deleteUserAccount: vi.fn(),
+}));
+
+vi.mock("../services/audit.service", () => ({
+  recordAudit: vi.fn().mockResolvedValue(undefined),
 }));
 
 const authHeader = {
@@ -98,6 +121,68 @@ describe("GDPR Profile Endpoints", () => {
 
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty("message");
+      expect(res.body.message).toContain("organization");
+    });
+
+    it("returns 200 and records audit log when user has organization", async () => {
+      vi.mocked(verifyAccessToken).mockReturnValueOnce({
+        sub: "user-123",
+        role: "volunteer",
+        orgId: "org-123",
+      });
+
+      const userChain = makeChain([{
+        id: "user-123",
+        email: "test@example.com",
+        fullName: "Test User",
+        role: "volunteer",
+        organizationId: "org-123",
+        passwordHash: "hashed",
+        twoFactorSecret: "secret",
+        isActive: true,
+        emailVerifiedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }]);
+      const membershipChain = makeChain([]);
+      membershipChain.where = vi.fn().mockReturnValue([]);
+      const roomChain = makeChain([{ id: "room-1" }]);
+      roomChain.where = vi.fn().mockReturnValue([{ id: "room-1" }]);
+      const attendanceChain = makeChain([]);
+      attendanceChain.where = vi.fn().mockReturnValue([]);
+      const submissionsChain = makeChain([]);
+      submissionsChain.where = vi.fn().mockReturnValue([]);
+      const photosChain = makeChain([]);
+      photosChain.where = vi.fn().mockReturnValue([]);
+
+      const { db } = await import("../db");
+      (db.select as any)
+        .mockReturnValueOnce(userChain)
+        .mockReturnValueOnce(membershipChain)
+        .mockReturnValueOnce(roomChain)
+        .mockReturnValueOnce(attendanceChain)
+        .mockReturnValueOnce(submissionsChain)
+        .mockReturnValueOnce(photosChain);
+
+      const res = await request(app)
+        .get("/api/v1/profile/me/export")
+        .set(authHeader);
+
+      expect(res.status).toBe(200);
+      expect(res.headers["content-disposition"]).toContain(
+        "eventclick-export-user-123.json",
+      );
+      expect(res.body).toHaveProperty("exportedAt");
+      expect(res.body).toHaveProperty("user");
+      expect(res.body.user).not.toHaveProperty("passwordHash");
+      expect(res.body.user).not.toHaveProperty("twoFactorSecret");
+      expect(recordAudit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: "user.updated",
+          resourceType: "user_export",
+          actorUserId: "user-123",
+        }),
+      );
     });
   });
 
@@ -121,6 +206,43 @@ describe("GDPR Profile Endpoints", () => {
 
       expect(res.status).toBe(400);
       expect(res.body).toHaveProperty("message");
+      expect(res.body.message).toContain("organization");
+    });
+
+    it("delegates to deleteUserAccount service and clears refresh cookie", async () => {
+      vi.mocked(verifyAccessToken).mockReturnValueOnce({
+        sub: "user-123",
+        role: "volunteer",
+        orgId: "org-123",
+      });
+
+      vi.mocked(deleteUserAccount).mockResolvedValue({
+        success: true,
+        message: "User account deleted successfully",
+      });
+
+      const res = await request(app)
+        .delete("/api/v1/profile/me/account")
+        .set(authHeader)
+        .send({ confirmEmail: "test@example.com" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toContain("deleted");
+      expect(res.headers["set-cookie"]).toBeDefined();
+      const cookieHeader = (res.headers["set-cookie"] as unknown as string[]).find((c: string) =>
+        c.startsWith("Evently_rt="),
+      );
+      expect(cookieHeader).toBeDefined();
+      expect(cookieHeader).toContain("Expires=Thu, 01 Jan 1970");
+      expect(deleteUserAccount).toHaveBeenCalledWith(
+        "user-123",
+        "volunteer",
+        "org-123",
+        "user-123",
+        "test@example.com",
+        expect.any(Object),
+      );
     });
   });
 });
