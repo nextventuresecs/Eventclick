@@ -26,7 +26,7 @@ export default defineConfig({
   ],
   webServer: process.env.CI
     ? {
-        command: "npm run dev",
+        command: "bash -c 'cd ../../ && npm run dev'",
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,
