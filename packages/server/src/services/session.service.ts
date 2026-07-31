@@ -5,7 +5,7 @@ import { sessions, type Session } from "../db/schema";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
 import { ApiError } from "../utils/errors";
-import { cacheGet, cacheSet, cacheDel } from "./cache.service";
+import { redisClient } from "../config/redis";
 
 const REFRESH_BYTES = 48;
 
@@ -63,26 +63,37 @@ export const findActiveSessionByToken = async (raw: string): Promise<Session | n
   const tokenHash = hashToken(raw);
   const cacheKey = `session:token:${tokenHash}`;
 
-  const cached = await cacheGet<Session | "__null__">(cacheKey);
+  let cached: any = null;
+  if (redisClient.isOpen) {
+    const rawCache = await redisClient.get(cacheKey);
+    if (rawCache) {
+      try {
+        cached = JSON.parse(rawCache);
+      } catch {
+        cached = rawCache;
+      }
+    }
+  }
+
   if (cached !== null) {
     if (cached === "__null__") return null;
     if (cached.expiresAt) cached.expiresAt = new Date(cached.expiresAt);
     if (cached.createdAt) cached.createdAt = new Date(cached.createdAt);
     if (cached.revokedAt) cached.revokedAt = new Date(cached.revokedAt);
 
-    return cached;
+    return cached as Session;
   }
 
   const [row] = await db.select().from(sessions).where(eq(sessions.tokenHash, tokenHash)).limit(1);
   if (!row) {
-    await cacheSet(cacheKey, "__null__", 30);
+    if (redisClient.isOpen) await redisClient.setEx(cacheKey, 30, "__null__");
     return null;
   }
 
   const remainingSeconds = Math.max(0, Math.floor((row.expiresAt.getTime() - Date.now()) / 1000));
   const ttl = Math.min(300, remainingSeconds);
   if (ttl > 0) {
-    await cacheSet(cacheKey, row, ttl);
+    if (redisClient.isOpen) await redisClient.setEx(cacheKey, ttl, JSON.stringify(row));
   }
 
   return row;
@@ -99,8 +110,10 @@ export const revokeSessionFamily = async (familyId: string): Promise<void> => {
     .set({ revokedAt: new Date() })
     .where(and(eq(sessions.familyId, familyId), isNull(sessions.revokedAt)));
 
-  for (const row of rows) {
-    await cacheDel(`session:token:${row.tokenHash}`);
+  if (redisClient.isOpen) {
+    for (const row of rows) {
+      await redisClient.del(`session:token:${row.tokenHash}`);
+    }
   }
 };
 
@@ -115,8 +128,10 @@ export const revokeAllUserSessions = async (userId: string): Promise<void> => {
     .set({ revokedAt: new Date() })
     .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
 
-  for (const row of rows) {
-    await cacheDel(`session:token:${row.tokenHash}`);
+  if (redisClient.isOpen) {
+    for (const row of rows) {
+      await redisClient.del(`session:token:${row.tokenHash}`);
+    }
   }
 };
 
@@ -138,7 +153,9 @@ export const rotateSession = async (
     .where(eq(sessions.id, current.id));
 
   // Invalidate cache for rotated session
-  await cacheDel(`session:token:${current.tokenHash}`);
+  if (redisClient.isOpen) {
+    await redisClient.del(`session:token:${current.tokenHash}`);
+  }
 
   return next;
 };
@@ -152,7 +169,7 @@ export const revokeSession = async (sessionId: string): Promise<void> => {
 
   await db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, sessionId));
 
-  if (row) {
-    await cacheDel(`session:token:${row.tokenHash}`);
+  if (row && redisClient.isOpen) {
+    await redisClient.del(`session:token:${row.tokenHash}`);
   }
 };

@@ -1,36 +1,25 @@
-import { RoomServiceClient } from "livekit-server-sdk";
 import { and, eq, isNull } from "drizzle-orm";
 import type { PresenceSnapshot } from "@application/shared";
 import { db } from "../db";
 import { eventRooms } from "../db/schema";
-import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
-import { roomNameFor } from "./livekit.service";
-import { cacheGet, cacheSet } from "./cache.service";
-
-const livekitHttpUrl = env.LIVEKIT_URL.replace(/^ws(s?):\/\//, "http$1://");
-
-const roomService = new RoomServiceClient(
-  livekitHttpUrl,
-  env.LIVEKIT_API_KEY,
-  env.LIVEKIT_API_SECRET,
-);
+import { streamingService } from "./streaming";
+import { redisClient } from "../config/redis";
 
 const countParticipants = async (roomId: string): Promise<number> => {
   const cacheKey = `presence:${roomId}`;
-  const cached = await cacheGet<number>(cacheKey);
-  if (cached !== null) {
-    return cached;
+  if (redisClient.isOpen) {
+    const cached = await redisClient.get(cacheKey);
+    if (cached !== null) {
+      return parseInt(cached, 10);
+    }
   }
 
-  try {
-    const list = await roomService.listParticipants(roomNameFor(roomId));
-    const count = list.length;
-    await cacheSet(cacheKey, count, 10);
-    return count;
-  } catch {
-    return 0;
+  const count = await streamingService.getParticipantCount(roomId);
+  if (redisClient.isOpen) {
+    await redisClient.setEx(cacheKey, 10, count.toString());
   }
+  return count;
 };
 
 const snapshot = (roomId: string, count: number): PresenceSnapshot => ({

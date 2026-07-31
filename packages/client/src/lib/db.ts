@@ -6,6 +6,8 @@ export interface OfflineAttendance {
   formDefinitionId: string;
   data: Record<string, any>;
   photoKey?: string;
+  latitude?: number;
+  longitude?: number;
   synced: boolean;
   createdAt: number;
 }
@@ -15,6 +17,8 @@ export interface OfflineActivity {
   roomId: string;
   activityId: string;
   photoKey?: string;
+  latitude?: number;
+  longitude?: number;
   synced: boolean;
   createdAt: number;
 }

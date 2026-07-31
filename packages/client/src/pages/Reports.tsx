@@ -91,7 +91,7 @@ export const Reports = () => {
       </div>
 
       {error && (
-        <Card className="border-[var(--color-status-cancelled-bg)] bg-status-cancelled-bg">
+        <Card className="border-status-cancelled-bg bg-status-cancelled-bg">
           <CardContent className="pt-6">
             <p className="text-status-cancelled text-sm">{error}</p>
           </CardContent>
@@ -114,7 +114,7 @@ export const Reports = () => {
         {filtered.length === 0 ? (
           <Card className="col-span-full border border-dashed border-(--color-gray-200)">
             <CardContent className="p-8 text-center text-gray-400">
-              <FileText className="mx-auto h-10 w-10 mb-2 text-[var(--color-gray-300)]" />
+              <FileText className="mx-auto h-10 w-10 mb-2 text-gray-300" />
               <p>No reports available yet</p>
             </CardContent>
           </Card>

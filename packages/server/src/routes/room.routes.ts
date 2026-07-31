@@ -16,21 +16,21 @@ import { requireRole } from "../middleware/requireRole";
 import { validate } from "../middleware/validate";
 import { ApiError } from "../utils/errors";
 import {
-  listRooms,
-  createRoom,
-  getRoom,
-  updateRoom,
-  deleteRoom,
-  setYouTubeFallback,
   clearFallback,
-  getLiveToken,
-  startLive,
-  stopLive,
-  getPresence,
-  startRoomRecording,
-  stopRoomRecording,
+  createRoom,
+  deleteRoom,
   getActiveRecording,
-} from "../controllers/room.controller";
+  getLiveToken,
+  getPresence,
+  getRoom,
+  listRooms,
+  setYouTubeFallback,
+  startLive,
+  startRoomRecording,
+  stopLive,
+  stopRoomRecording,
+  updateRoom,
+} from "../controllers/room";
 import { getRoomForm, saveRoomForm } from "../controllers/form.controller";
 import {
   listRoomAttendance,
@@ -43,6 +43,7 @@ import {
   postActivityPhotoSubmission,
 } from "../controllers/activity.controller";
 import { downloadRoomReportPdf } from "../controllers/report.controller";
+import { getPdfJobStatus } from "../controllers/report-status.controller";
 
 export const roomRouter = Router();
 
@@ -110,6 +111,7 @@ roomRouter.post(
 );
 roomRouter.get("/:id/attendance", canViewAttendance, listRoomAttendance);
 roomRouter.get("/:id/report/pdf", requirePermission("view_reports"), downloadRoomReportPdf);
+roomRouter.get("/:id/report/status/:jobId", requirePermission("view_reports"), getPdfJobStatus);
 
 roomRouter.get("/:id/activities", canTakeAttendance, getActivitiesAndSubmissions);
 roomRouter.post(

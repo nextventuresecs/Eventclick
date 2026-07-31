@@ -11,8 +11,15 @@ import { env } from "../config/env";
 import { signAccessToken, verifyAccessToken } from "../services/jwt.service";
 import { s3 } from "../services/storage.service";
 import { HeadBucketCommand } from "@aws-sdk/client-s3";
+import { metricsRegistry, metricsMiddleware } from "../services/metrics.service";
 
 export const apiRouter = Router();
+
+// Prometheus metrics endpoint
+apiRouter.get("/metrics", (_req, res) => {
+  res.set("Content-Type", "text/plain; version=0.0.4");
+  res.send(metricsRegistry.toPrometheus());
+});
 
 // Lightweight liveness probe (is the process alive?)
 apiRouter.get("/health", (_req, res) => {

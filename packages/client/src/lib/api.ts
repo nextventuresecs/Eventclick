@@ -68,6 +68,7 @@ type Body = Record<string, unknown> | undefined;
 const DEFAULT_TIMEOUT_MS = 15_000;
 let requestIdCounter = 0;
 const nextRequestId = () => `req-${Date.now()}-${++requestIdCounter}`;
+let lastRequestId: string | null = null;
 
 const fetchWithAuth = async (
   path: string,
@@ -79,7 +80,7 @@ const fetchWithAuth = async (
     ...(init?.headers as Record<string, string>),
   };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-  headers["x-request-id"] = headers["x-request-id"] ?? nextRequestId();
+  headers["x-request-id"] = headers["x-request-id"] ?? lastRequestId ?? nextRequestId();
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -92,6 +93,9 @@ const fetchWithAuth = async (
   });
 
   clearTimeout(timeoutId);
+
+  const responseRequestId = res.headers.get("x-request-id");
+  if (responseRequestId) lastRequestId = responseRequestId;
 
   if (res.status === 401 && retry && !path.startsWith("/auth/")) {
     const newToken = await refreshOnce();

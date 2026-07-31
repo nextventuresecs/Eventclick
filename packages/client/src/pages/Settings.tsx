@@ -27,8 +27,9 @@ export const Settings = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Organization settings (NGO Admin)
+  // Organization settings (Admin)
   const [orgName, setOrgName] = useState(user?.organizationName || "");
+  const [orgAbout, setOrgAbout] = useState(user?.organizationDescription || "");
   const [savingOrg, setSavingOrg] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
 
@@ -69,7 +70,7 @@ export const Settings = () => {
     e.preventDefault();
     setSavingOrg(true);
     try {
-      await settingsApi.updateOrganization({ name: orgName });
+      await settingsApi.updateOrganization({ name: orgName, description: orgAbout });
       toast("Organization settings updated", "success");
     } catch (err: any) {
       toast(err.message || "Failed to update organization", "error");
@@ -140,7 +141,7 @@ export const Settings = () => {
 
       {/* Grid Layout */}
       <div className="space-y-6">
-        {/* Organization Settings (NGO Admin) */}
+        {/* Organization Settings (Admin) */}
         {isAdmin && (
           <Card className="card-static rounded-2xl border-purple-100">
             <CardContent className="p-6 space-y-5">
@@ -154,45 +155,57 @@ export const Settings = () => {
                 </CardDescription>
               </div>
 
-              <form onSubmit={handleSaveOrg} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="orgName" className="text-xs font-semibold text-gray-700">Organization Name</Label>
-                  <Input
-                    id="orgName"
-                    type="text"
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    required
-                    className="input-premium"
-                  />
-                </div>
+               <form onSubmit={handleSaveOrg} className="space-y-4">
+                 <div className="space-y-1.5">
+                   <Label htmlFor="orgName" className="text-xs font-semibold text-gray-700">Organization Name</Label>
+                   <Input
+                     id="orgName"
+                     type="text"
+                     value={orgName}
+                     onChange={(e) => setOrgName(e.target.value)}
+                     required
+                     className="input-premium"
+                   />
+                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-gray-700">Organization ID (Tenant Key)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={user?.organizationId || "—"}
-                      disabled
-                      className="bg-gray-50 text-gray-600 font-mono text-xs rounded-xl"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={copyOrgId}
-                      className="rounded-xl shrink-0 gap-1.5"
-                    >
-                      {copiedId ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                      {copiedId ? "Copied" : "Copy ID"}
-                    </Button>
-                  </div>
-                </div>
+                 <div className="space-y-1.5">
+                   <Label htmlFor="orgAbout" className="text-xs font-semibold text-gray-700">About Organization</Label>
+                   <Input
+                     id="orgAbout"
+                     type="text"
+                     value={orgAbout}
+                     onChange={(e) => setOrgAbout(e.target.value)}
+                     placeholder="Brief description of your organization"
+                     className="input-premium"
+                   />
+                 </div>
 
-                <div className="pt-2 flex justify-end">
-                  <Button type="submit" disabled={savingOrg} className="bg-brand-gradient h-10 rounded-xl font-semibold shadow-xs">
-                    {savingOrg ? "Saving..." : "Update Organization"}
-                  </Button>
-                </div>
-              </form>
+                 <div className="space-y-1.5">
+                   <Label className="text-xs font-semibold text-gray-700">Organization ID (Tenant Key)</Label>
+                   <div className="flex gap-2">
+                     <Input
+                       value={user?.organizationId || "—"}
+                       disabled
+                       className="bg-gray-50 text-gray-600 font-mono text-xs rounded-xl"
+                     />
+                     <Button
+                       type="button"
+                       variant="outline"
+                       onClick={copyOrgId}
+                       className="rounded-xl shrink-0 gap-1.5"
+                     >
+                       {copiedId ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                       {copiedId ? "Copied" : "Copy ID"}
+                     </Button>
+                   </div>
+                 </div>
+
+                 <div className="pt-2 flex justify-end">
+                   <Button type="submit" disabled={savingOrg} className="bg-brand-gradient h-10 rounded-xl font-semibold shadow-xs">
+                     {savingOrg ? "Saving..." : "Update Organization"}
+                   </Button>
+                 </div>
+               </form>
             </CardContent>
           </Card>
         )}

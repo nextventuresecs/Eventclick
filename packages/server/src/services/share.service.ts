@@ -3,7 +3,7 @@ import type { LiveTokenResponse, SharedRoom } from "@application/shared";
 import { db } from "../db";
 import { eventRooms, type EventRoomRow } from "../db/schema";
 import { ApiError } from "../utils/errors";
-import { signLiveToken } from "./livekit.service";
+import { streamingService } from "./streaming";
 
 const toSharedRoom = (row: EventRoomRow): SharedRoom => ({
   id: row.id,
@@ -48,10 +48,5 @@ export const issueShareViewerToken = async (
     throw ApiError.badRequest("Room is not using LiveKit");
   }
 
-  return signLiveToken({
-    roomId: row.id,
-    identity: guestIdentity,
-    userName: guestName,
-    role: "viewer",
-  });
+  return streamingService.issueGuestToken(row.id, guestIdentity, guestName);
 };

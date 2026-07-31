@@ -148,10 +148,16 @@ export const generateVerificationReportPdf = async (
   const gotenbergUrl = `${env.GOTENBERG_URL.replace(/\/+$/, "")}/forms/chromium/convert/html`;
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
     const response = await fetch(gotenbergUrl, {
       method: "POST",
       body: formData,
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "Unknown error");

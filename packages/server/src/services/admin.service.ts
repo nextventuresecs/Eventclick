@@ -1,8 +1,8 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { CreateOrgUserInput, OrgUserSummary, UserRole } from "@application/shared";
 import crypto from "crypto";
-import { hashPassword } from "./password.service";
-import { invalidateUserCache } from "./auth.service";
+import argon2 from "argon2";
+import { invalidateUserCache } from "./auth";
 import { db } from "../db";
 import { users, orgMembers, emailVerifications } from "../db/schema";
 import { ApiError } from "../utils/errors";
@@ -31,7 +31,7 @@ export const listOrgUsersForAdmin = async (orgId: string): Promise<OrgUserSummar
 };
 
 /**
- * Create a new user within the NGO Admin's organization.
+ * Create a new user within the Admin's organization.
  * - Hashes the password
  * - Checks for duplicate emails
  * - Creates user + orgMember record in a transaction
@@ -54,7 +54,7 @@ export const createOrgUser = async (
     throw ApiError.conflict("A user with this email already exists");
   }
 
-  const passwordHash = await hashPassword(password);
+  const passwordHash = await argon2.hash(password);
 
   const { user: newUser, token } = await db.transaction(async (tx) => {
     const [user] = await tx
@@ -107,7 +107,7 @@ export const createOrgUser = async (
 /**
  * Role-specific account deletion logic:
  * - Self deletion: Allowed for any user.
- * - NGO Admin: Can delete any event_admin or volunteer in their org.
+ * - Admin: Can delete any event_admin or volunteer in their org.
  * - Event Admin: Can delete a volunteer ONLY IF that volunteer was created/invited by this specific Event Admin.
  */
 export const deleteUserAccount = async (
@@ -141,7 +141,7 @@ export const deleteUserAccount = async (
     }
 
     if (requesterRole === "admin") {
-      // NGO Admin can delete event_manager or volunteer, but not another admin
+      // Admin can delete event_manager or volunteer, but not another admin
       if (targetUser.role === "admin") {
         throw ApiError.forbidden("Cannot delete another administrator");
       }

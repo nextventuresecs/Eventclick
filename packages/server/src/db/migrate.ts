@@ -12,7 +12,6 @@ async function main() {
   }
 
   const pool = new Pool({ connectionString: url, max: 1 });
-  const db = drizzle(pool);
 
   const client = await pool.connect();
   const lockId = 7777777; // arbitrary lock ID for migrations
@@ -24,8 +23,10 @@ async function main() {
     console.log("[migrate] ensuring required extensions…");
     await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
     await client.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+    await client.query('CREATE EXTENSION IF NOT EXISTS "postgis"');
 
     console.log("[migrate] running migrations…");
+    const db = drizzle(client);
     await migrate(db, { migrationsFolder: "./drizzle" });
     console.log("[migrate] ✅ done");
   } finally {

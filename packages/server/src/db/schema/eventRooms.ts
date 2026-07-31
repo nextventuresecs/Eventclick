@@ -30,6 +30,7 @@ export const eventRooms = pgTable(
     latitude: doublePrecision("latitude"),
     longitude: doublePrecision("longitude"),
     activityDefinitions: jsonb("activity_definitions").$type<ActivityDefinition[]>().notNull().default([]),
+    cancellationReason: text("cancellation_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

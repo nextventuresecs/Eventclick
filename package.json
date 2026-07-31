@@ -20,6 +20,9 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "turbo": "^2.10.7"
+    "turbo": "^2.9.6"
+  },
+  "dependencies": {
+    "nanoid": "^6.0.0"
   }
 }

@@ -15,8 +15,12 @@ import {
   XCircle,
   Activity,
   Layers,
+  Ban,
+  ChevronDown,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
-import { hasRolePermission, type EventRoom } from "@application/shared";
+import { hasRolePermission, type EventRoom, CANCELLATION_REASONS } from "@application/shared";
 import { roomsApi, ApiClientError } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
@@ -53,6 +57,27 @@ const statusPill = (status: EventRoom["status"]) => {
 const RoomCard = ({ room }: { room: EventRoom }) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [showCancel, setShowCancel] = useState(false);
+  const [selectedReason, setSelectedReason] = useState<string>("");
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancel = async () => {
+    if (!selectedReason) return;
+    setCancelling(true);
+    try {
+      await roomsApi.update(room.id, {
+        status: "cancelled",
+        cancellationReason: selectedReason,
+      });
+      toast("Room cancelled successfully", "success");
+      setShowCancel(false);
+      setSelectedReason("");
+    } catch (err) {
+      toast(err instanceof ApiClientError ? err.message : "Failed to cancel room", "error");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
     <Card
@@ -104,6 +129,13 @@ const RoomCard = ({ room }: { room: EventRoom }) => {
           )}
         </div>
 
+        {room.cancellationReason && room.status === "cancelled" && (
+          <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 px-3 py-1.5 rounded-xl border border-red-100">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span className="font-medium">Cancelled: {room.cancellationReason}</span>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
           {room.status === "live" && hasRolePermission(user?.role ?? "volunteer", "view_live_session") && (
             <Link
@@ -148,6 +180,56 @@ const RoomCard = ({ room }: { room: EventRoom }) => {
           >
             <MapPin className="w-3.5 h-3.5" /> Records
           </Link>
+          {room.status !== "cancelled" && hasRolePermission(user?.role ?? "volunteer", "manage_rooms") && (
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 gap-1 rounded-xl text-xs font-medium border-red-200 text-red-600 hover:bg-red-50"
+                onClick={() => setShowCancel(!showCancel)}
+              >
+                <Ban className="w-3.5 h-3.5" /> Cancel
+              </Button>
+              {showCancel && (
+                <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-10 space-y-3">
+                  <p className="text-xs font-semibold text-gray-900">Cancel this event</p>
+                  <select
+                    value={selectedReason}
+                    onChange={(e) => setSelectedReason(e.target.value)}
+                    className="w-full h-9 rounded-lg border border-gray-200 px-3 text-xs bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="">Select a reason...</option>
+                    {CANCELLATION_REASONS.map((reason) => (
+                      <option key={reason} value={reason}>
+                        {reason}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-3 text-xs rounded-lg"
+                      onClick={() => {
+                        setShowCancel(false);
+                        setSelectedReason("");
+                      }}
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-7 px-3 text-xs rounded-lg bg-red-600 hover:bg-red-700 text-white"
+                      disabled={!selectedReason || cancelling}
+                      onClick={handleCancel}
+                    >
+                      {cancelling ? "Cancelling..." : "Confirm Cancel"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

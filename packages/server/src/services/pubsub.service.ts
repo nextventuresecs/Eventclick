@@ -1,14 +1,18 @@
-import Redis from "ioredis";
-import { env } from "../config/env";
+import { type RedisClientType } from "redis";
+import { redisClient } from "../config/redis";
 import { logger } from "../utils/logger";
 
 class PubSubService {
-  private publisher: Redis;
-  private subscriber: Redis;
+  private publisher: RedisClientType | null = null;
+  private subscriber: RedisClientType | null = null;
 
   constructor() {
-    this.publisher = new Redis(env.REDIS_URL);
-    this.subscriber = new Redis(env.REDIS_URL);
+    this.init();
+  }
+
+  private async init() {
+    this.publisher = redisClient.duplicate() as RedisClientType;
+    this.subscriber = redisClient.duplicate() as RedisClientType;
 
     this.publisher.on("error", (err: any) => {
       logger.error({ err }, "Redis Publisher Error");
@@ -17,12 +21,15 @@ class PubSubService {
     this.subscriber.on("error", (err: any) => {
       logger.error({ err }, "Redis Subscriber Error");
     });
+
+    await Promise.all([this.publisher.connect(), this.subscriber.connect()]);
   }
 
   /**
    * Publish a message to a specific channel
    */
   public async publish(channel: string, message: any): Promise<number> {
+    if (!this.publisher) return 0;
     const payload = typeof message === "string" ? message : JSON.stringify(message);
     return this.publisher.publish(channel, payload);
   }
@@ -32,27 +39,20 @@ class PubSubService {
    * Returns a function to unsubscribe from the channel.
    */
   public subscribe(channel: string, callback: (message: string) => void): () => void {
-    // Subscribe if not already subscribed to this channel by this client
-    this.subscriber.subscribe(channel, (err: any, count: any) => {
-      if (err) {
-        logger.error({ err, channel }, "Failed to subscribe to channel");
-      }
-    });
+    if (!this.subscriber) return () => {};
 
-    const messageHandler = (ch: string, message: string) => {
-      if (ch === channel) {
-        callback(message);
-      }
+    const messageHandler = (message: string) => {
+      callback(message);
     };
 
-    this.subscriber.on("message", messageHandler);
+    this.subscriber.subscribe(channel, messageHandler).catch((err: any) => {
+      logger.error({ err, channel }, "Failed to subscribe to channel");
+    });
 
     // Return unsubscribe function
     return () => {
-      this.subscriber.off("message", messageHandler);
-      // We only unsubscribe from Redis if no other listeners for this channel exist on this subscriber
-      // For simplicity in this implementation, we assume per-user distinct channels
-      this.subscriber.unsubscribe(channel).catch((err: any) => {
+      if (!this.subscriber) return;
+      this.subscriber.unsubscribe(channel, messageHandler).catch((err: any) => {
         logger.error({ err, channel }, "Failed to unsubscribe from channel");
       });
     };
@@ -62,8 +62,8 @@ class PubSubService {
    * Close connections gracefully
    */
   public async close() {
-    await this.publisher.quit();
-    await this.subscriber.quit();
+    if (this.publisher) await this.publisher.quit();
+    if (this.subscriber) await this.subscriber.quit();
   }
 }
 

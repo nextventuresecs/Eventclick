@@ -39,10 +39,51 @@ export const sendPasswordResetEmail = async (
       );
     }
   } else {
-    // Fallback for local development when Resend is not configured
     logger.info(
       { email, token, resetLink, event: "email.password_reset" },
-      `\n======================================================\n[EMAIL MOCK] Password Reset Requested\nTo: ${email}\nReset Link: ${resetLink}\n======================================================\n`,
+      `[EMAIL MOCK] Password Reset Requested\nTo: ${email}\nReset Link: ${resetLink}`,
+    );
+  }
+};
+
+export const sendReportReadyEmail = async (
+  email: string,
+  s3Url: string,
+  roomLabel: string,
+): Promise<void> => {
+  const downloadLink = s3Url;
+
+  if (resend) {
+    try {
+      const { error } = await resend.emails.send({
+        from: env.RESEND_FROM_EMAIL,
+        to: email,
+        subject: `Your Event Report is Ready — ${roomLabel}`,
+        html: `
+          <h1>Report Ready</h1>
+          <p>Your event report for <strong>${roomLabel}</strong> has been generated successfully.</p>
+          <p><a href="${downloadLink}">Download Report</a></p>
+          <p>This link will expire in 1 hour.</p>
+        `,
+      });
+
+      if (error) {
+        throw error;
+      }
+      logger.info(
+        { email, roomLabel, event: "email.report_ready_sent" },
+        "Report ready email sent via Resend",
+      );
+    } catch (error) {
+      logger.error(
+        { email, roomLabel, error, event: "email.report_ready_failed" },
+        "Failed to send report ready email",
+      );
+    }
+  } else {
+    logger.info(
+      { email, roomLabel, s3Url, event: "email.report_ready" },
+      `[EMAIL MOCK] Report Ready\nTo: ${email}\nDownload: ${s3Url}`,
     );
   }
 };
@@ -82,10 +123,9 @@ export const sendVerificationEmail = async (
       );
     }
   } else {
-    // Fallback for local development
     logger.info(
       { email, token, verifyLink, event: "email.verification" },
-      `\n======================================================\n[EMAIL MOCK] Email Verification Sent\nTo: ${email}\nVerify Link: ${verifyLink}\n======================================================\n`,
+      `[EMAIL MOCK] Email Verification Sent\nTo: ${email}\nVerify Link: ${verifyLink}`,
     );
   }
 };

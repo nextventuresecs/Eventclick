@@ -46,7 +46,6 @@ ALTER TABLE "users" ALTER COLUMN "role" SET DEFAULT 'volunteer'::"public"."user_
 ALTER TABLE "users" ALTER COLUMN "role" SET DATA TYPE "public"."user_role" USING "role"::"public"."user_role";--> statement-breakpoint
 ALTER TABLE "org_members" ALTER COLUMN "role" SET DATA TYPE "public"."user_role" USING "role"::"public"."user_role";--> statement-breakpoint
 ALTER TABLE "event_admin_assignments" ALTER COLUMN "assigned_role" SET DATA TYPE "public"."user_role" USING "assigned_role"::"public"."user_role";--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "photo_url" text;--> statement-breakpoint
 ALTER TABLE "users" ADD COLUMN "preferences" jsonb;--> statement-breakpoint
 ALTER TABLE "feedback" ADD CONSTRAINT "feedback_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "feedback" ADD CONSTRAINT "feedback_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

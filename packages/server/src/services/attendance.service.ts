@@ -211,6 +211,12 @@ export const submitAttendance = async (
       data,
       photoKey: ctx.input.photoKey ?? null,
       photoUrl,
+      latitude: ctx.input.latitude ?? null,
+      longitude: ctx.input.longitude ?? null,
+      location:
+        ctx.input.latitude != null && ctx.input.longitude != null
+          ? { x: ctx.input.longitude, y: ctx.input.latitude }
+          : null,
       ipAddress: ctx.ipAddress ?? null,
       userAgent: ctx.userAgent ?? null,
     })

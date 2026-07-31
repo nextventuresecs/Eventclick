@@ -1975,7 +1975,7 @@
       "name": "user_role",
       "schema": "public",
       "values": [
-        "ngo_admin",
+        "admin",
         "event_admin",
         "volunteer"
       ]

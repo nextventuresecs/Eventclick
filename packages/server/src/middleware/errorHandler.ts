@@ -1,8 +1,8 @@
 import type { ErrorRequestHandler, Request, RequestHandler } from "express";
 import { ZodError } from "zod";
-import * as Sentry from "@sentry/node";
 import { ApiError } from "../utils/errors";
 import { logger, type Logger } from "../utils/logger";
+import { captureSentryException } from "../services/sentry.service";
 import { env } from "../config/env";
 
 const reqLogger = (req: Request): Logger => req.log ?? logger;
@@ -37,7 +37,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof ApiError) {
     if (err.statusCode >= 500) {
       log.error({ err, code: err.code }, "api error (5xx)");
-      Sentry.captureException(err, {
+      captureSentryException(err, {
         tags: { code: err.code },
         extra: { route: `${req.method} ${req.originalUrl}` },
       });
@@ -56,7 +56,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   }
 
   log.error({ err }, "unhandled error");
-  Sentry.captureException(err, {
+  captureSentryException(err, {
     extra: { route: `${req.method} ${req.originalUrl}` },
   });
   res.status(500).json({

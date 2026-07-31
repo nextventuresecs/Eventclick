@@ -13,6 +13,8 @@ export const updateOrganization: RequestHandler = async (req, res, next) => {
       .update(organizations)
       .set({
         name: req.body.name,
+        description: req.body.description,
+        logoUrl: req.body.logoUrl,
         updatedAt: new Date(),
       })
       .where(eq(organizations.id, orgId))

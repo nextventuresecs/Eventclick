@@ -10,15 +10,20 @@ import {
   CheckCircle2,
   KeyRound,
   Sparkles,
+  Upload,
+  Image,
+  X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { ROLE_LABELS } from "@application/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
+import { authApi, settingsApi, ApiClientError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authApi } from "@/lib/api";
 
 const AVATAR_PRESETS = [
   "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
@@ -42,6 +47,15 @@ export const Profile = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Organization logo state
+  const [logoUrl, setLogoUrl] = useState(user?.organizationLogoUrl || "");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(user?.organizationLogoUrl || null);
+  const [savingLogo, setSavingLogo] = useState(false);
 
   const initials = user?.fullName
     ?.split(" ")
@@ -86,6 +100,44 @@ export const Profile = () => {
       toast(err.message || "Failed to change password", "error");
     } finally {
       setSavingPassword(false);
+    }
+  };
+
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast("Please select an image file", "error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast("Image must be less than 5MB", "error");
+      return;
+    }
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    setLogoUrl("");
+  };
+
+  const handleSaveLogo = async () => {
+    if (!logoPreview && !logoUrl) return;
+    setSavingLogo(true);
+    try {
+      await settingsApi.updateOrganization({ logoUrl: logoPreview || logoUrl });
+      toast("Organization logo updated", "success");
+    } catch (err: any) {
+      toast(err.message || "Failed to update logo", "error");
+    } finally {
+      setSavingLogo(false);
     }
   };
 
@@ -267,43 +319,70 @@ export const Profile = () => {
               <form onSubmit={handleUpdatePassword} className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="currentPassword" className="text-xs font-semibold text-gray-700">Current Password</Label>
-                  <Input
-                    id="currentPassword"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="input-premium"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="currentPassword"
+                      type={showCurrentPassword ? "text" : "password"}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="input-premium pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="newPassword" className="text-xs font-semibold text-gray-700">New Password</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="••••••••"
-                      minLength={8}
-                      required
-                      className="input-premium"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="newPassword"
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="••••••••"
+                        minLength={8}
+                        required
+                        className="input-premium pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="confirmPassword" className="text-xs font-semibold text-gray-700">Confirm New Password</Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="••••••••"
-                      minLength={8}
-                      required
-                      className="input-premium"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="••••••••"
+                        minLength={8}
+                        required
+                        className="input-premium pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -317,7 +396,7 @@ export const Profile = () => {
           </Card>
         </div>
 
-        {/* Right 1 Col: Account Badges & System Info */}
+        {/* Right 1 Col: Account Badges, Logo & System Info */}
         <div className="space-y-6">
           <Card className="card-static rounded-2xl">
             <CardContent className="p-6 space-y-4">
@@ -354,6 +433,72 @@ export const Profile = () => {
                     <span className="font-medium text-gray-500">Status:</span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Verified</span>
                   </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Organization Logo Upload */}
+          <Card className="card-static rounded-2xl">
+            <CardContent className="p-6 space-y-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-purple-900 font-display flex items-center gap-1.5">
+                <Image className="w-4 h-4 text-purple-600" />
+                Organization Logo
+              </h3>
+
+              <div className="flex items-center gap-4">
+                {logoPreview ? (
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-gray-200">
+                    <img src={logoPreview} alt="Organization logo preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-gray-400" />
+                  </div>
+                )}
+                <div className="flex-1 space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoFileChange}
+                    className="hidden"
+                    id="logo-upload"
+                  />
+                  <label
+                    htmlFor="logo-upload"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-xs font-semibold cursor-pointer hover:bg-purple-100 transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Upload Logo
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="url"
+                      value={logoUrl}
+                      onChange={(e) => {
+                        setLogoUrl(e.target.value);
+                        setLogoPreview(e.target.value || null);
+                      }}
+                      placeholder="Paste image URL"
+                      className="input-premium text-xs"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSaveLogo}
+                      disabled={savingLogo || (!logoPreview && !logoUrl)}
+                      className="bg-brand-gradient h-8 rounded-lg text-xs font-semibold"
+                    >
+                      {savingLogo ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-gray-400">PNG, JPG or WebP. Max 5MB.</p>
                 </div>
               </div>
             </CardContent>

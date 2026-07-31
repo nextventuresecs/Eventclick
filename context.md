@@ -1,6 +1,6 @@
 # Project Context: Eventclick (Eventclick)
 
-Eventclick (Eventclick) is a real-time NGO transparency and verification platform. It allows non-profit organizations to demonstrate active fieldwork and operational accountability to donors and funders by hosting live-streamed event rooms, sharing secure live-view links, and capturing time-bound attendance verification records with photo evidence.
+Eventclick (Eventclick) is a real-time Org transparency and verification platform. It allows non-profit organizations to demonstrate active fieldwork and operational accountability to donors and funders by hosting live-streamed event rooms, sharing secure live-view links, and capturing time-bound attendance verification records with photo evidence.
 
 ---
 
@@ -18,12 +18,13 @@ Eventclick (Eventclick) is a real-time NGO transparency and verification platfor
 - **Routing**: `react-router-dom` v7 (web app framework)
 - **Networking**: Custom fetch wrapper (`src/lib/api.ts`) with automated token refresh and deduplicated request queuing.
 - **Media & Capture**: Browser MediaDevices API (`getUserMedia` / Canvas) with aspect-correct frame snapping, real-time client-side JPEG compression, and drag-and-drop uploads.
+- **PWA & Offline**: `vite-plugin-pwa` for service worker installation, Dexie.js for IndexedDB local storage of offline submissions.
 
 ### Backend (`packages/server`)
 
 - **Server**: Express 5 + TypeScript
 - **Database ORM**: Drizzle ORM
-- **Database Driver**: `pg` (PostgreSQL)
+- **Database Driver**: `pg` (PostgreSQL) with `postgis` extension for spatial queries.
 - **In-Memory Store**: Redis (rate limiting, presence, locking)
 - **Storage Integrations**: AWS S3/S3-compatible storage with time-bound secure signed PUT / GET URL generation.
 - **Validation**: Zod (process config environment validation on startup)
@@ -91,12 +92,12 @@ erDiagram
 ### Table Definitions Reference
 
 1. **`organizations`**
-   - Core tenant identifier. Representing the NGO/Non-profit.
+   - Core tenant identifier. Representing the NGO/Non-profit, CSR, Government Agency.
    - Keys: `id` (UUID PK), `slug` (unique), `name`, `isActive`, `createdAt`, `updatedAt`, `deletedAt` (soft delete).
 
 2. **`users`**
-   - Application users (admins, event coordinators, volunteers).
-   - Keys: `id` (UUID PK), `email` (unique), `passwordHash`, `fullName`, `role` (`userRoleEnum`), `organizationId` (FK -> `organizations.id`), `googleId`, `isActive`, `emailVerifiedAt`, `createdAt`, `updatedAt`, `deletedAt` (soft delete).
+   - Application users (admins, event managers, volunteers).
+   - Keys: `id` (UUID PK), `email` (unique), `passwordHash`, `fullName`, `role` (`userRoleEnum`: `admin`, `event_manager`, `volunteer`), `organizationId` (FK -> `organizations.id`), `googleId`, `photoUrl`, `preferences`, `isActive`, `emailVerifiedAt`, `createdAt`, `updatedAt`, `deletedAt` (soft delete).
 
 3. **`orgMembers`**
    - Mapping between user and organization (with specific workspace role assignment).
@@ -116,7 +117,7 @@ erDiagram
 
 7. **`attendanceEntries`**
    - User-submitted dynamic forms serving as verification records.
-   - Keys: `id` (UUID PK), `roomId` (FK -> `eventRooms.id`), `formDefinitionId` (FK -> `formDefinitions.id`), `data` (JSONB values matching the dynamic schema), `photoUrl` (S3/Cloud storage public URL serving as photographic proof), `submittedAt`.
+   - Keys: `id` (UUID PK), `roomId` (FK -> `eventRooms.id`), `formDefinitionId` (FK -> `formDefinitions.id`), `data` (JSONB values matching the dynamic schema), `photoUrl` (S3/Cloud storage public URL serving as photographic proof), `location` (PostGIS `geometry(Point, 4326)` for geo-tagging), `submittedAt`.
 
 8. **`roomRecordings`**
    - Metadata for recorded room live streams.
@@ -128,7 +129,7 @@ erDiagram
 
 10. **`activitySubmissions`**
     - Stores verification progress and S3 photo proof references for room QC tasks.
-    - Keys: `id` (UUID PK), `roomId` (FK -> `eventRooms.id`), `activityId` (VARCHAR PK-join), `photos` (JSONB array containing photo key details and signed viewer URLs), `createdAt`, `updatedAt`.
+    - Keys: `id` (UUID PK), `roomId` (FK -> `eventRooms.id`), `activityId` (VARCHAR PK-join), `photos` (JSONB array containing photo key details, signed viewer URLs, and `location` PostGIS Points for each photo), `createdAt`, `updatedAt`.
 
 ---
 
@@ -146,9 +147,9 @@ erDiagram
 
 Shared role system mapped in `@application/shared`:
 
-- **Roles**: `ngo_admin`, `event_admin`, `volunteer`.
-- **NGO Admin**: Full control over organizations, user creation, room building, live sessions, reporting, and assignments.
-- **Event Admin**: Create volunteers, build custom forms, start live streams, trigger recordings, view room assignments, and capture reports.
+- **Roles**: `admin`, `event_manager`, `volunteer`.
+- **Admin**: Full control over organizations, user creation, room building, live sessions, reporting, and assignments.
+- **Event Manager**: Create volunteers, build custom forms, start live streams, trigger recordings, view room assignments, and capture reports.
 - **Volunteer**: Live viewing, room link sharing, taking attendance submissions.
 
 ### 3. Real-Time Room & Streaming Flow
@@ -159,19 +160,31 @@ Shared role system mapped in `@application/shared`:
 
 ### 4. Dynamic Verification (Attendance Forms)
 
-- **Form Builder**: NGO Admins or Event Admins design custom forms inside `RoomFormBuilder.tsx` supporting standard input types (`text`, `email`, `phone`, `number`, `select`, `checkbox`, `date`).
+- **Form Builder**: Admins or Event Admins design custom forms inside `RoomFormBuilder.tsx` supporting standard input types (`text`, `email`, `phone`, `number`, `select`, `checkbox`, `date`).
 - **Storage**: Schema definitions stored as JSONB array configurations inside `formDefinitions`.
 - **Validation**: Submissions are strictly verified against the matching JSONB schema.
 - **Photo Capture**: Incorporates visual verification. Presigned S3/S3-compatible URLs are requested via `/api/v1/rooms/:id/attendance/upload-url`, uploaded directly via client, and the key is submitted with dynamic form values.
 
 ### 5. Quality-Control (QC) Activity Tracking
 
-- **Checklist Definitions**: NGO Admins set a mandatory checklist of activities per room during creation. Mapped inside `event_rooms.activity_definitions` as a flat JSONB schema array (`title`, `description`, `min_photos`).
+- **Checklist Definitions**: Admins set a mandatory checklist of activities per room during creation. Mapped inside `event_rooms.activity_definitions` as a flat JSONB schema array (`title`, `description`, `min_photos`).
 - **Submission Normalization**: Activity submissions are relationally stored in `activity_submissions` mapping to `roomId` and `activityId`, featuring a fast index on room lookup.
 - **Incremental S3 Uploading & Keys**: Volunteers request dynamic, collision-free S3 upload PUT tickets matching the pattern `rooms/${roomId}/activities/${activityId}/${uuid()}-${contentType}`. Photo proofs are uploaded sequentially to isolate assets.
 - **Secure Image Display**: Database-registered S3 keys are kept private. S3 retrieval URLs are dynamically signed using AWS SDK for Node.js (`storageService.getSignedUrl`) on payload fetch with a 15-minute expiration window.
 - **Webcam Snapping & Fallbacks**: Live stream view contains an `ActivityTrackerPanel` utilizing the HTML5 browser MediaDevices API. Includes client-side compression (`compressImage` utility for JPEG sizing) and local file input fallback options.
 - **Room Finalization Gate**: Express `completeRoom` transactional controller queries room checklist definitions and active submissions. Transitioning a room to `COMPLETED` is strictly blocked if any required activity lacks its `min_photos` quota, responding with an explicit listing of incomplete tasks.
+
+### 6. PWA & Offline Support
+
+- **Progressive Web App**: Configured via Vite PWA plugin. Application installs natively on devices and caches core assets for offline usage.
+- **IndexedDB Storage**: Utilizes Dexie.js to locally persist `attendance` and `activity` submissions when the network is unavailable.
+- **Background Sync**: Automated network listener (`useNetwork` hook) seamlessly pushes queued IndexedDB records to the backend immediately upon reconnection, resolving synchronization automatically.
+
+### 7. Geo-Tagging & Spatial Verification
+
+- **PostGIS Integration**: Application database leverages PostgreSQL's PostGIS extension.
+- **Coordinate Capture**: Uses HTML5 Geolocation API (`useGeolocation` hook) to snapshot GPS coordinates (latitude, longitude) at the exact moment of an attendance check-in or activity photo snap.
+- **Spatial Storage**: Coords are mapped as `geometry(Point, 4326)` in `attendance_entries` and within the `photos` JSON array for `activity_submissions`, enabling future geospatial querying, distance verification, and reporting.
 
 ---
 

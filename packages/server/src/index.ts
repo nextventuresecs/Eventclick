@@ -14,25 +14,20 @@ import { redisClient, connectRedis, disconnectRedis } from "./config/redis";
 import { apiRouter } from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { API_PREFIX } from "@application/shared";
-import * as Sentry from "@sentry/node";
-import { nodeProfilingIntegration } from "@sentry/profiling-node";
+import { initSentry, setupSentryExpressErrorHandler } from "./services/sentry.service";
 
 if (env.SENTRY_DSN) {
-  Sentry.init({
-    dsn: env.SENTRY_DSN,
-    environment: env.NODE_ENV,
-    integrations: [
-      nodeProfilingIntegration(),
-    ],
-    tracesSampleRate: 1.0,
-    profilesSampleRate: 1.0,
+  initSentry(env.SENTRY_DSN, env.NODE_ENV).then(() => {
+    if (env.SENTRY_DSN) {
+      setupSentryExpressErrorHandler(app);
+    }
   });
 }
 
 const app = express();
 
 if (env.SENTRY_DSN) {
-  Sentry.setupExpressErrorHandler(app);
+  setupSentryExpressErrorHandler(app);
 }
 
 app.disable("x-powered-by");
@@ -61,14 +56,33 @@ app.use(
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-    contentSecurityPolicy: env.NODE_ENV === "production" ? undefined : false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'none'"],
+        baseUri: ["'none'"],
+        frameAncestors: ["'none'"],
+        upgradeInsecureRequests: [],
+      },
+    },
   }),
 );
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 app.use(cookieParser());
 app.use(compression());
+
+import { metricsMiddleware } from "./services/metrics.service";
+
+app.use(metricsMiddleware);
+
 app.use(
   pinoHttp({
     logger,
@@ -142,16 +156,33 @@ app.use(errorHandler);
 import { startSqsWorker } from "./queues/worker";
 import { startSessionCleanupJob } from "./jobs/sessionCleanup";
 
+const shouldStartWorker = env.SQS_WORKER_ENABLED !== "false";
+
 async function startServer() {
   await connectRedis();
-  startSessionCleanupJob();
+
+  if (shouldStartWorker) {
+    startSessionCleanupJob();
+    startSqsWorker().catch((err) => {
+      logger.error({ err }, "SQS worker crashed");
+    });
+  } else {
+    logger.info("SQS worker disabled via SQS_WORKER_ENABLED=false");
+  }
 
   const server = app.listen(env.PORT, () => {
     logger.info(`[server] running on http://localhost:${env.PORT}${API_PREFIX}`);
   });
 
-  startSqsWorker().catch((err) => {
-    logger.error({ err }, "SQS worker crashed");
+  server.headersTimeout = env.SERVER_HEADERS_TIMEOUT_MS;
+  server.keepAliveTimeout = env.SERVER_KEEPALIVE_TIMEOUT_MS;
+
+  if (env.SERVER_REQUEST_TIMEOUT_MS > 0) {
+    server.requestTimeout = env.SERVER_REQUEST_TIMEOUT_MS;
+  }
+
+  server.on("timeout", () => {
+    logger.warn("server request timeout");
   });
 
   const shutdown = async (signal: string) => {

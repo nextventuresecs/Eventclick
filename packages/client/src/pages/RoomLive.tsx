@@ -31,6 +31,9 @@ import {
 } from "@application/shared";
 import { ApiClientError, liveApi, presenceApi, roomsApi, activitiesApi, uploadToPresignedUrl } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { useNetwork } from "@/hooks/useNetwork";
+import { db } from "@/lib/db";
 import { compressImage } from "@/lib/imageCompress";
 import { Button } from "@/components/ui/button";
 
@@ -384,6 +387,14 @@ export const ActivityTrackerPanel: React.FC<ActivityTrackerPanelProps> = ({
   submissions,
   onRefresh,
 }) => {
+  const { user } = useAuth();
+  const { isOnline } = useNetwork();
+  const { latitude, longitude, requestLocation } = useGeolocation();
+
+  useEffect(() => {
+    requestLocation();
+  }, [requestLocation]);
+
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
@@ -547,10 +558,27 @@ export const ActivityTrackerPanel: React.FC<ActivityTrackerPanelProps> = ({
       await uploadToPresignedUrl(ticket.uploadUrl, compressedBlob);
 
       setUploadProgress("Saving proof…");
-      await activitiesApi.submitPhoto(roomId, {
-        activityId: selectedActivityId,
-        photoKey: ticket.key,
-      });
+      
+      if (isOnline) {
+        await activitiesApi.submitPhoto(roomId, {
+          activityId: selectedActivityId,
+          photoKey: ticket.key,
+          latitude: latitude ?? undefined,
+          longitude: longitude ?? undefined,
+        });
+      } else {
+        if (user?.id) {
+          await db.activities.add({
+            roomId,
+            activityId: selectedActivityId,
+            photoKey: ticket.key,
+            latitude: latitude ?? undefined,
+            longitude: longitude ?? undefined,
+            synced: false,
+            createdAt: Date.now(),
+          });
+        }
+      }
 
       setSuccess("Photo proof successfully saved!");
       await onRefresh();
