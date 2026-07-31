@@ -12,6 +12,7 @@ import { sql } from "drizzle-orm";
 import { activitySubmissions } from "./activitySubmissions";
 import { eventRooms } from "./eventRooms";
 import { users } from "./users";
+import { organizations } from "./organizations";
 
 export const activityPhotos = pgTable(
   "activity_photos",
@@ -23,6 +24,9 @@ export const activityPhotos = pgTable(
     roomId: uuid("room_id")
       .notNull()
       .references(() => eventRooms.id, { onDelete: "cascade" }),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
     activityId: varchar("activity_id", { length: 64 }).notNull(),
     photoKey: varchar("photo_key", { length: 256 }).notNull(),
     photoUrl: text("photo_url").notNull(),
@@ -35,6 +39,7 @@ export const activityPhotos = pgTable(
   (t) => [
     index("activity_photos_submission_idx").on(t.submissionId),
     index("activity_photos_room_activity_idx").on(t.roomId, t.activityId),
+    index("activity_photos_org_idx").on(t.organizationId),
     index("activity_photos_submitted_by_idx").on(t.submittedBy),
     index("activity_photos_location_idx").using("gist", t.location),
   ],

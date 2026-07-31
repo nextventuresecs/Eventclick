@@ -76,6 +76,7 @@ export const saveFormDefinition = async (
     .insert(formDefinitions)
     .values({
       roomId,
+      organizationId: orgId,
       version: nextVersion,
       fields,
       updatedAt: sql`now()`,

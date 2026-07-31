@@ -146,8 +146,10 @@ app.use(
 );
 
 import { csrfProtection } from "./middleware/csrf";
+import { setTenantContext } from "./middleware/tenantContext";
 
 app.use(csrfProtection);
+app.use(setTenantContext);
 app.use(API_PREFIX, apiRouter);
 
 app.use(notFoundHandler);
