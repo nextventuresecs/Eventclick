@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db } from "../../db";
 import { roomRecordings } from "../../db/schema";
 import { ApiError } from "../../utils/errors";
@@ -13,7 +13,7 @@ export const startRoomRecording: RequestHandler = async (req, res, next) => {
     const id = req.params.id as string;
     await assertRoomAccessForUser(req.user!, orgId, id);
 
-    const recording = await streamingService.startRecording(id);
+    const recording = await streamingService.startRecording(id, orgId);
     res.json(recording);
   } catch (err) {
     next(err);
@@ -29,7 +29,7 @@ export const stopRoomRecording: RequestHandler = async (req, res, next) => {
     const { egressId } = req.body;
     if (!egressId) throw ApiError.badRequest("egressId is required to stop recording");
 
-    const recording = await streamingService.stopRecording(egressId);
+    const recording = await streamingService.stopRecording(egressId, orgId);
     res.json(recording);
   } catch (err) {
     next(err);
@@ -46,7 +46,10 @@ export const getActiveRecording: RequestHandler = async (req, res, next) => {
       .select()
       .from(roomRecordings)
       .where(
-        eq(roomRecordings.roomId, id)
+        and(
+          eq(roomRecordings.roomId, id),
+          eq(roomRecordings.organizationId, orgId),
+        )
       )
       .orderBy(desc(roomRecordings.startedAt))
       .limit(1);

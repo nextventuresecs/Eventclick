@@ -101,7 +101,7 @@ export class LiveKitProvider implements StreamingProvider {
     return this.signLiveToken(roomId, identity, userName, "viewer");
   }
 
-  public async startRecording(roomId: string): Promise<RoomRecording | undefined> {
+  public async startRecording(roomId: string, orgId: string): Promise<RoomRecording | undefined> {
     const roomName = this.roomNameFor(roomId);
     const s3Key = `recordings/${roomName}/${Date.now()}.mp4`;
 
@@ -129,6 +129,7 @@ export class LiveKitProvider implements StreamingProvider {
       .insert(roomRecordings)
       .values({
         roomId,
+        organizationId: orgId,
         egressId: info.egressId,
         s3Key,
         status: "pending",
@@ -139,7 +140,7 @@ export class LiveKitProvider implements StreamingProvider {
     return recording;
   }
 
-  public async stopRecording(egressId: string): Promise<RoomRecording | undefined> {
+  public async stopRecording(egressId: string, orgId: string): Promise<RoomRecording | undefined> {
     await this.egressClient.stopEgress(egressId);
 
     const [recording] = await db
@@ -148,7 +149,12 @@ export class LiveKitProvider implements StreamingProvider {
         status: "completed",
         endedAt: new Date(),
       })
-      .where(eq(roomRecordings.egressId, egressId))
+      .where(
+        and(
+          eq(roomRecordings.egressId, egressId),
+          eq(roomRecordings.organizationId, orgId),
+        )
+      )
       .returning();
 
     return recording;
