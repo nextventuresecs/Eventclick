@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: CI
 
 on:
   push:
@@ -107,7 +107,6 @@ jobs:
       - run: npm run test --workspace=e2e
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
-          PLAYWRIGHT_API_BASE_URL: http://localhost:4000
           
 
       - uses: actions/upload-artifact@v4
