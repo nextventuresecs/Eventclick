@@ -27,7 +27,7 @@ export default defineConfig({
   webServer: process.env.CI
     ? {
         command: "bash -c 'cd ../../ && npm run dev'",
-        url: baseURL,
+        url: `${process.env.PLAYWRIGHT_API_BASE_URL || "http://127.0.0.1:4000"}/api/v1/health`,
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,
       }
