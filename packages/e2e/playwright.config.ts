@@ -12,6 +12,8 @@ export default defineConfig({
     ["html", { outputFolder: "playwright-report" }],
     ["list"],
   ],
+  globalSetup: "./utils/global-setup.ts",
+  globalTeardown: "./utils/global-teardown.ts",
   use: {
     baseURL,
     trace: "on-first-retry",
@@ -21,7 +23,15 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: {
+          args: [
+            "--use-fake-device-for-media-stream",
+            "--use-fake-ui-for-media-stream",
+          ],
+        },
+      },
     },
   ],
   webServer: process.env.CI
