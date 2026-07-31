@@ -10,8 +10,8 @@ Eventclick is a real-time organization transparency and verification platform fo
 |-------|---------|--------|------------|
 | **Client** | Vitest + React Testing Library + jsdom | ✅ Implemented | 3 unit tests |
 | **Shared** | Vitest | ✅ Implemented | 23 schema/RBAC tests |
-| **Server** | Vitest + Supertest | ✅ Implemented | 75 tests across 12 files |
-| **E2E** | Playwright | ✅ Implemented | 7 passing specs |
+| **Server** | Vitest + Supertest | ✅ Implemented | 81 tests across 13 files |
+| **E2E** | Playwright | ✅ Implemented | 3 passing specs |
 | **CI/CD** | GitHub Actions | ✅ Implemented | 3 jobs |
 | **Bundle Analysis** | rollup-plugin-visualizer | ✅ Implemented | `dist/stats.html` |
 | **Performance** | k6 | ⏳ Planned | — |
@@ -83,16 +83,17 @@ E2E tests validate critical user journeys against a running server. They are org
   - Chromium only
   - HTML + list reporters
   - Retries in CI
+  - **CI webServer**: Starts full app via `npm run dev` from repo root, probes `http://127.0.0.1:4000/api/v1/health`
   - **Note**: WebRTC emulation flags (`--use-fake-device-for-media-stream`, `--use-fake-ui-for-media-stream`) are planned but not yet added to the config
 - **Test Files**:
   - `tests/auth.spec.ts`: Unauthenticated navigation, login/register page load
   - `tests/share-links.spec.ts`: Public share page loads, 404 for invalid token
-  - `tests/health.spec.ts`: `/health` and `/ready` API probes
+  - `tests/health.spec.ts`: `/health` and `/ready` API probes via `request` API
 - **Scripts**:
   - `npm run test` — headless
   - `npm run test:headed` — headed browser
   - `npm run test:ui` — interactive UI mode
-- **CI Limitation**: The `webServer` config only starts the client dev server (`npm run dev --workspace=client`). The backend API server is not started in CI, so tests that make API requests (e.g., `health.spec.ts`) will fail. UI-only tests (`auth.spec.ts`, `share-links.spec.ts`) will work because the client SPA is served.
+- **CI Configuration**: `webServer` starts the full backend + frontend via `npm run dev`. `PLAYWRIGHT_API_BASE_URL` points API tests to port 4000; `PLAYWRIGHT_TEST_BASE_URL` points browser tests to port 3000.
 
 #### Planned E2E Enhancements
 
@@ -101,7 +102,7 @@ E2E tests validate critical user journeys against a running server. They are org
 | `storageState` / `auth.setup.ts` | ⏳ Planned | Pre-authenticated sessions per role to avoid login per test |
 | Page Object Model (`packages/e2e/pages/`) | ⏳ Planned | Centralize locators and flows |
 | WebRTC / LiveKit assertions | ⏳ Planned | Video element visibility and `readyState` checks |
-| Start backend server in CI webServer | ⏳ Planned | Currently only client is started |
+| Start backend server in CI webServer | ✅ Implemented | `playwright.config.ts` runs `npm run dev` and probes `/api/v1/health` on port 4000 |
 | Critical journey coverage | ⏳ Planned | Registration, room scheduling, attendance, activity upload, PDF report |
 
 ### 2.5 Performance Testing (Grafana k6)
@@ -243,7 +244,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
       - run: npm ci
       - run: npm run lint
@@ -274,7 +275,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
       - run: npm ci
       - run: npx vitest run --workspace=shared
@@ -291,13 +292,29 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test --workspace=e2e
         env:
-          PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
+          PLAYWRIGHT_TEST_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_API_BASE_URL: http://127.0.0.1:4000
+          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+          REDIS_URL: redis://localhost:6379/1
+          JWT_SECRET: test-jwt-secret-at-least-16
+          JWT_REFRESH_SECRET: test-jwt-refresh-secret-at-least-16
+          LIVEKIT_URL: ws://localhost:7880
+          LIVEKIT_PUBLIC_URL: ws://localhost:7880
+          LIVEKIT_API_KEY: devkey
+          LIVEKIT_API_SECRET: test-secret-at-least-16-chars
+          S3_ENDPOINT: http://localhost:9000
+          S3_PUBLIC_ENDPOINT: http://localhost:9000
+          S3_REGION: us-east-1
+          S3_BUCKET: eventclick-test
+          S3_ACCESS_KEY: minioadmin
+          S3_SECRET_KEY: minioadmin
+          S3_FORCE_PATH_STYLE: "true"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -322,7 +339,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
       - run: npm ci
       - run: npx playwright install --with-deps
@@ -384,20 +401,19 @@ All security vulnerabilities and performance regressions identified by automated
 
 | Item | Details |
 |------|---------|
-| Client unit tests | Vitest + RTL + jsdom; `App.test.tsx` covering RouteErrorFallback, ErrorBoundary, useAuth |
+| Client unit tests | Vitest + RTL + jsdom; `App.test.tsx` covering RouteErrorFallback, ErrorBoundary, useAuth (3 tests) |
 | Shared schema tests | 23 tests covering Zod schemas, RBAC utilities, URL extraction |
-| Server tests | 75 tests across 12 files covering services, middleware, and API integration |
-| E2E package | Playwright scaffold with auth, share-links, and health specs |
-| CI/CD | `lint-and-audit`, `unit-tests`, `e2e-tests` jobs with Postgres + Redis services |
+| Server tests | 81 tests across 13 files covering services, middleware, and API integration |
+| E2E package | Playwright scaffold with auth, share-links, and health specs (3 specs) |
+| CI/CD | `lint-and-audit`, `unit-tests`, `e2e-tests` jobs with Postgres + Redis services; Node 22 |
 | Bundle analysis | `rollup-plugin-visualizer` generating `dist/stats.html` |
 
 ### Next Steps
 
 | Priority | Item | Owner |
 |----------|------|-------|
-| P0 | Add backend `webServer` to Playwright CI config | Frontend |
-| P0 | Expand client test coverage to all pages and hooks | Frontend |
-| P1 | Add `storageState` auth setup for E2E tests | Frontend |
+| P0 | Add `storageState` auth setup for E2E tests | Frontend |
+| P0 | Expand E2E coverage beyond smoke tests (registration, rooms, attendance, PDF) | Frontend |
 | P1 | Implement Page Object Model for E2E | Frontend |
 | P1 | Add WebRTC emulation flags to Playwright config | Frontend |
 | P1 | Add database truncation hook to server vitest config | Backend |
