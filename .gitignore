@@ -21,5 +21,6 @@ scratch/
 .gstack/
 .kilo/
 .playwright-*/
-playwright-report/
-test-results/
+packages/e2e/playwright-report/
+packages/e2e/test-results/ 
+.auth/

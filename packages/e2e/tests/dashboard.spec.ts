@@ -14,7 +14,7 @@ let adminAccessToken: string | null = null;
 test.describe("Dashboard journey", () => {
   test.beforeAll(async ({ request }) => {
     const email = process.env.PLAYWRIGHT_ADMIN_EMAIL || "admin@test.com";
-    const password = process.env.PLAYWRIGHT_ADMIN_PASSWORD || "E2eStrong!2024XyZ";
+    const password = process.env.PLAYWRIGHT_ADMIN_PASSWORD;
 
     const loginRes = await request.post(`${API_BASE}/api/v1/auth/login`, {
       headers: authHeaders,

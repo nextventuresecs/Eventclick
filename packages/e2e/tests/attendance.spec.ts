@@ -11,7 +11,7 @@ const authHeaders = {
 
 async function getAdminToken() {
   const email = process.env.PLAYWRIGHT_ADMIN_EMAIL || "admin@test.com";
-  const password = process.env.PLAYWRIGHT_ADMIN_PASSWORD || "E2eStrong!2024XyZ";
+  const password = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 
 
   const loginRes = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: "POST",
@@ -31,7 +31,7 @@ async function getAdminToken() {
 
 async function getVolunteerToken() {
   const email = process.env.PLAYWRIGHT_VOLUNTEER_EMAIL || "volunteer@test.com";
-  const password = process.env.PLAYWRIGHT_VOLUNTEER_PASSWORD || "E2eStrong!2024XyZ";
+  const password = process.env.PLAYWRIGHT_VOLUNTEER_PASSWORD;
 
   const loginRes = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: "POST",

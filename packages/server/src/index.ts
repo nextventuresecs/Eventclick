@@ -24,9 +24,6 @@ if (env.SENTRY_DSN) {
   });
 }
 
-if (env.SENTRY_DSN) {
-  setupSentryExpressErrorHandler(app);
-}
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);

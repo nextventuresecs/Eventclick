@@ -7,8 +7,7 @@ const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000"
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||
-  process.env.PLAYWRIGHT_DATABASE_URL ||
-  "postgresql://Eventclick_admin:1234@localhost:5433/Eventclick_db";
+  process.env.PLAYWRIGHT_DATABASE_URL;
 
 async function createUserInDb(
   client: Client,
@@ -99,7 +98,7 @@ export default async function globalSetup() {
   }
 
   const adminEmail = process.env.PLAYWRIGHT_ADMIN_EMAIL || "admin@test.com";
-  const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD || "E2eStrong!2024XyZ";
+  const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD;
 
   console.log("[globalSetup] creating admin user");
   const adminClient = new Client({ connectionString: DATABASE_URL });
@@ -169,7 +168,7 @@ export default async function globalSetup() {
   await context.storageState({ path: ".auth/admin.json" });
 
   const volunteerEmail = process.env.PLAYWRIGHT_VOLUNTEER_EMAIL || "volunteer@test.com";
-  const volunteerPassword = process.env.PLAYWRIGHT_VOLUNTEER_PASSWORD || "E2eStrong!2024XyZ";
+  const volunteerPassword = process.env.PLAYWRIGHT_VOLUNTEER_PASSWORD;
 
   console.log("[globalSetup] creating volunteer user");
   const volunteerClient = new Client({ connectionString: DATABASE_URL });
