@@ -1,6 +1,6 @@
 import { randomBytes, createHash, randomUUID } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
-import { db } from "../db";
+import { authDb } from "../db";
 import { sessions, type Session } from "../db/schema";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
@@ -43,7 +43,7 @@ export const issueRefreshToken = async (
   const tokenHash = hashToken(raw);
   const expiresAt = new Date(Date.now() + refreshTtlMs);
 
-  const [row] = await db
+  const [row] = await authDb
     .insert(sessions)
     .values({
       userId,
@@ -84,7 +84,7 @@ export const findActiveSessionByToken = async (raw: string): Promise<Session | n
     return cached as Session;
   }
 
-  const [row] = await db.select().from(sessions).where(eq(sessions.tokenHash, tokenHash)).limit(1);
+  const [row] = await authDb.select().from(sessions).where(eq(sessions.tokenHash, tokenHash)).limit(1);
   if (!row) {
     if (redisClient.isOpen) await redisClient.setEx(cacheKey, 30, "__null__");
     return null;
@@ -100,12 +100,12 @@ export const findActiveSessionByToken = async (raw: string): Promise<Session | n
 };
 
 export const revokeSessionFamily = async (familyId: string): Promise<void> => {
-  const rows = await db
+  const rows = await authDb
     .select({ tokenHash: sessions.tokenHash })
     .from(sessions)
     .where(and(eq(sessions.familyId, familyId), isNull(sessions.revokedAt)));
 
-  await db
+  await authDb
     .update(sessions)
     .set({ revokedAt: new Date() })
     .where(and(eq(sessions.familyId, familyId), isNull(sessions.revokedAt)));
@@ -118,12 +118,12 @@ export const revokeSessionFamily = async (familyId: string): Promise<void> => {
 };
 
 export const revokeAllUserSessions = async (userId: string): Promise<void> => {
-  const rows = await db
+  const rows = await authDb
     .select({ tokenHash: sessions.tokenHash })
     .from(sessions)
     .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
 
-  await db
+  await authDb
     .update(sessions)
     .set({ revokedAt: new Date() })
     .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
@@ -147,7 +147,7 @@ export const rotateSession = async (
   if (current.expiresAt.getTime() < Date.now()) throw ApiError.unauthorized("Session expired");
 
   const next = await issueRefreshToken(current.userId, meta, current.familyId);
-  await db
+  await authDb
     .update(sessions)
     .set({ revokedAt: new Date(), replacedById: next.sessionId })
     .where(eq(sessions.id, current.id));
@@ -161,13 +161,13 @@ export const rotateSession = async (
 };
 
 export const revokeSession = async (sessionId: string): Promise<void> => {
-  const [row] = await db
+  const [row] = await authDb
     .select({ tokenHash: sessions.tokenHash })
     .from(sessions)
     .where(eq(sessions.id, sessionId))
     .limit(1);
 
-  await db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, sessionId));
+  await authDb.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, sessionId));
 
   if (row && redisClient.isOpen) {
     await redisClient.del(`session:token:${row.tokenHash}`);

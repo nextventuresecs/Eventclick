@@ -1,13 +1,23 @@
 import { chromium } from "@playwright/test";
 import { Client } from "pg";
 import argon2 from "argon2";
+import { createClient } from "redis";
 
-const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000";
-const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
+const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://127.0.0.1:4000";
+const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://127.0.0.1:3000";
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||
   process.env.PLAYWRIGHT_DATABASE_URL;
+
+const adminEmail = process.env.PLAYWRIGHT_ADMIN_EMAIL || "admin@test.com";
+const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD;
+const volunteerEmail = process.env.PLAYWRIGHT_VOLUNTEER_EMAIL || "volunteer@test.com";
+const volunteerPassword = process.env.PLAYWRIGHT_VOLUNTEER_PASSWORD;
+
+if (!adminPassword || !volunteerPassword) {
+  throw new Error("[globalSetup] PLAYWRIGHT_ADMIN_PASSWORD and PLAYWRIGHT_VOLUNTEER_PASSWORD must be set");
+}
 
 async function createUserInDb(
   client: Client,
@@ -18,9 +28,6 @@ async function createUserInDb(
   orgId: string | null,
 ) {
   const passwordHash = await argon2.hash(password);
-
-  await client.query("BEGIN");
-
   await client.query(
     `INSERT INTO users (email, password_hash, full_name, role, organization_id, is_active, email_verified_at, created_at, updated_at)
      VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), NOW())
@@ -36,8 +43,6 @@ async function createUserInDb(
       [orgId, role, email]
     );
   }
-
-  await client.query("COMMIT");
 }
 
 async function loginAndGetToken(email: string, password: string): Promise<{ accessToken: string | null; refreshToken: string | null }> {
@@ -45,32 +50,63 @@ async function loginAndGetToken(email: string, password: string): Promise<{ acce
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Origin": API_BASE,
-      "Referer": API_BASE,
+      "Origin": BASE_URL,
+      "Referer": BASE_URL,
     },
     body: JSON.stringify({ email, password }),
   });
 
-  if (res.ok) {
-    const body = await res.json();
-    const setCookie = res.headers.get("set-cookie") || "";
-    const refreshMatch = setCookie.match(/Eventclick_rt=([^;]+)/);
-    const refreshToken = refreshMatch ? refreshMatch[1] : null;
-    return { accessToken: body.accessToken, refreshToken };
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`[globalSetup] login failed for ${email}: ${res.status} ${body}`);
   }
-  return { accessToken: null, refreshToken: null };
+  const body = await res.json();
+  const setCookie = res.headers.get("set-cookie") || "";
+  const refreshMatch = setCookie.match(/Eventclick_rt=([^;]+)/);
+  const refreshToken = refreshMatch ? refreshMatch[1] : null;
+  return { accessToken: body.accessToken, refreshToken };
+}
+
+async function waitForServer(url: string, retries = 60, delayMs = 1000) {
+  console.log(`[globalSetup] waiting for server at ${url}`);
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        console.log(`[globalSetup] server is ready`);
+        return;
+      }
+    } catch (e) {
+      // ignore
+    }
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+  throw new Error(`[globalSetup] server at ${url} failed to become ready`);
 }
 
 export default async function globalSetup() {
   console.log("[globalSetup] starting");
+  
+  await waitForServer(`${API_BASE}/api/v1/health`);
+
+  if (!DATABASE_URL) {
+    throw new Error("[globalSetup] DATABASE_URL must be set");
+  }
+
   const client = new Client({ connectionString: DATABASE_URL });
   await client.connect();
   console.log("[globalSetup] connected to DB");
 
-  try {
-    await client.query("BEGIN");
-    console.log("[globalSetup] transaction started");
+  const redisClient = createClient({ url: process.env.REDIS_URL || "redis://localhost:6379" });
+  await redisClient.connect();
+  console.log("[globalSetup] connected to Redis");
 
+  try {
+    console.log("[globalSetup] flushing redis cache");
+    await redisClient.flushAll();
+    // 1. Truncate Tables
+    await client.query("BEGIN");
+    console.log("[globalSetup] truncate transaction started");
     const result = await client.query(`
       SELECT tablename
       FROM pg_tables
@@ -78,140 +114,92 @@ export default async function globalSetup() {
         AND tablename NOT LIKE 'spatial_ref_sys'
         AND tablename != 'schema_migrations'
     `);
-
     const tables = result.rows.map((r) => `"${r.tablename}"`).join(", ");
-    console.log("[globalSetup] tables:", tables);
-
     if (tables) {
       await client.query(`TRUNCATE TABLE ${tables} RESTART IDENTITY CASCADE`);
       console.log("[globalSetup] tables truncated");
     }
-
     await client.query("COMMIT");
-    console.log("[globalSetup] transaction committed");
-  } catch (error) {
+
+    // 2. Seed Data
+    console.log("[globalSetup] creating admin user");
+    await client.query("BEGIN");
+    await createUserInDb(client, adminEmail, adminPassword!, "E2E Admin", "admin", null);
+
+    console.log("[globalSetup] creating organization");
+    const orgResult = await client.query(
+      `INSERT INTO organizations (name, slug, contact_email, is_active, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, NOW(), NOW())
+       RETURNING id`,
+      ["E2E Test Org", "e2e-test-org", adminEmail, true]
+    );
+    const orgId = orgResult.rows[0].id;
+
+    await client.query(
+      `UPDATE users SET organization_id = $1, updated_at = NOW() WHERE email = $2`,
+      [orgId, adminEmail]
+    );
+    await client.query(
+      `INSERT INTO org_members (user_id, organization_id, role, created_at, updated_at)
+       SELECT id, $1, $2, NOW(), NOW() FROM users WHERE email = $3`,
+      [orgId, "admin", adminEmail]
+    );
+    
+    console.log("[globalSetup] creating volunteer user");
+    await createUserInDb(client, volunteerEmail, volunteerPassword!, "E2E Volunteer", "volunteer", orgId);
+    await client.query("COMMIT");
+  } catch (error: any) {
     await client.query("ROLLBACK");
-    console.error("[globalSetup] error:", error.message);
+    console.error("[globalSetup] db setup error:", error.message);
     throw error;
   } finally {
     await client.end();
+    await redisClient.disconnect();
   }
 
-  const adminEmail = process.env.PLAYWRIGHT_ADMIN_EMAIL || "admin@test.com";
-  const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD;
+  const cookieDomain = new URL(BASE_URL).hostname;
 
-  console.log("[globalSetup] creating admin user");
-  const adminClient = new Client({ connectionString: DATABASE_URL });
-  await adminClient.connect();
-  await createUserInDb(adminClient, adminEmail, adminPassword, "E2E Admin", "admin", null);
-  console.log("[globalSetup] admin user created");
-
-  console.log("[globalSetup] creating organization");
-  const orgResult = await adminClient.query(
-    `INSERT INTO organizations (name, slug, contact_email, is_active, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, NOW(), NOW())
-     RETURNING id`,
-    ["E2E Test Org", "e2e-test-org", adminEmail, true]
-  );
-  const orgId = orgResult.rows[0].id;
-  console.log("[globalSetup] organization created:", orgId);
-
-  console.log("[globalSetup] updating admin org");
-  await adminClient.query(
-    `UPDATE users SET organization_id = $1, updated_at = NOW() WHERE email = $2`,
-    [orgId, adminEmail]
-  );
-
-  await adminClient.query(
-    `INSERT INTO org_members (user_id, organization_id, role, created_at, updated_at)
-     SELECT id, $1, $2, NOW(), NOW() FROM users WHERE email = $3`,
-    [orgId, "admin", adminEmail]
-  );
-  console.log("[globalSetup] admin org membership created");
-  await adminClient.end();
-
+  // Admin Login
   console.log("[globalSetup] logging in admin");
-  const { accessToken: adminAccessToken, refreshToken: adminRefreshToken } = await loginAndGetToken(adminEmail, adminPassword);
-  console.log("[globalSetup] admin token:", adminAccessToken ? " obtained" : "null");
-
+  const { refreshToken: adminRefreshToken } = await loginAndGetToken(adminEmail, adminPassword!);
+  
   console.log("[globalSetup] launching browser");
   const browser = await chromium.launch();
-  console.log("[globalSetup] browser launched");
   const context = await browser.newContext({ baseURL: BASE_URL });
-  console.log("[globalSetup] context created");
 
-  if (adminAccessToken) {
-    const adminCookies = [
-      {
-        name: "Eventclick_at",
-        value: adminAccessToken,
-        domain: "localhost",
-        path: "/",
-        httpOnly: true,
-        sameSite: "Lax",
-      } as any,
-    ];
-    if (adminRefreshToken) {
-      adminCookies.push({
-        name: "Eventclick_rt",
-        value: adminRefreshToken,
-        domain: "localhost",
-        path: "/api/v1/auth",
-        httpOnly: true,
-        sameSite: "Lax",
-      } as any);
-    }
-    await context.addCookies(adminCookies);
+  if (adminRefreshToken) {
+    await context.addCookies([{
+      name: "Eventclick_rt",
+      value: adminRefreshToken,
+      domain: cookieDomain,
+      path: "/api/v1/auth",
+      httpOnly: true,
+      sameSite: "Lax",
+    } as any]);
   }
 
-  console.log("[globalSetup] saving admin storageState");
   await context.storageState({ path: ".auth/admin.json" });
 
-  const volunteerEmail = process.env.PLAYWRIGHT_VOLUNTEER_EMAIL || "volunteer@test.com";
-  const volunteerPassword = process.env.PLAYWRIGHT_VOLUNTEER_PASSWORD;
-
-  console.log("[globalSetup] creating volunteer user");
-  const volunteerClient = new Client({ connectionString: DATABASE_URL });
-  await volunteerClient.connect();
-  await createUserInDb(volunteerClient, volunteerEmail, volunteerPassword, "E2E Volunteer", "volunteer", orgId);
-  console.log("[globalSetup] volunteer user created");
-  await volunteerClient.end();
-
+  // Volunteer Login
   console.log("[globalSetup] logging in volunteer");
-  const { accessToken: volunteerAccessToken, refreshToken: volunteerRefreshToken } = await loginAndGetToken(volunteerEmail, volunteerPassword);
-  console.log("[globalSetup] volunteer token:", volunteerAccessToken ? " obtained" : "null");
-
-  console.log("[globalSetup] creating volunteer context");
+  const { refreshToken: volunteerRefreshToken } = await loginAndGetToken(volunteerEmail, volunteerPassword!);
   const volunteerContext = await browser.newContext({ baseURL: BASE_URL });
 
-  if (volunteerAccessToken) {
-    const volunteerCookies = [
-      {
-        name: "Eventclick_at",
-        value: volunteerAccessToken,
-        domain: "localhost",
-        path: "/",
-        httpOnly: true,
-        sameSite: "Lax",
-      } as any,
-    ];
-    if (volunteerRefreshToken) {
-      volunteerCookies.push({
-        name: "Eventclick_rt",
-        value: volunteerRefreshToken,
-        domain: "localhost",
-        path: "/api/v1/auth",
-        httpOnly: true,
-        sameSite: "Lax",
-      } as any);
-    }
-    await volunteerContext.addCookies(volunteerCookies);
+  if (volunteerRefreshToken) {
+    await volunteerContext.addCookies([{
+      name: "Eventclick_rt",
+      value: volunteerRefreshToken,
+      domain: cookieDomain,
+      path: "/api/v1/auth",
+      httpOnly: true,
+      sameSite: "Lax",
+    } as any]);
   }
 
-  console.log("[globalSetup] saving volunteer storageState");
   await volunteerContext.storageState({ path: ".auth/volunteer.json" });
 
   console.log("[globalSetup] closing browser");
   await browser.close();
   console.log("[globalSetup] complete");
 }
+

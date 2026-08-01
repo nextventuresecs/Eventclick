@@ -2,19 +2,9 @@
   "cookies": [
     {
       "name": "Eventclick_rt",
-      "value": "hiRP6GbUhj5ah8EgCgtvBcxA3NmJQ4c75gqnHQ0H4SWM57Mz-WK84DATYokvgj94",
-      "domain": "localhost",
+      "value": "2bG6ZecnhtB7qhBFW9sbD0QkMPm3Mf6S8hYFB9IY87_2Bu_XfYevIBGZ946EU3i5",
+      "domain": "127.0.0.1",
       "path": "/api/v1/auth",
-      "expires": -1,
-      "httpOnly": true,
-      "secure": false,
-      "sameSite": "Lax"
-    },
-    {
-      "name": "Eventclick_at",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NGVmYjMxYi0zZWQxLTRmMzItYTVhOS03MTA1ZmVjYmZjZWQiLCJyb2xlIjoiYWRtaW4iLCJvcmdJZCI6IjQwOTkwYWFmLThjNjAtNDFlOS1iNGU5LWMzYzQzYTIwODQ2ZiIsImlhdCI6MTc4NTU4MTU1MiwiZXhwIjoxNzg1NTgyNDUyLCJhdWQiOiJFdmVudGNsaWNrLWFwaSIsImlzcyI6IkV2ZW50Y2xpY2sifQ.rkHAr9H0ildx_IkcZKyjzl9mW2MwNAtkJSxvQHIf_Xs",
-      "domain": "localhost",
-      "path": "/",
       "expires": -1,
       "httpOnly": true,
       "secure": false,

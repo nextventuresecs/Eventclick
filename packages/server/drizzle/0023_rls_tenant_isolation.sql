@@ -74,6 +74,7 @@ GRANT SELECT, INSERT, UPDATE ON users TO auth_svc_role;
 GRANT SELECT, INSERT, UPDATE ON sessions TO auth_svc_role;
 GRANT SELECT, INSERT, UPDATE ON password_resets TO auth_svc_role;
 GRANT SELECT, INSERT, UPDATE ON email_verifications TO auth_svc_role;
+GRANT SELECT ON organizations TO auth_svc_role;
 
 -- ----------------------------------------------------------------------------
 -- 3. Enable RLS on all tenant-scoped tables

@@ -1,8 +1,8 @@
 import { test, expect } from "../fixtures";
 import { RoomLivePage } from "../pages/RoomLivePage";
 
-const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
-const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000";
+const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://127.0.0.1:3000";
+const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://127.0.0.1:4000";
 
 const authHeaders = {
   "Origin": API_BASE,

@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import dotenv from "dotenv";
+import path from "path";
 
-const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
+dotenv.config({ path: path.resolve(__dirname, ".env") });
+const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://127.0.0.1:3000";
 
 export default defineConfig({
   testDir: "./tests",
@@ -21,6 +24,9 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
+  expect: {
+    timeout: 15000,
+  },
   projects: [
     {
       name: "chromium",
@@ -38,7 +44,7 @@ export default defineConfig({
   webServer: {
         command: "npm run dev",
         cwd: "../../",
-        url: `${process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000"}/api/v1/health`,
+        url: `${process.env.PLAYWRIGHT_TEST_BASE_URL || "http://127.0.0.1:3000"}/`,
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,
       },

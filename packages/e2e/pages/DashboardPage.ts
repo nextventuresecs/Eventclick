@@ -10,7 +10,7 @@ export class DashboardPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.createRoomButton = page.getByRole("link", { name: /create room/i });
+    this.createRoomButton = page.getByRole("link", { name: /create room/i }).first();
     this.roomCards = page.locator(".card-static");
     this.metricCards = page.getByText(/total event rooms|verified members|available reports|total attendees/i);
     this.welcomeHeading = page.getByRole("heading", { name: /welcome back/i });
@@ -19,7 +19,7 @@ export class DashboardPage {
 
   async goto(baseURL: string) {
     await this.page.goto(`${baseURL}/dashboard`);
-    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForLoadState("domcontentloaded");
   }
 
   async clickCreateRoom() {
