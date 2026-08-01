@@ -65,6 +65,15 @@ jobs:
 
       - run: npm run test --workspace=@application/shared
       - run: npm run test --workspace=client
+      
+      - name: Run Database Migrations
+        run: npm run db:migrate --workspace=server
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+      
+      - name: Verify RLS Policies
+        run: PGPASSWORD=test psql -U test -h localhost -p 5432 -d eventclick_test -v ON_ERROR_STOP=1 -f scripts/rls-live-test.sql
+      
       - run: npm run test --workspace=server
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test

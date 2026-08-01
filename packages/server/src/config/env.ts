@@ -20,11 +20,11 @@ const EnvSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .optional(),
 
-  DATABASE_URL: z.url(),
-  AUTH_DATABASE_URL: z.url().optional(),
-  APP_DATABASE_URL: z.url().optional(),
+  DATABASE_URL: z.string().url(),
+  AUTH_DATABASE_URL: z.string().url().optional(),
+  APP_DATABASE_URL: z.string().url().optional(),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
-  REDIS_URL: z.url(),
+  REDIS_URL: z.string().url(),
 
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 chars"),
   JWT_REFRESH_SECRET: z
@@ -93,7 +93,10 @@ const EnvSchema = z.object({
 
   // ─── Observability (optional) ──────────────────────
   SENTRY_DSN: z.string().optional(),
-});
+}).refine(
+  (e) => e.NODE_ENV !== "production" || !!e.AUTH_DATABASE_URL,
+  { message: "AUTH_DATABASE_URL is required in production", path: ["AUTH_DATABASE_URL"] }
+);
 
 const parsed = EnvSchema.safeParse(process.env);
 

@@ -185,9 +185,11 @@ export const completeOnboarding = async (
 export const verifyEmailToken = async (token: string, meta: SessionMeta): Promise<AuthResult> => {
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
+  // Atomic TOCTOU fix: check and mark used in a single query
+  // Note: the token is burned even if the subsequent user verification update fails (fail-closed)
   const [verifyReq] = await authDb
-    .select()
-    .from(emailVerifications)
+    .update(emailVerifications)
+    .set({ usedAt: new Date() })
     .where(
       and(
         eq(emailVerifications.tokenHash, tokenHash),
@@ -195,24 +197,17 @@ export const verifyEmailToken = async (token: string, meta: SessionMeta): Promis
         gt(emailVerifications.expiresAt, new Date())
       )
     )
-    .limit(1);
+    .returning({ id: emailVerifications.id, userId: emailVerifications.userId });
 
   if (!verifyReq) {
     logger.warn({ event: "email_verification.failed" }, "invalid or expired email verification token used");
     throw ApiError.badRequest("Invalid or expired verification token");
   }
 
-  await authDb.transaction(async (tx) => {
-    await tx
-      .update(emailVerifications)
-      .set({ usedAt: new Date() })
-      .where(eq(emailVerifications.id, verifyReq.id));
-
-    await tx
-      .update(users)
-      .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
-      .where(eq(users.id, verifyReq.userId));
-  });
+  await authDb
+    .update(users)
+    .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
+    .where(eq(users.id, verifyReq.userId));
 
   await invalidateUserCache(verifyReq.userId);
   const user = await findUserById(verifyReq.userId);

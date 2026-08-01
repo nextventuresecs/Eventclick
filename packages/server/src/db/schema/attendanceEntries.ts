@@ -38,6 +38,7 @@ export const attendanceEntries = pgTable(
     ipAddress: varchar("ip_address", { length: 45 }),
     userAgent: text("user_agent"),
     submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [
     index("attendance_entries_room_idx").on(t.roomId),

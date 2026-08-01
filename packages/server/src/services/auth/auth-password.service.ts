@@ -46,9 +46,13 @@ export const resetPassword = async (token: string, newPassword: string): Promise
 
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
+  const passwordHash = await argon2.hash(newPassword);
+
+  // Atomic TOCTOU fix: check and mark used in a single query
+  // Note: the token is burned even if the subsequent user password update fails (fail-closed)
   const [resetReq] = await authDb
-    .select()
-    .from(passwordResets)
+    .update(passwordResets)
+    .set({ usedAt: new Date() })
     .where(
       and(
         eq(passwordResets.tokenHash, tokenHash),
@@ -56,28 +60,18 @@ export const resetPassword = async (token: string, newPassword: string): Promise
         gt(passwordResets.expiresAt, new Date())
       )
     )
-    .limit(1);
+    .returning({ id: passwordResets.id, userId: passwordResets.userId });
 
   if (!resetReq) {
     logger.warn({ event: "password_reset.failed" }, "invalid or expired password reset token used");
     throw ApiError.badRequest("Invalid or expired reset token");
   }
 
-  const passwordHash = await argon2.hash(newPassword);
-
-  await authDb.transaction(async (tx) => {
-    // Mark token as used
-    await tx
-      .update(passwordResets)
-      .set({ usedAt: new Date() })
-      .where(eq(passwordResets.id, resetReq.id));
-
-    // Update user password
-    await tx
-      .update(users)
-      .set({ passwordHash, updatedAt: new Date() })
-      .where(eq(users.id, resetReq.userId));
-  });
+  // Update user password
+  await authDb
+    .update(users)
+    .set({ passwordHash, updatedAt: new Date() })
+    .where(eq(users.id, resetReq.userId));
 
   // Revoke all existing sessions to force re-login on all devices
   await revokeAllUserSessions(resetReq.userId);

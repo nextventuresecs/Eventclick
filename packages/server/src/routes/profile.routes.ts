@@ -100,6 +100,7 @@ profileRouter.get("/me/export", requireAuth, async (req, res, next) => {
     await recordAudit({
       organizationId: orgId,
       actorUserId: userId,
+      actorEmail: req.user!.email,
       action: "user.updated",
       resourceType: "user_export",
       resourceId: userId,

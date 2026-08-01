@@ -17,6 +17,7 @@ type AuditAction =
 export const recordAudit = async (input: {
   organizationId: string;
   actorUserId?: string;
+  actorEmail?: string;
   action: AuditAction;
   resourceType: string;
   resourceId?: string;
@@ -28,6 +29,7 @@ export const recordAudit = async (input: {
   const row: NewAuditLog = {
     organizationId: input.organizationId,
     actorUserId: input.actorUserId ?? null,
+    actorEmail: input.actorEmail ?? null,
     action: input.action,
     resourceType: input.resourceType,
     resourceId: input.resourceId ?? null,

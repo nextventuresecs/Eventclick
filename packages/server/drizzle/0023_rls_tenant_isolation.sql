@@ -6,7 +6,32 @@
 -- ----------------------------------------------------------------------------
 -- 0. Ensure room_recordings has organization_id BEFORE enabling RLS
 -- ---------------------------------------------------------------------------
-ALTER TABLE room_recordings ADD COLUMN IF NOT EXISTS organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE;
+-- 1. Add nullable column first
+ALTER TABLE room_recordings ADD COLUMN IF NOT EXISTS organization_id uuid;
+
+-- 2. Clean up orphans so the backfill can safely set NOT NULL later
+DELETE FROM room_recordings WHERE room_id NOT IN (SELECT id FROM event_rooms);
+
+-- 3. Backfill data from event_rooms
+UPDATE room_recordings rr
+SET organization_id = er.organization_id
+FROM event_rooms er
+WHERE rr.room_id = er.id AND rr.organization_id IS NULL;
+
+-- 4. Set NOT NULL and foreign key constraint
+ALTER TABLE room_recordings ALTER COLUMN organization_id SET NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'room_recordings_org_fk') THEN
+    ALTER TABLE room_recordings ADD CONSTRAINT room_recordings_org_fk
+      FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+-- Note: CREATE INDEX CONCURRENTLY cannot run inside a transaction block.
+-- This migration runs inside a transaction by default. For large production 
+-- tables, this should be pulled out into a separate non-transactional migration.
 CREATE INDEX IF NOT EXISTS room_recordings_org_idx ON public.room_recordings USING btree (organization_id);
 
 -- ----------------------------------------------------------------------------
@@ -231,21 +256,40 @@ $$;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'users' AND policyname = 'users_insert_new') THEN
-    EXECUTE format('CREATE POLICY users_insert_new ON users FOR INSERT WITH CHECK (true)');
-  END IF;
+  DROP POLICY IF EXISTS users_insert_new ON users;
+  EXECUTE format('CREATE POLICY users_insert_new ON users FOR INSERT WITH CHECK (organization_id = NULLIF(current_setting(''app.current_tenant'', true), '''')::uuid OR organization_id IS NULL)');
 END
 $$;
 
 -- ----------------------------------------------------------------------------
--- 6. Lock down auth tables: app_user gets no access
+-- 6. Grant app_user access to tenant tables
+-- ----------------------------------------------------------------------------
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
+
+-- ----------------------------------------------------------------------------
+-- 7. Lock down auth tables: app_user gets no access (must run AFTER the grant)
 -- ----------------------------------------------------------------------------
 REVOKE ALL ON sessions FROM app_user;
 REVOKE ALL ON password_resets FROM app_user;
 REVOKE ALL ON email_verifications FROM app_user;
 
 -- ----------------------------------------------------------------------------
--- 7. Grant app_user access to tenant tables
+-- 8. Schema Hardening
 -- ----------------------------------------------------------------------------
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
+-- Prevent hard deletion of organizations
+CREATE OR REPLACE FUNCTION prevent_org_hard_delete() RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'Hard delete of organizations is not allowed; use soft delete (deleted_at)';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_prevent_org_hard_delete ON organizations;
+CREATE TRIGGER trg_prevent_org_hard_delete
+BEFORE DELETE ON organizations
+FOR EACH ROW EXECUTE FUNCTION prevent_org_hard_delete();
+
+-- Add soft-delete and audit columns
+ALTER TABLE attendance_entries ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+ALTER TABLE activity_photos ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_email varchar(320);
