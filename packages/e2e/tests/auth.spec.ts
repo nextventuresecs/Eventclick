@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { LoginPage } from "../pages/LoginPage";
 
 const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
 
@@ -9,8 +10,9 @@ test.describe("Unauthenticated journeys", () => {
   });
 
   test("login page loads", async ({ page }) => {
-    await page.goto(`${BASE_URL}/login`);
-    await expect(page.getByRole("heading", { level: 2, name: /sign in/i })).toBeVisible();
+    const loginPage = new LoginPage(page);
+    await loginPage.goto(BASE_URL);
+    await expect(loginPage.heading).toBeVisible();
   });
 
   test("register page loads", async ({ page }) => {

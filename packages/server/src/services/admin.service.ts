@@ -211,8 +211,8 @@ export const deleteUserAccount = async (
     resourceType: "user",
     resourceId: targetUserId,
     oldValues: { email: targetUser.email, role: targetUser.role },
-    ipAddress: req ? (req as any).ip : undefined,
-    userAgent: req ? (req as any).get("user-agent") : undefined,
+    ipAddress: req?.ip,
+    userAgent: req?.get("user-agent"),
   });
 
   return { success: true, message: "User account deleted successfully" };

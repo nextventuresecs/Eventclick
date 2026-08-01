@@ -199,11 +199,9 @@ if [[ "$HEALTHY" != "true" ]]; then
   warn "Rolling back to previous version..."
   if [[ "$PREV_SERVER_IMAGE" != "none" ]]; then
     dc stop server
-    # git reset --hard moves HEAD back cleanly (no dirty working tree)
-    # git checkout HEAD~1 -- was leaving repo in dirty state, breaking next deploy
-    git reset --hard HEAD~1
+    docker tag "$PREV_SERVER_IMAGE" "eventclick/server:latest"
     dc up -d --no-deps server
-    warn "Rollback complete. Previous version restored."
+    warn "Rollback complete. Previous image restored."
     warn "Check the deploy log: ${DEPLOY_LOG}"
   else
     err "No previous image to rollback to!"
@@ -236,9 +234,9 @@ if [[ "$SMOKE_OK" != "true" ]]; then
   warn "Rolling back to previous version..."
   if [[ "$PREV_SERVER_IMAGE" != "none" ]]; then
     dc stop server
-    git reset --hard HEAD~1
-    dc up -d --no-deps --build server
-    warn "Rollback complete. Previous version restored."
+    docker tag "$PREV_SERVER_IMAGE" "eventclick/server:latest"
+    dc up -d --no-deps server
+    warn "Rollback complete. Previous image restored."
     warn "Check the deploy log: ${DEPLOY_LOG}"
   else
     err "No previous image to rollback to!"

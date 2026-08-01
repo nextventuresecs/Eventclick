@@ -12,8 +12,11 @@ export default defineConfig({
     ["html", { outputFolder: "playwright-report" }],
     ["list"],
   ],
+  globalSetup: "./utils/global-setup.ts",
+  globalTeardown: "./utils/global-teardown.ts",
   use: {
     baseURL,
+    storageState: ".auth/admin.json",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
@@ -21,15 +24,22 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: {
+          args: [
+            "--use-fake-device-for-media-stream",
+            "--use-fake-ui-for-media-stream",
+          ],
+        },
+      },
     },
   ],
-  webServer: process.env.CI
-    ? {
-        command: "npm run dev --workspace=client",
-        url: baseURL,
+  webServer: {
+        command: "npm run dev",
+        cwd: "../../",
+        url: `${process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000"}/api/v1/health`,
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,
-      }
-    : undefined,
+      },
 });

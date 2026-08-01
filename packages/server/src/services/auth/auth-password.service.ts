@@ -1,7 +1,7 @@
 import { eq, and, gt, isNull } from "drizzle-orm";
 import zxcvbn from "zxcvbn";
 import crypto from "crypto";
-import { db } from "../../db";
+import { authDb } from "../../db";
 import { users, passwordResets } from "../../db/schema";
 import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
@@ -24,7 +24,7 @@ export const forgotPassword = async (email: string): Promise<void> => {
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_1H_MS);
 
-  await db.insert(passwordResets).values({
+  await authDb.insert(passwordResets).values({
     userId: user.id,
     tokenHash,
     expiresAt,
@@ -46,7 +46,7 @@ export const resetPassword = async (token: string, newPassword: string): Promise
 
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
-  const [resetReq] = await db
+  const [resetReq] = await authDb
     .select()
     .from(passwordResets)
     .where(
@@ -65,7 +65,7 @@ export const resetPassword = async (token: string, newPassword: string): Promise
 
   const passwordHash = await argon2.hash(newPassword);
 
-  await db.transaction(async (tx) => {
+  await authDb.transaction(async (tx) => {
     // Mark token as used
     await tx
       .update(passwordResets)
@@ -91,7 +91,7 @@ export const changeUserPassword = async (
   currentPasswordPlain: string,
   newPasswordPlain: string
 ): Promise<void> => {
-  const [userRow] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  const [userRow] = await authDb.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!userRow) throw ApiError.notFound("User not found");
   if (!userRow.passwordHash) throw ApiError.badRequest("User does not use password authentication");
 
@@ -105,7 +105,7 @@ export const changeUserPassword = async (
 
   const newPasswordHash = await argon2.hash(newPasswordPlain);
 
-  await db.update(users).set({ passwordHash: newPasswordHash, updatedAt: new Date() }).where(eq(users.id, userId));
+  await authDb.update(users).set({ passwordHash: newPasswordHash, updatedAt: new Date() }).where(eq(users.id, userId));
 
   await revokeAllUserSessions(userId);
   await invalidateUserCache(userId);

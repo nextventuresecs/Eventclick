@@ -16,19 +16,14 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { API_PREFIX } from "@application/shared";
 import { initSentry, setupSentryExpressErrorHandler } from "./services/sentry.service";
 
-if (env.SENTRY_DSN) {
-  initSentry(env.SENTRY_DSN, env.NODE_ENV).then(() => {
-    if (env.SENTRY_DSN) {
-      setupSentryExpressErrorHandler(app);
-    }
-  });
-}
-
 const app = express();
 
 if (env.SENTRY_DSN) {
-  setupSentryExpressErrorHandler(app);
+  initSentry(env.SENTRY_DSN, env.NODE_ENV).then(() => {
+    setupSentryExpressErrorHandler(app);
+  });
 }
+
 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);

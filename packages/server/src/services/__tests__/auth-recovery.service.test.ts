@@ -69,6 +69,7 @@ vi.mock("../../db", () => {
 
   return {
     db: mockDbChain,
+    authDb: mockDbChain,
   };
 });
 

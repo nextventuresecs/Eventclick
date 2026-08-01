@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: CI
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: "npm"
 
       - run: npm ci
@@ -25,6 +25,8 @@ jobs:
       - run: npm run lint
 
       - run: npm run typecheck
+
+      - run: npm run build
 
       - run: npm audit --audit-level=high
         continue-on-error: true
@@ -56,7 +58,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: "npm"
 
       - run: npm ci
@@ -72,12 +74,30 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: lint-and-audit
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: eventclick_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: "npm"
 
       - run: npm ci
@@ -86,7 +106,24 @@ jobs:
 
       - run: npm run test --workspace=e2e
         env:
-          PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
+          PLAYWRIGHT_TEST_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_API_BASE_URL: http://127.0.0.1:4000
+          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+          REDIS_URL: redis://localhost:6379/1
+          JWT_SECRET: test-jwt-secret-at-least-16
+          JWT_REFRESH_SECRET: test-jwt-refresh-secret-at-least-16
+          LIVEKIT_URL: ws://localhost:7880
+          LIVEKIT_PUBLIC_URL: ws://localhost:7880
+          LIVEKIT_API_KEY: devkey
+          LIVEKIT_API_SECRET: test-secret-at-least-16-chars
+          S3_ENDPOINT: http://localhost:9000
+          S3_PUBLIC_ENDPOINT: http://localhost:9000
+          S3_REGION: us-east-1
+          S3_BUCKET: eventclick-test
+          S3_ACCESS_KEY: minioadmin
+          S3_SECRET_KEY: minioadmin
+          S3_FORCE_PATH_STYLE: "true"
+          
 
       - uses: actions/upload-artifact@v4
         if: failure()

@@ -160,7 +160,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
-            --timeout-seconds 300 \
+            --timeout-seconds 600 \
             --parameters commands='[
               "set -euo pipefail",
               "export HOME=/home/deploy",
@@ -186,7 +186,7 @@ jobs:
               "echo \"=== [5/6] Running deploy.sh ===\"",
               "chmod +x scripts/deploy.sh",
               "chmod +x scripts/fetch-secrets.sh",
-              "SKIP_PULL=1 SKIP_BUILD=1 IMAGE_TAG=\"${IMAGE_TAG}\" ./scripts/deploy.sh",
+              "IMAGE_TAG=\"${IMAGE_TAG}\" ./scripts/deploy.sh",
               "",
               "echo \"=== [6/6] Deployment complete ===\"",
               "docker compose -f docker-compose.prod.yml ps",
@@ -281,4 +281,20 @@ jobs:
           echo "  SHA     : ${{ needs.build.outputs.sha_short }}"
           echo "  Images  : ${{ needs.build.outputs.server_image }}:${{ needs.build.outputs.sha_short }}"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Verify External Health
+        if: success()
+        run: |
+          echo "Verifying external health endpoint..."
+          for i in $(seq 1 10); do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${{ vars.APP_URL }}/api/v1/health" || echo "failed")
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ External health check passed"
+              exit 0
+            fi
+            echo "Attempt ${i}/10 — status: ${STATUS}, retrying in 10s..."
+            sleep 10
+          done
+          echo "❌ External health check failed after 10 attempts"
+          exit 1
 

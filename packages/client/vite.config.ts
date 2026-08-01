@@ -54,6 +54,7 @@ export default defineConfig({
       "@application/shared": path.resolve(__dirname, "../shared/src"),
     },
   },
+  envDir: path.resolve(__dirname, "../.."),
   optimizeDeps: {
     include: ["@application/shared"],
   },

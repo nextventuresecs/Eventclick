@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { LoginInput, GoogleLoginInput } from "@application/shared";
-import { db } from "../../db";
+import { authDb } from "../../db";
 import { users } from "../../db/schema";
 import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
@@ -70,7 +70,7 @@ export const loginWithGoogle = async (
       throw ApiError.forbidden("This account is disabled");
     }
     if (!user.googleId) {
-      const [updated] = await db
+      const [updated] = await authDb
         .update(users)
         .set({
           googleId: profile.googleId,
@@ -83,7 +83,7 @@ export const loginWithGoogle = async (
       await invalidateUserCache(user.id, user.email);
     }
   } else {
-    const [created] = await db
+    const [created] = await authDb
       .insert(users)
         .values({
           email: profile.email,

@@ -3,6 +3,8 @@ import type { Request } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { deleteUserAccount } from "../services/admin.service";
 import { recordAudit } from "../services/audit.service";
+import { validate } from "../middleware/validate";
+import { DeleteUserSchema } from "@application/shared";
 import { db } from "../db";
 import { users, orgMembers, eventRooms, attendanceEntries, activitySubmissions, activityPhotos } from "../db/schema";
 import { eq, inArray } from "drizzle-orm";
@@ -10,7 +12,7 @@ import { ApiError } from "../utils/errors";
 
 export const profileRouter = Router();
 
-profileRouter.delete("/me/account", requireAuth, async (req, res, next) => {
+profileRouter.delete("/me/account", requireAuth, validate(DeleteUserSchema), async (req, res, next) => {
   try {
     const user = req.user!;
     if (!user.organizationId) {
@@ -22,7 +24,7 @@ profileRouter.delete("/me/account", requireAuth, async (req, res, next) => {
       user.role,
       user.organizationId,
       user.id,
-      (req.body as { confirmEmail?: string }).confirmEmail ?? "",
+      req.body.confirmEmail,
       req,
     );
 
