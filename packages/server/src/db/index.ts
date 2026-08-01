@@ -4,7 +4,7 @@ import { env } from "../config/env";
 import * as schema from "./schema";
 
 export const pool = new Pool({
-  connectionString: env.DATABASE_URL,
+  connectionString: env.APP_DATABASE_URL ?? env.DATABASE_URL,
   max: env.DB_POOL_MAX,
   idleTimeoutMillis: 30_000,
 });

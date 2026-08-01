@@ -22,6 +22,7 @@ const EnvSchema = z.object({
 
   DATABASE_URL: z.url(),
   AUTH_DATABASE_URL: z.url().optional(),
+  APP_DATABASE_URL: z.url().optional(),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
   REDIS_URL: z.url(),
 

@@ -12,6 +12,7 @@ import {
 } from "@application/shared";
 import RedisStore from "rate-limit-redis";
 import { redisClient } from "../config/redis";
+import { env } from "../config/env";
 import { ApiError } from "../utils/errors";
 import { validate } from "../middleware/validate";
 import { requireAuth } from "../middleware/requireAuth";
@@ -35,8 +36,8 @@ const createFailClosedStore = (prefix: string) =>
   });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  limit: Math.max(env.RATE_LIMIT_MAX, 20),
   standardHeaders: "draft-7",
   legacyHeaders: false,
   store: createFailClosedStore("rl:auth:"),
@@ -44,8 +45,8 @@ const authLimiter = rateLimit({
 });
 
 const recoveryLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 5, // 5 requests per window
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  limit: Math.max(5, Math.floor(env.RATE_LIMIT_MAX / 10)),
   standardHeaders: "draft-7",
   legacyHeaders: false,
   store: createFailClosedStore("rl:recovery:"),

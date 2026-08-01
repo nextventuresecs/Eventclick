@@ -22,5 +22,4 @@ scratch/
 .kilo/
 .playwright-*/
 playwright-report/
-packages/e2e/
 test-results/

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { RegisterPage } from "../pages/RegisterPage";
 
-const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://127.0.0.1:3000";
+const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
 
 test.describe("Registration journey", () => {
   test("register page loads with all form fields", async ({ page }) => {

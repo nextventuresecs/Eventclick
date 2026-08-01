@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://127.0.0.1:3000";
+const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./tests",
@@ -16,6 +16,7 @@ export default defineConfig({
   globalTeardown: "./utils/global-teardown.ts",
   use: {
     baseURL,
+    storageState: ".auth/admin.json",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
@@ -34,12 +35,11 @@ export default defineConfig({
       },
     },
   ],
-  webServer: process.env.CI
-    ? {
-        command: "bash -c 'cd ../../ && npm run dev'",
-        url: `${process.env.PLAYWRIGHT_API_BASE_URL || "http://127.0.0.1:4000"}/api/v1/health`,
+  webServer: {
+        command: "npm run dev",
+        cwd: "../../",
+        url: `${process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000"}/api/v1/health`,
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,
-      }
-    : undefined,
+      },
 });
