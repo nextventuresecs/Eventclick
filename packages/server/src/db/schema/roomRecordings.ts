@@ -6,7 +6,7 @@ import {
   bigint,
   timestamp,
   index,
-} from "drizzle-orm/pg-core";
+  pgPolicy } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { recordingStatusEnum } from "./enums";
 import { eventRooms } from "./eventRooms";

@@ -67,8 +67,8 @@ SELECT current_setting('app.current_tenant', true) AS current_tenant;
 
 \echo '=== Step 13: Test audit_logs ==='
 INSERT INTO audit_logs (id, organization_id, actor_user_id, action, resource_type, resource_id, old_values, new_values, ip_address, user_agent) VALUES
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa1', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'user.login', 'user', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '{}', '{}', '127.0.0.1', 'test'),
-  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', '22222222-2222-2222-2222-222222222222', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'user.login', 'user', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '{}', '{}', '127.0.0.1', 'test')
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa1', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'user.login', 'user', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '{}', '{}', 'localhost', 'test'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', '22222222-2222-2222-2222-222222222222', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'user.login', 'user', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '{}', '{}', 'localhost', 'test')
 ON CONFLICT (id) DO NOTHING;
 
 SET ROLE app_user;

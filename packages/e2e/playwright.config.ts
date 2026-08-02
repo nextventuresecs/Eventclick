@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import path from "path";
 
 dotenv.config({ path: path.resolve(__dirname, ".env") });
-const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://127.0.0.1:3000";
+const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./tests",
@@ -44,7 +44,7 @@ export default defineConfig({
   webServer: {
         command: "npm run dev",
         cwd: "../../",
-        url: `${process.env.PLAYWRIGHT_TEST_BASE_URL || "http://127.0.0.1:3000"}/`,
+        url: `${process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000"}/`,
         reuseExistingServer: !process.env.CI,
         timeout: 120 * 1000,
       },

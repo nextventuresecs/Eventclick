@@ -6,7 +6,7 @@ import {
   jsonb,
   index,
   uniqueIndex,
-} from "drizzle-orm/pg-core";
+  pgPolicy } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { FormField } from "@application/shared";
 import { eventRooms } from "./eventRooms";

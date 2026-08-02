@@ -1,2 +1,0 @@
-ALTER TABLE "event_rooms" ADD COLUMN "attendance_window_before" integer DEFAULT 15 NOT NULL;--> statement-breakpoint
-ALTER TABLE "event_rooms" ADD COLUMN "attendance_window_after" integer DEFAULT 30 NOT NULL;

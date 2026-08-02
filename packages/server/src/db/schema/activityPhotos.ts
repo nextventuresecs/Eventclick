@@ -7,7 +7,7 @@ import {
   index,
   doublePrecision,
   geometry,
-} from "drizzle-orm/pg-core";
+  pgPolicy } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { activitySubmissions } from "./activitySubmissions";
 import { eventRooms } from "./eventRooms";

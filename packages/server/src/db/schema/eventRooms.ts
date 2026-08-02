@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, index, jsonb, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, integer, index, jsonb, doublePrecision , pgPolicy } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { roomStatusEnum, streamProviderEnum } from "./enums";
 import { users } from "./users";

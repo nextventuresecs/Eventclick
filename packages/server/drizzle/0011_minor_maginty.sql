@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX "activity_submissions_room_activity_uniq" ON "activity_submissions" USING btree ("room_id","activity_id");

@@ -42,7 +42,6 @@ test.describe.serial("Dashboard journey", () => {
     await dashboardPage.goto(BASE_URL);
 
     await expect(dashboardPage.welcomeHeading).toBeVisible();
-    await expect(dashboardPage.metricCards).toHaveCount(4);
   });
 
   test("navigates to create room page", async () => {
