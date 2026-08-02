@@ -9,6 +9,16 @@
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
+    },
+    {
+      "name": "Eventclick_at",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1NGVmYjMxYi0zZWQxLTRmMzItYTVhOS03MTA1ZmVjYmZjZWQiLCJyb2xlIjoiYWRtaW4iLCJvcmdJZCI6IjQwOTkwYWFmLThjNjAtNDFlOS1iNGU5LWMzYzQzYTIwODQ2ZiIsImlhdCI6MTc4NTU4MTU1MiwiZXhwIjoxNzg1NTgyNDUyLCJhdWQiOiJFdmVudGNsaWNrLWFwaSIsImlzcyI6IkV2ZW50Y2xpY2sifQ.rkHAr9H0ildx_IkcZKyjzl9mW2MwNAtkJSxvQHIf_Xs",
+      "domain": "localhost",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
     }
   ],
   "origins": []

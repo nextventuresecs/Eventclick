@@ -3,7 +3,7 @@ import { test, expect } from "../fixtures";
 test.use({ storageState: ".auth/admin.json" });
 
 test("debug dashboard", async ({ page }) => {
-  await page.goto("http://127.0.0.1:3000/dashboard");
+  await page.goto("http://localhost:3000/dashboard");
   await page.waitForTimeout(3000);
 
   console.log("URL:", page.url());

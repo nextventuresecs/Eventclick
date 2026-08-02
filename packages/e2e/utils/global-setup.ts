@@ -3,8 +3,8 @@ import { Client } from "pg";
 import argon2 from "argon2";
 import { createClient } from "redis";
 
-const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://127.0.0.1:4000";
-const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://127.0.0.1:3000";
+const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000";
+const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||

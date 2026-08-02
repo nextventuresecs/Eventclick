@@ -276,21 +276,7 @@ REVOKE ALL ON password_resets FROM app_user;
 REVOKE ALL ON email_verifications FROM app_user;
 
 -- ----------------------------------------------------------------------------
--- 8. Schema Hardening
+-- 7. Grant app_user access to tenant tables
 -- ----------------------------------------------------------------------------
--- Prevent hard deletion of organizations
-CREATE OR REPLACE FUNCTION prevent_org_hard_delete() RETURNS TRIGGER AS $$
-BEGIN
-  RAISE EXCEPTION 'Hard delete of organizations is not allowed; use soft delete (deleted_at)';
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_prevent_org_hard_delete ON organizations;
-CREATE TRIGGER trg_prevent_org_hard_delete
-BEFORE DELETE ON organizations
-FOR EACH ROW EXECUTE FUNCTION prevent_org_hard_delete();
-
--- Add soft-delete and audit columns
-ALTER TABLE attendance_entries ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
-ALTER TABLE activity_photos ADD COLUMN IF NOT EXISTS deleted_at timestamp with time zone;
-ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS actor_email varchar(320);
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;

@@ -1,8 +1,8 @@
 import { test, expect } from "../fixtures";
 import { CreateRoomPage } from "../pages/CreateRoomPage";
 
-const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://127.0.0.1:3000";
-console.log(BASE_URL)
+const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
+
 test.describe("CreateRoom journey", () => {
   test.use({ storageState: ".auth/admin.json" });
 
