@@ -35,6 +35,7 @@ export const activityPhotos = pgTable(
     location: geometry("location", { type: "point", mode: "xy", srid: 4326 }),
     submittedBy: uuid("submitted_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [
     index("activity_photos_submission_idx").on(t.submissionId),

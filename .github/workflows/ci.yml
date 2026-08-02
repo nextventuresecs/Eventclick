@@ -65,6 +65,15 @@ jobs:
 
       - run: npm run test --workspace=@application/shared
       - run: npm run test --workspace=client
+      
+      - name: Run Database Migrations
+        run: npm run db:migrate --workspace=server
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+      
+      - name: Verify RLS Policies
+        run: PGPASSWORD=test psql -U test -h localhost -p 5432 -d eventclick_test -v ON_ERROR_STOP=1 -f scripts/rls-live-test.sql
+      
       - run: npm run test --workspace=server
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
@@ -104,10 +113,20 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
 
+      - name: Run Database Migrations
+        run: npm run db:migrate --workspace=server
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+
       - run: npm run test --workspace=e2e
         env:
           PLAYWRIGHT_TEST_BASE_URL: http://127.0.0.1:3000
           PLAYWRIGHT_API_BASE_URL: http://127.0.0.1:4000
+          PLAYWRIGHT_ADMIN_PASSWORD: "e2e_admin_password_123!"
+          PLAYWRIGHT_VOLUNTEER_PASSWORD: "e2e_volunteer_password_123!"
+          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+          APP_DATABASE_URL: postgresql://app_user_login:local_dev_app@localhost:5432/eventclick_test
+          AUTH_DATABASE_URL: postgresql://auth_svc_role:local_dev_auth@localhost:5432/eventclick_test
           DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
           REDIS_URL: redis://localhost:6379/1
           JWT_SECRET: test-jwt-secret-at-least-16

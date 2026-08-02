@@ -207,6 +207,7 @@ export const deleteUserAccount = async (
   await recordAudit({
     organizationId: auditOrgId,
     actorUserId: requesterId,
+    actorEmail: req?.user?.email,
     action: "user.deleted",
     resourceType: "user",
     resourceId: targetUserId,

@@ -28,7 +28,6 @@
     "date-fns": "^4.1.0",
     "dexie": "^4.4.4",
     "dexie-react-hooks": "^4.4.0",
-    "drizzle-kit": "^0.18.1",
     "livekit-client": "^2.18.4",
     "lucide-react": "^1.8.0",
     "react": "^19.2.4",

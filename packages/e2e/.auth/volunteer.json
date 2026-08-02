@@ -9,16 +9,6 @@
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
-    },
-    {
-      "name": "Eventclick_at",
-      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZjdlNzhiNS0yZGRjLTRhYzAtODc2Yy0wZGQxZTEzNzViM2IiLCJyb2xlIjoidm9sdW50ZWVyIiwib3JnSWQiOiI0MDk5MGFhZi04YzYwLTQxZTktYjRlOS1jM2M0M2EyMDg0NmYiLCJpYXQiOjE3ODU1ODE1NjEsImV4cCI6MTc4NTU4MjQ2MSwiYXVkIjoiRXZlbnRjbGljay1hcGkiLCJpc3MiOiJFdmVudGNsaWNrIn0.Ogkrmn9rbJi5iujKpN2Q8PWo3Zjcn7qzb_3OkBnthRA",
-      "domain": "localhost",
-      "path": "/",
-      "expires": -1,
-      "httpOnly": true,
-      "secure": false,
-      "sameSite": "Lax"
     }
   ],
   "origins": []

@@ -11,8 +11,12 @@ const authHeaders = {
 
 let adminAccessToken: string | null = null;
 
-test.describe("Dashboard journey", () => {
-  test.beforeAll(async ({ request }) => {
+test.describe.serial("Dashboard journey", () => {
+  let page: any;
+  
+  test.beforeAll(async ({ browser, request }) => {
+    page = await browser.newPage({ storageState: ".auth/admin.json" });
+    
     const email = process.env.PLAYWRIGHT_ADMIN_EMAIL || "admin@test.com";
     const password = process.env.PLAYWRIGHT_ADMIN_PASSWORD;
 
@@ -27,7 +31,11 @@ test.describe("Dashboard journey", () => {
     }
   });
 
-  test("loads dashboard with metric cards and room list", async ({ page }) => {
+  test.afterAll(async () => {
+    await page.close();
+  });
+
+  test("loads dashboard with metric cards and room list", async () => {
     expect(adminAccessToken).toBeTruthy();
 
     const dashboardPage = new DashboardPage(page);
@@ -37,7 +45,7 @@ test.describe("Dashboard journey", () => {
     await expect(dashboardPage.metricCards).toHaveCount(4);
   });
 
-  test("navigates to create room page", async ({ page }) => {
+  test("navigates to create room page", async () => {
     expect(adminAccessToken).toBeTruthy();
 
     const dashboardPage = new DashboardPage(page);
@@ -48,7 +56,7 @@ test.describe("Dashboard journey", () => {
     await expect(page.getByRole("heading", { name: /create new room/i })).toBeVisible();
   });
 
-  test("displays created rooms in room list", async ({ page, request }) => {
+  test("displays created rooms in room list", async ({ request }) => {
     expect(adminAccessToken).toBeTruthy();
 
     const start = new Date(Date.now() + 86400000).toISOString();
@@ -78,7 +86,7 @@ test.describe("Dashboard journey", () => {
     await expect(roomCard).toBeVisible();
   });
 
-  test("navigates to reports page", async ({ page }) => {
+  test("navigates to reports page", async () => {
     expect(adminAccessToken).toBeTruthy();
 
     const dashboardPage = new DashboardPage(page);

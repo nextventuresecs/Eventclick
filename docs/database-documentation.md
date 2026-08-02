@@ -149,6 +149,7 @@ GRANT SELECT, INSERT, UPDATE ON users TO auth_svc_role;
 GRANT SELECT, INSERT, UPDATE ON sessions TO auth_svc_role;
 GRANT SELECT, INSERT, UPDATE ON password_resets TO auth_svc_role;
 GRANT SELECT, INSERT, UPDATE ON email_verifications TO auth_svc_role;
+GRANT SELECT ON organizations TO auth_svc_role;
 ```
 
 **Auth tables locked from `app_user`**:
@@ -172,10 +173,10 @@ REVOKE ALL ON email_verifications FROM app_user;
 | 4 | `event_rooms` | Yes | Yes | Yes | Yes |
 | 5 | `room_recordings` | Yes | No | Yes | Yes |
 | 6 | `form_definitions` | Yes | Yes | Yes | Yes |
-| 7 | `attendance_entries` | Yes | No | Yes | Yes |
+| 7 | `attendance_entries` | Yes | Yes | Yes | Yes |
 | 8 | `event_admin_assignments` | Yes | No | Yes | Yes |
 | 9 | `activity_submissions` | Yes | No | Yes | Yes |
-| 10 | `activity_photos` | Yes | No | Yes | Yes |
+| 10 | `activity_photos` | Yes | Yes | Yes | Yes |
 | 11 | `notifications` | Yes | No | Yes | Yes |
 | 12 | `pdf_jobs` | Yes (as `org_id`) | No | Yes | Yes |
 | 13 | `feedback` | **Nullable** | No | Yes | Yes |
@@ -376,6 +377,7 @@ location            geometry(point, 4326)   -- PostGIS
 ip_address          varchar(45)
 user_agent          text
 submitted_at        timestamptz NOT NULL DEFAULT now()
+deleted_at          timestamptz
 
 -- Indexes
 attendance_entries_room_idx           ON (room_id)
@@ -441,6 +443,7 @@ longitude       double precision
 location        geometry(point, 4326)   -- PostGIS
 submitted_by    uuid REFERENCES users(id) ON DELETE SET NULL
 created_at      timestamptz NOT NULL DEFAULT now()
+deleted_at      timestamptz
 
 -- Indexes
 activity_photos_submission_idx    ON (submission_id)
@@ -540,6 +543,7 @@ bug_reports_org_idx  ON (organization_id)
 id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
 organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE
 actor_user_id   uuid REFERENCES users(id) ON DELETE SET NULL
+actor_email     varchar(320)
 action          varchar(120) NOT NULL
 resource_type   varchar(80) NOT NULL
 resource_id     uuid
@@ -682,7 +686,10 @@ CREATE POLICY users_tenant_isolation ON users
   );
 
 CREATE POLICY users_insert_new ON users FOR INSERT
-  WITH CHECK (true);  -- open for signup
+  WITH CHECK (
+    organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid
+    OR organization_id IS NULL
+  );
 ```
 
 **Audit logs immutability**:

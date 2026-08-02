@@ -11,7 +11,7 @@ const authHeaders = {
 
 async function getAdminToken() {
   const email = process.env.PLAYWRIGHT_ADMIN_EMAIL || "admin@test.com";
-  const password = process.env.PLAYWRIGHT_ADMIN_PASSWORD || 
+  const password = process.env.PLAYWRIGHT_ADMIN_PASSWORD;
 
   const loginRes = await fetch(`${API_BASE}/api/v1/auth/login`, {
     method: "POST",
@@ -71,6 +71,7 @@ async function createRoom(token: string, title: string) {
   if (res.ok) {
     return await res.json();
   }
+  console.error("Form creation failed:", res.status, await res.text());
   return null;
 }
 

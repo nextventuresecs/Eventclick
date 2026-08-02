@@ -164,6 +164,50 @@ fi
 log "Migrations complete ✅"
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 3.5 Rotate hardcoded DB role passwords using values from SSM
+# ═══════════════════════════════════════════════════════════════════════════
+log "Rotating database role passwords..."
+
+# Load secrets into the environment so we can access them
+set -a
+source "$SECRETS_FILE"
+set +a
+
+extract_pg_field() {
+  # $1 = full connection url, $2 = field: user|password|host|port|dbname
+  node -e "
+    const u = new URL(process.argv[1]);
+    const map = { user: u.username, password: decodeURIComponent(u.password), host: u.hostname, port: u.port, dbname: u.pathname.slice(1) };
+    process.stdout.write(map[process.argv[2]] || '');
+  " "$1" "$2"
+}
+
+# The password may have special characters, URL parsing ensures they are decoded correctly.
+APP_PW="$(extract_pg_field "$APP_DATABASE_URL" password)"
+AUTH_PW="$(extract_pg_field "$AUTH_DATABASE_URL" password)"
+
+# Temporarily disable set -x if it was enabled, to prevent logging passwords
+# (It shouldn't be on by default, but this is an extra safety measure)
+[[ "$-" == *x* ]] && XTRACE_ON=1 || XTRACE_ON=0
+set +x
+
+# Use psql parameterization to safely pass passwords containing quotes without escaping issues,
+# and without exposing them in 'ps aux' output.
+psql "$DATABASE_URL" \
+  -v ON_ERROR_STOP=1 \
+  -v app_pw="$APP_PW" \
+  -v auth_pw="$AUTH_PW" \
+  <<'SQL'
+ALTER ROLE app_user_login PASSWORD :'app_pw';
+ALTER ROLE auth_svc_role PASSWORD :'auth_pw';
+SQL
+
+unset APP_PW AUTH_PW
+[[ $XTRACE_ON -eq 1 ]] && set -x
+
+log "Passwords rotated ✅"
+
+# ═══════════════════════════════════════════════════════════════════════════
 # 4. Rolling restart
 # ═══════════════════════════════════════════════════════════════════════════
 log "Starting rolling restart..."
