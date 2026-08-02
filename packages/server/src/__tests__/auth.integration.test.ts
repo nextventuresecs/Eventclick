@@ -65,7 +65,7 @@ describe("Auth Service Integration Tests", () => {
     await expect(
       loginUser({ email: "wrong@test.com", password: "password123" }, {
         userAgent: "test",
-        ipAddress: "127.0.0.1",
+        ipAddress: "localhost",
       })
     ).rejects.toMatchObject({ statusCode: 401 });
   });

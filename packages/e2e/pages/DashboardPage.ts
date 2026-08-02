@@ -12,8 +12,7 @@ export class DashboardPage {
     this.page = page;
     this.createRoomButton = page.getByRole("link", { name: /create room/i }).first();
     this.roomCards = page.locator(".card-static");
-    this.metricCards = page.getByText(/total event rooms|verified members|available reports|total attendees/i);
-    this.welcomeHeading = page.getByRole("heading", { name: /welcome back/i });
+    this.welcomeHeading = page.getByRole("heading", { name: /event rooms/i });
     this.reportsLink = page.getByRole("link", { name: /download pdf reports/i });
   }
 

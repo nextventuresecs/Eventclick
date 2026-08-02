@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, boolean, pgPolicy } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const organizations = pgTable("organizations", {
@@ -13,7 +13,29 @@ export const organizations = pgTable("organizations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
-});
+}, (table) => [
+  pgPolicy("organizations_read_own", {
+    as: "permissive",
+    for: "select",
+    using: sql`${table.id} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`
+  }),
+  pgPolicy("organizations_update_own", {
+    as: "permissive",
+    for: "update",
+    using: sql`${table.id} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    withCheck: sql`${table.id} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`
+  }),
+  pgPolicy("organizations_delete_own", {
+    as: "permissive",
+    for: "delete",
+    using: sql`${table.id} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`
+  }),
+  pgPolicy("organizations_insert_new", {
+    as: "permissive",
+    for: "insert",
+    withCheck: sql`true`
+  })
+]);
 
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
