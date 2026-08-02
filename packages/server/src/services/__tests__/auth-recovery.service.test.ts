@@ -52,7 +52,9 @@ vi.mock("../../db", () => {
     })),
     update: vi.fn().mockImplementation(() => ({
       set: vi.fn().mockImplementation(() => ({
-        where: vi.fn().mockImplementation(async () => mockUpdateResult),
+        where: vi.fn().mockImplementation(() => ({
+          returning: vi.fn().mockImplementation(async () => mockUpdateResult),
+        })),
       })),
     })),
     transaction: vi.fn().mockImplementation(async (callback) => {
@@ -120,19 +122,19 @@ describe("auth.service - Password Recovery Flow", () => {
     it("throws a badRequest error if the token is invalid, used, or expired", async () => {
       mockResetResult = []; // Not found or expired
 
-      await expect(resetPassword("invalid-token", "ComplexP@ss123!")).rejects.toThrowError(
+      await expect(resetPassword("invalid-token", "ComplexP@ss123!")).rejects.toThrow(
         ApiError.badRequest("Invalid or expired reset token")
       );
     });
 
     it("throws a badRequest error if the new password is too weak", async () => {
-      await expect(resetPassword("some-token", "123456")).rejects.toThrowError(
+      await expect(resetPassword("some-token", "123456")).rejects.toThrow(
         /Password is too weak/
       );
     });
 
     it("successfully marks the reset token as used and updates the user's password", async () => {
-      mockResetResult = [
+      mockUpdateResult = [
         {
           id: "reset-123",
           userId: "user-123",
