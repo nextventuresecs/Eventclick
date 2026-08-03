@@ -91,6 +91,9 @@ jobs:
       - run: npm run test --workspace=@application/shared
       - run: npm run test --workspace=client
       
+      - name: Initialize Database Roles
+        run: PGPASSWORD=test psql -U test -h localhost -p 5432 -d eventclick_test -v ON_ERROR_STOP=1 -f scripts/init-db.sql
+
       - name: Run Database Migrations
         run: npm run db:migrate --workspace=server
       
@@ -149,7 +152,7 @@ jobs:
       gotenberg:
         image: gotenberg/gotenberg:8
         ports:
-          - 3000:3000
+          - 8686:3000
     steps:
       - uses: actions/checkout@v4
 
@@ -174,6 +177,9 @@ jobs:
       - name: Install Playwright System Dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
+
+      - name: Initialize Database Roles
+        run: PGPASSWORD=test psql -U test -h localhost -p 5432 -d eventclick_test -v ON_ERROR_STOP=1 -f scripts/init-db.sql
 
       - name: Run Database Migrations
         run: npm run db:migrate --workspace=server
