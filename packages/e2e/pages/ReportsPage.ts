@@ -9,7 +9,7 @@ export class ReportsPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.heading = page.getByRole("heading", { name: /reports/i });
+    this.heading = page.getByRole("heading", { name: /^reports$/i }).first();
     this.searchInput = page.getByPlaceholder(/search reports/i);
     this.downloadButtons = page.getByRole("button", { name: /download report/i });
     this.noReportsMessage = page.getByText(/no reports available yet/i);

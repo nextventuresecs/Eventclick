@@ -22,7 +22,11 @@ export class AttendancePage {
 
   async fillField(fieldId: string, value: string) {
     const input = this.page.locator(`#${fieldId}`);
+    await input.waitFor({ state: "visible", timeout: 15000 });
+    await input.focus();
     await input.fill(value);
+    await input.dispatchEvent("input");
+    await input.dispatchEvent("change");
   }
 
   async selectOption(fieldId: string, value: string) {
