@@ -32,9 +32,14 @@ BEGIN
 END
 $$;
 
--- Default privileges for app_user
+-- Default privileges for app_user (applies to tables created by migrations)
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_user;
+
+-- REVOKE auth tables from app_user group role (auth_svc_role is BYPASSRLS and accesses via separate grants)
+REVOKE ALL ON sessions FROM app_user;
+REVOKE ALL ON password_resets FROM app_user;
+REVOKE ALL ON email_verifications FROM app_user;
 
 -- Confirm DB is ready
 SELECT 'Eventclick_db database initialized' AS status;
