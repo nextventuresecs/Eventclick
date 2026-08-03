@@ -110,6 +110,7 @@ app.use(
     limit: env.RATE_LIMIT_MAX,
     standardHeaders: "draft-7",
     legacyHeaders: false,
+    skip: () => env.NODE_ENV === "test" || process.env.NODE_ENV === "test",
     store: new RedisStore({
       sendCommand: async (...args: string[]) => {
         if (!redisClient.isOpen) {

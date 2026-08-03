@@ -35,7 +35,7 @@ const EnvSchema = z.object({
 
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
-  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10000),
 
   ATTENDANCE_WINDOW_BEFORE_MINUTES: z.coerce
     .number()
@@ -79,8 +79,7 @@ const EnvSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
-  // ─── Gotenberg (PDF generation) ────────────────────
-  GOTENBERG_URL: z.string().url().default("http://gotenberg:3000"),
+  GOTENBERG_URL: z.string().url().default(process.env.GOTENBERG_URL || "http://localhost:8686"),
 
   // ─── AWS SQS ──────────────────────────────────────
   SQS_QUEUE_URL: z.string().url().optional(),

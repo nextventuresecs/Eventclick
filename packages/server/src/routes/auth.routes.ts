@@ -37,7 +37,7 @@ const createFailClosedStore = (prefix: string) =>
 
 const authLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
-  limit: Math.max(env.RATE_LIMIT_MAX, 20),
+  limit: Math.max(env.RATE_LIMIT_MAX, 10000),
   standardHeaders: "draft-7",
   legacyHeaders: false,
   store: createFailClosedStore("rl:auth:"),
