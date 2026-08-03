@@ -13,12 +13,17 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
   }
 
   const allowedOrigins = env.CORS_ORIGIN.split(",").map((s) => s.trim());
-  
+  if (!allowedOrigins.includes(env.APP_URL)) {
+    allowedOrigins.push(env.APP_URL);
+  }
+
   const isAllowedOrigin = allowedOrigins.some((allowedOrigin) => origin.startsWith(allowedOrigin));
   
-  const isDevLocalhost = env.NODE_ENV === "development" && (origin.includes("localhost") || origin.includes("127.0.0.1"));
+  const isDevOrTestLocalhost =
+    (env.NODE_ENV === "development" || env.NODE_ENV === "test") &&
+    (origin.includes("localhost") || origin.includes("127.0.0.1"));
 
-  if (!isAllowedOrigin && !isDevLocalhost) {
+  if (!isAllowedOrigin && !isDevOrTestLocalhost) {
     return next(ApiError.forbidden("CSRF protection: invalid Origin or Referer"));
   }
 

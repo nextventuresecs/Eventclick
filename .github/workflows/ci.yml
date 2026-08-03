@@ -116,8 +116,8 @@ jobs:
       PLAYWRIGHT_ADMIN_PASSWORD: "e2e_admin_password_123!"
       PLAYWRIGHT_VOLUNTEER_PASSWORD: "e2e_volunteer_password_123!"
       DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
-      APP_DATABASE_URL: postgresql://app_user_login:local_dev_app@localhost:5432/eventclick_test
-      AUTH_DATABASE_URL: postgresql://auth_svc_role:local_dev_auth@localhost:5432/eventclick_test
+      APP_DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+      AUTH_DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
       REDIS_URL: redis://localhost:6379/1
       GOTENBERG_URL: http://localhost:8686
       JWT_SECRET: test-jwt-secret-at-least-16

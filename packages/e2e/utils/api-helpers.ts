@@ -22,11 +22,13 @@ export function loadTokens(): StoredTokens {
   return JSON.parse(content) as StoredTokens;
 }
 
+const CLIENT_BASE = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
+
 function authHeaders(token: string) {
   return {
     "Content-Type": "application/json",
-    "Origin": API_BASE,
-    "Referer": API_BASE,
+    "Origin": CLIENT_BASE,
+    "Referer": CLIENT_BASE,
     Authorization: `Bearer ${token}`,
   };
 }
@@ -37,7 +39,7 @@ export async function loginUser(
   password: string,
 ): Promise<{ accessToken: string; refreshToken: string | null }> {
   const res = await request.post(`${API_BASE}/api/v1/auth/login`, {
-    headers: { "Origin": API_BASE, "Referer": API_BASE },
+    headers: { "Origin": CLIENT_BASE, "Referer": CLIENT_BASE },
     data: { email, password },
   });
   if (!res.ok()) {
