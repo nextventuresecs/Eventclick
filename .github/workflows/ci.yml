@@ -88,6 +88,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Build Shared Package
+        run: npm run build --workspace=@application/shared
+
       - run: npm run test --workspace=@application/shared
       - run: npm run test --workspace=client
       
@@ -162,6 +165,9 @@ jobs:
           cache: "npm"
 
       - run: npm ci
+
+      - name: Build Shared Package
+        run: npm run build --workspace=@application/shared
 
       - name: Cache Playwright Browsers
         id: playwright-cache
