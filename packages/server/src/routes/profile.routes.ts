@@ -28,7 +28,7 @@ profileRouter.delete("/me/account", requireAuth, validate(DeleteUserSchema), asy
       req,
     );
 
-    res.clearCookie("Evently_rt");
+    res.clearCookie("Eventclick_rt");
     res.json(result);
   } catch (err) {
     next(err);

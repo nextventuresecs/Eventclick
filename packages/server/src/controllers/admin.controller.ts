@@ -61,7 +61,7 @@ export const deleteUser: RequestHandler = async (req, res, next) => {
 
     // If self deletion, clear refresh cookie
     if (requester.id === targetUserId) {
-      res.clearCookie("Evently_rt");
+      res.clearCookie("Eventclick_rt");
     }
 
     res.json(result);

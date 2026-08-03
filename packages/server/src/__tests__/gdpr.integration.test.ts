@@ -231,7 +231,7 @@ describe("GDPR Profile Endpoints", () => {
       expect(res.body.message).toContain("deleted");
       expect(res.headers["set-cookie"]).toBeDefined();
       const cookieHeader = (res.headers["set-cookie"] as unknown as string[]).find((c: string) =>
-        c.startsWith("Evently_rt="),
+        c.startsWith("Eventclick_rt="),
       );
       expect(cookieHeader).toBeDefined();
       expect(cookieHeader).toContain("Expires=Thu, 01 Jan 1970");
