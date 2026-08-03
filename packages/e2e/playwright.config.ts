@@ -46,11 +46,20 @@ export default defineConfig({
       testIgnore: /auth\.setup\.ts/,
     },
   ],
-  webServer: {
-    command: "npm run dev",
-    cwd: "../../",
-    url: `${process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000"}/`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  webServer: [
+    {
+      command: "npm run dev --workspace=server",
+      cwd: "../../",
+      url: `${process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000"}/api/v1/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+    {
+      command: "npm run dev --workspace=client",
+      cwd: "../../",
+      url: `${process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000"}/`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+  ],
 });
