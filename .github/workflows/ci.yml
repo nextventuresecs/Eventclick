@@ -62,7 +62,7 @@ jobs:
       S3_FORCE_PATH_STYLE: "true"
     services:
       postgres:
-        image: postgres:16
+        image: postgis/postgis:16-3.4-alpine
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -113,7 +113,7 @@ jobs:
       APP_DATABASE_URL: postgresql://app_user_login:local_dev_app@localhost:5432/eventclick_test
       AUTH_DATABASE_URL: postgresql://auth_svc_role:local_dev_auth@localhost:5432/eventclick_test
       REDIS_URL: redis://localhost:6379/1
-      GOTENBERG_URL: http://localhost:3000
+      GOTENBERG_URL: http://localhost:8686
       JWT_SECRET: test-jwt-secret-at-least-16
       JWT_REFRESH_SECRET: test-jwt-refresh-secret-at-least-16
       LIVEKIT_URL: ws://localhost:7880
