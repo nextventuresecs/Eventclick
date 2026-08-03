@@ -78,13 +78,9 @@ CREATE ROLE auth_svc_role LOGIN PASSWORD 'local_dev_auth' BYPASSRLS;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_user;
-
-REVOKE ALL ON sessions FROM app_user;
-REVOKE ALL ON password_resets FROM app_user;
-REVOKE ALL ON email_verifications FROM app_user;
 ```
 
-**Note**: Migrations are applied separately by the `migrate` service in production or `npm run db:migrate` in dev. The `init-db.sql` runs before migrations on first container start, creating roles that the migration's `pgPolicy(... to: "app_user")` references.
+**Note**: Migrations are applied separately by the `migrate` service in production or `npm run db:migrate` in dev. The `init-db.sql` runs before migrations on first container start, creating roles that the migration's `pgPolicy(... to: "app_user")` references. REVOKEs on auth tables (`sessions`, `password_resets`, `email_verifications`) are in migration `0001_clumsy_bloodstrike.sql`, not here, because tables don't exist yet when `init-db.sql` runs in CI.
 
 ---
 
