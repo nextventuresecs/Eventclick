@@ -45,7 +45,7 @@ Turborepo monorepo, npm workspaces under `packages/*`. Three packages:
 
 - `packages/server/src/config/env.ts` validates env with Zod and exits on failure. Add new vars there.
 - Dev `.env` required at repo root AND `packages/server/.env`.
-- `scripts/init-db.sql` installs `uuid-ossp` and `pgcrypto` extensions.
+- `scripts/init-db.sql` installs `uuid-ossp`, `pgcrypto`, and `postgis` extensions; creates `app_user` (NOLOGIN, group role), `app_user_login` (LOGIN, IN ROLE app_user), and `auth_svc_role` (LOGIN, BYPASSRLS); sets default privileges on sequences and tables; and REVOKEs all access on `sessions`, `password_resets`, `email_verifications` from `app_user`. Runs on every Docker container start before migrations.
 
 ## Async Jobs
 

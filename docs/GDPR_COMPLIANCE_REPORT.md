@@ -57,7 +57,7 @@ This report documents the exact code changes, endpoint specifications, and audit
 | Data export endpoint       | `packages/server/src/routes/profile.routes.ts`     | JSON export with password hash redacted                      |
 | Audit log service          | `packages/server/src/services/audit.service.ts`    | Append-only, 7-year retention                                |
 | Audit log schema           | `packages/server/src/db/schema/auditLogs.ts`       | Full audit trail with actor, IP, user agent                  |
-| Audit DB migration         | `packages/server/drizzle/0020_dry_bombast.sql`     | Creates `audit_logs` table + indexes                         |
+| Audit DB migration         | `packages/server/drizzle/0000_slow_firestar.sql`  | `audit_logs` table created in baseline migration       |
 | Cookie consent banner      | `packages/client/src/components/CookieConsent.tsx` | Essential / All options, localStorage persistence            |
 | Data retention job         | `packages/server/src/jobs/dataRetention.ts`        | 365-day purge of attendance, photos, submissions, recordings |
 | Profile routes wired       | `packages/server/src/routes/index.ts`              | `/api/v1/profile` mounted                                    |
@@ -79,7 +79,7 @@ This report documents the exact code changes, endpoint specifications, and audit
 
 ### 4.1 Database Migration for Audit Logs
 
-**File:** `packages/server/drizzle/0020_dry_bombast.sql`
+**File:** `packages/server/drizzle/0000_slow_firestar.sql`
 
 ```sql
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -556,7 +556,7 @@ The remaining gaps — **DPIA**, **breach notification workflow**, and **DPA doc
 
 **Immediate next steps:**
 
-1. Run the audit-logs migration (`0020_dry_bombast.sql`) on all environments.
+1. Run the audit-logs migration (`0000_slow_firestar.sql`) on all environments.
 2. Schedule the `purgeExpiredData` job (via cron or scheduled task).
 3. Build admin UI for compliance export (`GET /api/v1/admin/audit-log`).
 4. Document DPA/processor agreements with legal counsel.
