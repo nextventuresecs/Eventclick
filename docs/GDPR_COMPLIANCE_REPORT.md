@@ -27,20 +27,20 @@ This report documents the exact code changes, endpoint specifications, and audit
 
 ## 2. Legal Framework Mapping
 
-| GDPR Article | Requirement | Status | Implementation Location |
-|--------------|-------------|--------|------------------------|
-| **Art. 5** | Lawfulness, fairness, transparency | ⚠️ Partial | Privacy policy exists; consent tracking deferred |
-| **Art. 6** | Lawful basis for processing | ⚠️ Partial | Contract + legitimate interest; no consent records |
-| **Art. 7** | Conditions for consent | ⚠️ Partial | Cookie consent banner implemented; no backend consent records |
-| **Art. 13/14** | Privacy notice | ✅ Done | Landing page privacy policy |
-| **Art. 15** | Right of access | ✅ Done | `GET /api/v1/profile/me/export` |
-| **Art. 17** | Right to erasure | ✅ Done | `DELETE /api/v1/profile/me/account` + admin soft-delete |
-| **Art. 20** | Right to data portability | ✅ Done | `GET /api/v1/profile/me/export` (JSON) |
-| **Art. 25** | Data protection by design | ⚠️ Partial | Audit logging + retention job; DPIA pending |
-| **Art. 30** | Records of processing | ✅ Done | `audit.service.ts` + `audit_logs` table |
-| **Art. 32** | Security of processing | ✅ Done | Encryption, RBAC, fail-closed rate limiting |
-| **Art. 33/34** | Breach notification | ❌ Missing | No 72-hour notification workflow |
-| **Art. 35** | Data protection impact assessment | ❌ Missing | No documented DPIA |
+| GDPR Article   | Requirement                        | Status     | Implementation Location                                       |
+| -------------- | ---------------------------------- | ---------- | ------------------------------------------------------------- |
+| **Art. 5**     | Lawfulness, fairness, transparency | ⚠️ Partial | Privacy policy exists; consent tracking deferred              |
+| **Art. 6**     | Lawful basis for processing        | ⚠️ Partial | Contract + legitimate interest; no consent records            |
+| **Art. 7**     | Conditions for consent             | ⚠️ Partial | Cookie consent banner implemented; no backend consent records |
+| **Art. 13/14** | Privacy notice                     | ✅ Done    | Landing page privacy policy                                   |
+| **Art. 15**    | Right of access                    | ✅ Done    | `GET /api/v1/profile/me/export`                               |
+| **Art. 17**    | Right to erasure                   | ✅ Done    | `DELETE /api/v1/profile/me/account` + admin soft-delete       |
+| **Art. 20**    | Right to data portability          | ✅ Done    | `GET /api/v1/profile/me/export` (JSON)                        |
+| **Art. 25**    | Data protection by design          | ⚠️ Partial | Audit logging + retention job; DPIA pending                   |
+| **Art. 30**    | Records of processing              | ✅ Done    | `audit.service.ts` + `audit_logs` table                       |
+| **Art. 32**    | Security of processing             | ✅ Done    | Encryption, RBAC, fail-closed rate limiting                   |
+| **Art. 33/34** | Breach notification                | ❌ Missing | No 72-hour notification workflow                              |
+| **Art. 35**    | Data protection impact assessment  | ❌ Missing | No documented DPIA                                            |
 
 ---
 
@@ -48,30 +48,30 @@ This report documents the exact code changes, endpoint specifications, and audit
 
 ### 3.1 What exists
 
-| Component | Location | Notes |
-|-----------|----------|-------|
-| Privacy Policy page | `landing-page/app/privacy/page.tsx` | Published, accessible |
-| Terms of Service page | `landing-page/app/terms/page.tsx` | Published, accessible |
-| Admin user deletion (soft) | `packages/server/src/services/admin.service.ts` | `deletedAt` + `isActive = false` |
-| Self-deletion flow | `packages/server/src/routes/profile.routes.ts` | Email confirmation + soft delete |
-| Data export endpoint | `packages/server/src/routes/profile.routes.ts` | JSON export with password hash redacted |
-| Audit log service | `packages/server/src/services/audit.service.ts` | Append-only, 7-year retention |
-| Audit log schema | `packages/server/src/db/schema/auditLogs.ts` | Full audit trail with actor, IP, user agent |
-| Audit DB migration | `packages/server/drizzle/0020_dry_bombast.sql` | Creates `audit_logs` table + indexes |
-| Cookie consent banner | `packages/client/src/components/CookieConsent.tsx` | Essential / All options, localStorage persistence |
-| Data retention job | `packages/server/src/jobs/dataRetention.ts` | 365-day purge of attendance, photos, submissions, recordings |
-| Profile routes wired | `packages/server/src/routes/index.ts` | `/api/v1/profile` mounted |
+| Component                  | Location                                           | Notes                                                        |
+| -------------------------- | -------------------------------------------------- | ------------------------------------------------------------ |
+| Privacy Policy page        | `landing-page/app/privacy/page.tsx`                | Published, accessible                                        |
+| Terms of Service page      | `landing-page/app/terms/page.tsx`                  | Published, accessible                                        |
+| Admin user deletion (soft) | `packages/server/src/services/admin.service.ts`    | `deletedAt` + `isActive = false`                             |
+| Self-deletion flow         | `packages/server/src/routes/profile.routes.ts`     | Email confirmation + soft delete                             |
+| Data export endpoint       | `packages/server/src/routes/profile.routes.ts`     | JSON export with password hash redacted                      |
+| Audit log service          | `packages/server/src/services/audit.service.ts`    | Append-only, 7-year retention                                |
+| Audit log schema           | `packages/server/src/db/schema/auditLogs.ts`       | Full audit trail with actor, IP, user agent                  |
+| Audit DB migration         | `packages/server/drizzle/0020_dry_bombast.sql`     | Creates `audit_logs` table + indexes                         |
+| Cookie consent banner      | `packages/client/src/components/CookieConsent.tsx` | Essential / All options, localStorage persistence            |
+| Data retention job         | `packages/server/src/jobs/dataRetention.ts`        | 365-day purge of attendance, photos, submissions, recordings |
+| Profile routes wired       | `packages/server/src/routes/index.ts`              | `/api/v1/profile` mounted                                    |
 
 ### 3.2 What is still missing
 
-| Component | Impact |
-|-----------|--------|
-| Privacy/Terms in-app routes | Deferred until landing page is hosted |
-| Backend consent records | No server-side consent timestamping |
-| Breach notification workflow | No SLA-compliant incident workflow |
-| DPA documentation | No processor agreements for AWS/LiveKit/Resend |
-| DPIA | No documented privacy impact assessment |
-| Admin audit-log endpoint | Frontend UI for compliance exports not yet built |
+| Component                    | Impact                                           |
+| ---------------------------- | ------------------------------------------------ |
+| Privacy/Terms in-app routes  | Deferred until landing page is hosted            |
+| Backend consent records      | No server-side consent timestamping              |
+| Breach notification workflow | No SLA-compliant incident workflow               |
+| DPA documentation            | No processor agreements for AWS/LiveKit/Resend   |
+| DPIA                         | No documented privacy impact assessment          |
+| Admin audit-log endpoint     | Frontend UI for compliance exports not yet built |
 
 ---
 
@@ -112,9 +112,15 @@ import { organizations } from "./organizations";
 import { users } from "./users";
 
 export const auditLogs = pgTable("audit_logs", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
-  actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  id: uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  actorUserId: uuid("actor_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
   action: varchar("action", { length: 120 }).notNull(),
   resourceType: varchar("resource_type", { length: 80 }).notNull(),
   resourceId: uuid("resource_id"),
@@ -122,7 +128,9 @@ export const auditLogs = pgTable("audit_logs", {
   newValues: text("new_values"),
   ipAddress: varchar("ip_address", { length: 64 }),
   userAgent: text("user_agent"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type AuditLog = typeof auditLogs.$inferSelect;
@@ -197,7 +205,9 @@ export const deleteUserAccount = async (
 
   const auditOrgId = orgId ?? targetUser.organizationId;
   if (!auditOrgId) {
-    throw ApiError.internal("Cannot record audit log: missing organization context");
+    throw ApiError.internal(
+      "Cannot record audit log: missing organization context",
+    );
   }
 
   await recordAudit({
@@ -226,7 +236,14 @@ import { requireAuth } from "../middleware/requireAuth";
 import { deleteUserAccount } from "../services/admin.service";
 import { recordAudit } from "../services/audit.service";
 import { db } from "../db";
-import { users, orgMembers, eventRooms, attendanceEntries, activitySubmissions, activityPhotos } from "../db/schema";
+import {
+  users,
+  orgMembers,
+  eventRooms,
+  attendanceEntries,
+  activitySubmissions,
+  activityPhotos,
+} from "../db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { ApiError } from "../utils/errors";
 
@@ -248,7 +265,7 @@ profileRouter.delete("/me/account", requireAuth, async (req, res, next) => {
       req,
     );
 
-    res.clearCookie("Evently_rt");
+    res.clearCookie("Eventclick_rt");
     res.json(result);
   } catch (err) {
     next(err);
@@ -269,17 +286,38 @@ profileRouter.get("/me/export", requireAuth, async (req, res, next) => {
       throw ApiError.badRequest("User is not associated with an organization");
     }
 
-    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
     if (!user) {
       throw ApiError.notFound("User not found");
     }
 
-    const memberships = await db.select().from(orgMembers).where(eq(orgMembers.userId, userId));
-    const rooms = await db.select().from(eventRooms).where(eq(eventRooms.organizationId, orgId));
+    const memberships = await db
+      .select()
+      .from(orgMembers)
+      .where(eq(orgMembers.userId, userId));
+    const rooms = await db
+      .select()
+      .from(eventRooms)
+      .where(eq(eventRooms.organizationId, orgId));
     const roomIds = rooms.map((r) => r.id);
-    const attendance = await db.select().from(attendanceEntries).where(eq(attendanceEntries.submittedBy, userId));
-    const submissions = roomIds.length ? await db.select().from(activitySubmissions).where(inArray(activitySubmissions.roomId, roomIds)) : [];
-    const photos = await db.select().from(activityPhotos).where(eq(activityPhotos.submittedBy, userId));
+    const attendance = await db
+      .select()
+      .from(attendanceEntries)
+      .where(eq(attendanceEntries.submittedBy, userId));
+    const submissions = roomIds.length
+      ? await db
+          .select()
+          .from(activitySubmissions)
+          .where(inArray(activitySubmissions.roomId, roomIds))
+      : [];
+    const photos = await db
+      .select()
+      .from(activityPhotos)
+      .where(eq(activityPhotos.submittedBy, userId));
 
     const safe = {
       ...user,
@@ -308,7 +346,10 @@ profileRouter.get("/me/export", requireAuth, async (req, res, next) => {
     });
 
     res.setHeader("Content-Type", "application/json");
-    res.setHeader("Content-Disposition", `attachment; filename="eventclick-export-${userId}.json"`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="eventclick-export-${userId}.json"`,
+    );
     res.json(payload);
   } catch (err) {
     next(err);
@@ -395,15 +436,24 @@ export function CookieConsent() {
 
 ```typescript
 import { db } from "../db";
-import { attendanceEntries, activityPhotos, roomRecordings, activitySubmissions } from "../db/schema";
+import {
+  attendanceEntries,
+  activityPhotos,
+  roomRecordings,
+  activitySubmissions,
+} from "../db/schema";
 import { lt } from "drizzle-orm";
 
 export async function purgeExpiredData() {
   const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 
-  await db.delete(attendanceEntries).where(lt(attendanceEntries.submittedAt, cutoff));
+  await db
+    .delete(attendanceEntries)
+    .where(lt(attendanceEntries.submittedAt, cutoff));
   await db.delete(activityPhotos).where(lt(activityPhotos.createdAt, cutoff));
-  await db.delete(activitySubmissions).where(lt(activitySubmissions.createdAt, cutoff));
+  await db
+    .delete(activitySubmissions)
+    .where(lt(activitySubmissions.createdAt, cutoff));
   await db.delete(roomRecordings).where(lt(roomRecordings.createdAt, cutoff));
 }
 ```
@@ -412,10 +462,10 @@ export async function purgeExpiredData() {
 
 ## 5. API Endpoint Specification
 
-| Method | Path | Auth | Role | Purpose |
-|--------|------|------|------|---------|
-| `GET` | `/api/v1/profile/me/export` | Yes | Any authenticated | Export all user data as JSON |
-| `DELETE` | `/api/v1/profile/me/account` | Yes | Any authenticated | Self-service account deletion with email confirmation |
+| Method   | Path                         | Auth | Role              | Purpose                                               |
+| -------- | ---------------------------- | ---- | ----------------- | ----------------------------------------------------- |
+| `GET`    | `/api/v1/profile/me/export`  | Yes  | Any authenticated | Export all user data as JSON                          |
+| `DELETE` | `/api/v1/profile/me/account` | Yes  | Any authenticated | Self-service account deletion with email confirmation |
 
 ---
 
@@ -423,10 +473,10 @@ export async function purgeExpiredData() {
 
 ### 6.1 Events to Log
 
-| Event | Actor | Resource |
-|-------|-------|----------|
-| User deleted | Admin / self | User |
-| User export | Self | User |
+| Event        | Actor        | Resource |
+| ------------ | ------------ | -------- |
+| User deleted | Admin / self | User     |
+| User export  | Self         | User     |
 
 ### 6.2 Retention
 
@@ -442,28 +492,28 @@ export async function purgeExpiredData() {
 
 ## 7. GDPR User Rights Implementation Map
 
-| Right | Endpoint | Method | Notes |
-|-------|----------|--------|-------|
-| **Right to be informed** | `/privacy`, `/terms` | GET | Landing page (in-app routes deferred) |
-| **Right of access** | `/api/v1/profile/me/export` | GET | JSON export of all personal data |
-| **Right to rectification** | `/api/v1/profile` | PATCH | Existing profile update |
-| **Right to erasure** | `/api/v1/profile/me/account` | DELETE | Self-service + email confirmation |
-| **Right to restrict processing** | N/A | — | Not yet implemented |
-| **Right to data portability** | `/api/v1/profile/me/export` | GET | JSON format |
-| **Right to object** | N/A | — | Not yet implemented |
-| **Rights related to automated decision-making** | N/A | — | No automated decision-making in scope |
+| Right                                           | Endpoint                     | Method | Notes                                 |
+| ----------------------------------------------- | ---------------------------- | ------ | ------------------------------------- |
+| **Right to be informed**                        | `/privacy`, `/terms`         | GET    | Landing page (in-app routes deferred) |
+| **Right of access**                             | `/api/v1/profile/me/export`  | GET    | JSON export of all personal data      |
+| **Right to rectification**                      | `/api/v1/profile`            | PATCH  | Existing profile update               |
+| **Right to erasure**                            | `/api/v1/profile/me/account` | DELETE | Self-service + email confirmation     |
+| **Right to restrict processing**                | N/A                          | —      | Not yet implemented                   |
+| **Right to data portability**                   | `/api/v1/profile/me/export`  | GET    | JSON format                           |
+| **Right to object**                             | N/A                          | —      | Not yet implemented                   |
+| **Rights related to automated decision-making** | N/A                          | —      | No automated decision-making in scope |
 
 ---
 
 ## 8. Third-Party Subprocessors
 
-| Processor | Purpose | Location | Safeguards |
-|-----------|---------|----------|------------|
-| **AWS (S3/R2)** | Private media storage | US / EU (configurable) | Encryption at rest, presigned URLs |
-| **LiveKit** | WebRTC streaming | US | TLS, tokenized room access |
-| **Resend** | Transactional email | US | TLS, SPF/DKIM |
-| **Cloudflare** | CDN / edge routing | Global | TLS, WAF, DDoS protection |
-| **PostgreSQL** | Primary database | Docker / RDS | Encryption at rest, RLS, connection pooling |
+| Processor       | Purpose               | Location               | Safeguards                                  |
+| --------------- | --------------------- | ---------------------- | ------------------------------------------- |
+| **AWS (S3/R2)** | Private media storage | US / EU (configurable) | Encryption at rest, presigned URLs          |
+| **LiveKit**     | WebRTC streaming      | US                     | TLS, tokenized room access                  |
+| **Resend**      | Transactional email   | US                     | TLS, SPF/DKIM                               |
+| **Cloudflare**  | CDN / edge routing    | Global                 | TLS, WAF, DDoS protection                   |
+| **PostgreSQL**  | Primary database      | Docker / RDS           | Encryption at rest, RLS, connection pooling |
 
 ---
 
@@ -480,21 +530,21 @@ export async function purgeExpiredData() {
 
 ## 10. Implementation Roadmap
 
-| Phase | Item | Priority | Owner | Status |
-|-------|------|----------|-------|--------|
-| **1** | Add `GET /api/v1/profile/me/export` endpoint | P0 | Backend | ✅ Done |
-| **1** | Add `DELETE /api/v1/profile/me/account` endpoint | P0 | Backend | ✅ Done |
-| **1** | Create `audit_logs` table + migration | P0 | Backend | ✅ Done |
-| **1** | Implement `audit.service.ts` and wire into admin mutations | P0 | Backend | ✅ Done |
-| **1** | Add Privacy/Terms routes in main app | P0 | Frontend | ⏸️ Deferred |
-| **1** | Wire profile routes into `apiRouter` | P0 | Backend | ✅ Done |
-| **2** | Add cookie consent banner component | P1 | Frontend | ✅ Done |
-| **2** | Implement data retention purge job | P1 | Backend | ✅ Done |
-| **2** | Add `GET /api/v1/admin/audit-log` endpoint | P1 | Backend | ⏸️ Pending frontend |
-| **2** | Document DPA/processor agreements | P1 | Legal | ⏸️ Pending |
-| **3** | Add breach notification workflow | P2 | Backend + DevOps | ⏸️ Pending |
-| **3** | Conduct privacy impact assessment (DPIA) | P2 | Product + Legal | ⏸️ Pending |
-| **3** | Third-party penetration test for multi-tenant boundary | P2 | Security | ⏸️ Pending |
+| Phase | Item                                                       | Priority | Owner            | Status              |
+| ----- | ---------------------------------------------------------- | -------- | ---------------- | ------------------- |
+| **1** | Add `GET /api/v1/profile/me/export` endpoint               | P0       | Backend          | ✅ Done             |
+| **1** | Add `DELETE /api/v1/profile/me/account` endpoint           | P0       | Backend          | ✅ Done             |
+| **1** | Create `audit_logs` table + migration                      | P0       | Backend          | ✅ Done             |
+| **1** | Implement `audit.service.ts` and wire into admin mutations | P0       | Backend          | ✅ Done             |
+| **1** | Add Privacy/Terms routes in main app                       | P0       | Frontend         | ⏸️ Deferred         |
+| **1** | Wire profile routes into `apiRouter`                       | P0       | Backend          | ✅ Done             |
+| **2** | Add cookie consent banner component                        | P1       | Frontend         | ✅ Done             |
+| **2** | Implement data retention purge job                         | P1       | Backend          | ✅ Done             |
+| **2** | Add `GET /api/v1/admin/audit-log` endpoint                 | P1       | Backend          | ⏸️ Pending frontend |
+| **2** | Document DPA/processor agreements                          | P1       | Legal            | ⏸️ Pending          |
+| **3** | Add breach notification workflow                           | P2       | Backend + DevOps | ⏸️ Pending          |
+| **3** | Conduct privacy impact assessment (DPIA)                   | P2       | Product + Legal  | ⏸️ Pending          |
+| **3** | Third-party penetration test for multi-tenant boundary     | P2       | Security         | ⏸️ Pending          |
 
 ---
 
@@ -505,6 +555,7 @@ Eventclick now has implementations for the **user-facing rights endpoints** (Art
 The remaining gaps — **DPIA**, **breach notification workflow**, and **DPA documentation** — are procedural/legal items that do not require code changes.
 
 **Immediate next steps:**
+
 1. Run the audit-logs migration (`0020_dry_bombast.sql`) on all environments.
 2. Schedule the `purgeExpiredData` job (via cron or scheduled task).
 3. Build admin UI for compliance export (`GET /api/v1/admin/audit-log`).
