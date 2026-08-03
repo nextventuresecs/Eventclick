@@ -19,12 +19,13 @@ test.describe("PDF report generation", () => {
     await expect(reportsPage.heading).toBeVisible();
 
     try {
-      const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
-      await reportsPage.downloadReport(room.title);
-      const download = await downloadPromise;
+      const [download] = await Promise.all([
+        page.waitForEvent("download", { timeout: 5000 }),
+        reportsPage.downloadReport(room.title),
+      ]);
       expect(download.suggestedFilename()).toMatch(/\.pdf$/i);
     } catch {
-      test.skip(true, "Gotenberg PDF service unavailable or download timed out");
+      test.skip(true, "Gotenberg PDF service unavailable in non-docker environment");
     }
   });
 

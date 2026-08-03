@@ -35,12 +35,12 @@ test.describe("CreateRoom journey", () => {
     await createRoomPage.submit();
 
     await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`));
-    await expect(page.getByText(/e2e test room/i)).toBeVisible();
+    await expect(page.getByText(/e2e test room/i).first()).toBeVisible();
   });
 });
 
 test.describe("CreateRoom access control", () => {
-  test.use({ storageState: ".auth/volunteer.json" });
+  test.use({ role: "volunteer" });
 
   test("shows access limited for non-admin", async ({ page }) => {
     const createRoomPage = new CreateRoomPage(page);

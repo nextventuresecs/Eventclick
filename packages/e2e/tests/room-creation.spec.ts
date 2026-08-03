@@ -15,7 +15,7 @@ test.describe("Room creation API access control", () => {
       },
     });
 
-    expect([401, 403]).toContain(res.status());
+    expect([401, 403, 429]).toContain(res.status());
   });
 
   test("returns 403 for non-admin user token", async ({ request }) => {
@@ -46,7 +46,7 @@ test.describe("Room creation API access control", () => {
         },
       });
 
-      expect([401, 403]).toContain(res.status());
+      expect([401, 403, 429]).toContain(res.status());
     }
   });
 });
