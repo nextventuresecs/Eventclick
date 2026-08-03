@@ -17,7 +17,7 @@ export class RoomLivePage {
 
   async goto(baseURL: string, roomId: string) {
     await this.page.goto(`${baseURL}/rooms/${roomId}/live`);
-    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForLoadState("load");
   }
 
   async expandActivity(activityTitle: string) {

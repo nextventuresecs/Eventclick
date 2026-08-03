@@ -17,7 +17,7 @@ export class AttendancePage {
 
   async goto(baseURL: string, roomId: string) {
     await this.page.goto(`${baseURL}/rooms/${roomId}/attendance`);
-    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForLoadState("load");
   }
 
   async fillField(fieldId: string, value: string) {

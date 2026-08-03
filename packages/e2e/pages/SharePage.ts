@@ -11,6 +11,6 @@ export class SharePage {
 
   async goto(baseURL: string, token: string) {
     await this.page.goto(`${baseURL}/watch/${token}`);
-    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForLoadState("load");
   }
 }

@@ -33,7 +33,7 @@ export class CreateRoomPage {
 
   async goto(baseURL: string) {
     await this.page.goto(`${baseURL}/rooms/create`);
-    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForLoadState("load");
   }
 
   async fillRoomDetails(data: {

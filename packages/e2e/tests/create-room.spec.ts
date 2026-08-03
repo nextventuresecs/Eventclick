@@ -4,8 +4,6 @@ import { CreateRoomPage } from "../pages/CreateRoomPage";
 const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
 
 test.describe("CreateRoom journey", () => {
-  test.use({ storageState: ".auth/admin.json" });
-
   test("loads create room page with form fields", async ({ page }) => {
     const createRoomPage = new CreateRoomPage(page);
     await createRoomPage.goto(BASE_URL);

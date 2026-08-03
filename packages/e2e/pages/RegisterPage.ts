@@ -25,7 +25,7 @@ export class RegisterPage {
 
   async goto(baseURL: string) {
     await this.page.goto(`${baseURL}/register`);
-    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForLoadState("load");
   }
 
   async register(data: {

@@ -1,15 +1,31 @@
-import { test as base, type Page, type APIRequestContext } from "@playwright/test";
+import { test as base, type APIRequestContext } from "@playwright/test";
 import { resetDb } from "./utils/db";
+import { loadTokens, type StoredTokens } from "./utils/api-helpers";
 
 type Fixtures = {
   dbClean: void;
+  tokens: StoredTokens;
+  adminToken: string;
+  volunteerToken: string;
 };
 
 export const test = base.extend<Fixtures>({
   dbClean: [async ({}, use) => {
     await resetDb();
     await use();
-  }, { auto: true }],
+  }, {}],
+
+  tokens: async ({}, use) => {
+    await use(loadTokens());
+  },
+
+  adminToken: async ({ tokens }, use) => {
+    await use(tokens.adminAccessToken);
+  },
+
+  volunteerToken: async ({ tokens }, use) => {
+    await use(tokens.volunteerAccessToken);
+  },
 });
 
 export { expect } from "@playwright/test";

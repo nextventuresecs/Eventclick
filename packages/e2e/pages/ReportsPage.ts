@@ -17,7 +17,7 @@ export class ReportsPage {
 
   async goto(baseURL: string) {
     await this.page.goto(`${baseURL}/reports`);
-    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForLoadState("load");
   }
 
   async search(query: string) {
