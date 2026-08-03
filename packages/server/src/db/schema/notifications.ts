@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp, boolean, uuid, index , pgPolicy } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, uuid, index, pgPolicy } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { users } from "./users";
 import { organizations } from "./organizations";
 
@@ -21,9 +22,16 @@ export const notifications = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => ({
-    userIdIdx: index("notifications_user_id_idx").on(table.userId),
-    orgIdIdx: index("notifications_org_id_idx").on(table.organizationId),
-    createdIdx: index("notifications_created_at_idx").on(table.createdAt),
-  })
+   (table) => [
+    index("notifications_user_id_idx").on(table.userId),
+    index("notifications_org_id_idx").on(table.organizationId),
+    index("notifications_created_at_idx").on(table.createdAt),
+    pgPolicy("notifications_tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "app_user",
+      using: sql`${table.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+      withCheck: sql`${table.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    }),
+  ]
 );

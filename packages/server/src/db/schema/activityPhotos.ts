@@ -43,6 +43,13 @@ export const activityPhotos = pgTable(
     index("activity_photos_org_idx").on(t.organizationId),
     index("activity_photos_submitted_by_idx").on(t.submittedBy),
     index("activity_photos_location_idx").using("gist", t.location),
+    pgPolicy("activity_photos_tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    }),
   ],
 );
 

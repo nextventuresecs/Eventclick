@@ -31,6 +31,13 @@ export const eventAdminAssignments = pgTable(
     index("event_admin_assignments_user_idx").on(t.userId),
     index("event_admin_assignments_assigned_by_idx").on(t.assignedBy),
     index("event_admin_assignments_revoked_idx").on(t.revokedAt),
+    pgPolicy("event_admin_assignments_tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    }),
   ],
 );
 

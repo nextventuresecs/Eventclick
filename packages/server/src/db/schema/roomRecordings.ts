@@ -37,6 +37,13 @@ export const roomRecordings = pgTable(
     index("room_recordings_org_idx").on(t.organizationId),
     index("room_recordings_status_idx").on(t.status),
     index("room_recordings_egress_idx").on(t.egressId),
+    pgPolicy("room_recordings_tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    }),
   ],
 );
 

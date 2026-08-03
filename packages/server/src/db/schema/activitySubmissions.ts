@@ -30,6 +30,13 @@ export const activitySubmissions = pgTable(
     index("activity_submissions_room_idx").on(t.roomId),
     index("activity_submissions_org_idx").on(t.organizationId),
     index("activity_submissions_activity_idx").on(t.activityId),
+    pgPolicy("activity_submissions_tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    }),
   ],
 );
 

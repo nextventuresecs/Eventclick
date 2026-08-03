@@ -22,6 +22,18 @@ export const bugReports = pgTable(
   (t) => [
     index("bug_reports_user_idx").on(t.userId),
     index("bug_reports_org_idx").on(t.organizationId),
+    pgPolicy("bug_reports_tenant_isolation", {
+      as: "permissive",
+      for: "select",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid OR ${t.organizationId} IS NULL`,
+    }),
+    pgPolicy("bug_reports_insert_new", {
+      as: "permissive",
+      for: "insert",
+      to: "app_user",
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid OR ${t.organizationId} IS NULL`,
+    }),
   ],
 );
 
