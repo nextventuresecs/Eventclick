@@ -49,20 +49,20 @@ async function waitForServer(url: string, retries = 60, delayMs = 1000) {
     try {
       const res = await fetch(url);
       if (res.ok) {
-        console.log("[globalSetup] server is ready");
+        console.log(`[globalSetup] server is ready`);
         return;
       }
     } catch {
       // ignore
     }
-    await new Promise(r => setTimeout(r, delayMs));
+    await new Promise((r) => setTimeout(r, delayMs));
   }
   throw new Error(`[globalSetup] server at ${url} failed to become ready`);
 }
 
 export default async function globalSetup() {
   console.log("[globalSetup] starting");
-  
+
   await waitForServer(`${API_BASE}/api/v1/health`);
 
   if (!DATABASE_URL) {
@@ -82,6 +82,7 @@ export default async function globalSetup() {
     await redisClient.flushAll();
 
     await client.query("BEGIN");
+    console.log("[globalSetup] truncate transaction started");
     const result = await client.query(`
       SELECT tablename
       FROM pg_tables
@@ -118,7 +119,7 @@ export default async function globalSetup() {
        SELECT id, $1, $2, NOW(), NOW() FROM users WHERE email = $3`,
       [orgId, "admin", adminEmail]
     );
-    
+
     console.log("[globalSetup] creating volunteer user");
     await createUserInDb(client, volunteerEmail, volunteerPassword!, "E2E Volunteer", "volunteer", orgId);
     await client.query("COMMIT");

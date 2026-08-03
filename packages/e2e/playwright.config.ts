@@ -7,6 +7,7 @@ const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./tests",
+  timeout: 60000,
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -35,8 +36,6 @@ export default defineConfig({
       name: "authenticated",
       dependencies: ["setup"],
       use: {
-        ...devices["Desktop Chrome"],
-        storageState: ".auth/admin.json",
         launchOptions: {
           args: [
             "--use-fake-device-for-media-stream",

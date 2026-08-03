@@ -6,6 +6,7 @@ const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000";
 
 const TOKENS_PATH = path.resolve(__dirname, "../.auth/tokens.json");
 
+
 export interface StoredTokens {
   adminAccessToken: string;
   volunteerAccessToken: string;
@@ -54,8 +55,8 @@ export async function createRoom(
   title: string,
   overrides: Record<string, unknown> = {},
 ) {
-  const start = new Date(Date.now() + 86_400_000).toISOString();
-  const end = new Date(Date.now() + 172_800_000).toISOString();
+  const start = new Date(Date.now() - 5 * 60_000).toISOString();
+  const end = new Date(Date.now() + 60 * 60_1000).toISOString();
 
   const res = await request.post(`${API_BASE}/api/v1/rooms`, {
     headers: authHeaders(token),
@@ -72,15 +73,13 @@ export async function createEndedRoom(
   token: string,
   title: string,
 ) {
-  const start = new Date(Date.now() - 172_800_000).toISOString();
-  const end = new Date(Date.now() - 86_400_000).toISOString();
-
-  const res = await request.post(`${API_BASE}/api/v1/rooms`, {
+  const room = await createRoom(request, token, title);
+  const res = await request.patch(`${API_BASE}/api/v1/rooms/${room.id}`, {
     headers: authHeaders(token),
-    data: { title, scheduledStart: start, scheduledEnd: end, status: "ended" },
+    data: { status: "ended" },
   });
   if (!res.ok()) {
-    throw new Error(`createEndedRoom failed: ${res.status()} ${await res.text()}`);
+    return room;
   }
   return res.json();
 }

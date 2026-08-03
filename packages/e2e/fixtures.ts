@@ -1,30 +1,67 @@
-import { test as base, type APIRequestContext } from "@playwright/test";
+import { test as base, type Page } from "@playwright/test";
 import { resetDb } from "./utils/db";
-import { loadTokens, type StoredTokens } from "./utils/api-helpers";
+import { loginUser } from "./utils/api-helpers";
+
+const adminEmail = process.env.PLAYWRIGHT_ADMIN_EMAIL || "admin@test.com";
+const adminPassword = process.env.PLAYWRIGHT_ADMIN_PASSWORD!;
+const volunteerEmail = process.env.PLAYWRIGHT_VOLUNTEER_EMAIL || "volunteer@test.com";
+const volunteerPassword = process.env.PLAYWRIGHT_VOLUNTEER_PASSWORD!;
+const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
+const cookieDomain = new URL(BASE_URL).hostname;
+
+type Options = {
+  role: "admin" | "volunteer" | "none";
+};
 
 type Fixtures = {
   dbClean: void;
-  tokens: StoredTokens;
   adminToken: string;
   volunteerToken: string;
 };
 
-export const test = base.extend<Fixtures>({
+export const test = base.extend<Options & Fixtures>({
+  role: ["admin", { option: true }],
+
   dbClean: [async ({}, use) => {
     await resetDb();
     await use();
   }, {}],
 
-  tokens: async ({}, use) => {
-    await use(loadTokens());
+  page: async ({ page, request, role }, use) => {
+    if (role !== "none") {
+      const email = role === "volunteer" ? volunteerEmail : adminEmail;
+      const password = role === "volunteer" ? volunteerPassword : adminPassword;
+
+      if (password) {
+        // Issue fresh session per test to allow independent Refresh Token Rotation
+        const { refreshToken } = await loginUser(request, email, password);
+        if (refreshToken) {
+          await page.context().addCookies([
+            {
+              name: "Eventclick_rt",
+              value: refreshToken,
+              domain: cookieDomain,
+              path: "/",
+              httpOnly: true,
+              sameSite: "Lax",
+            },
+          ]);
+        }
+      }
+    }
+
+    await use(page);
+    await page.goto("about:blank").catch(() => {});
   },
 
-  adminToken: async ({ tokens }, use) => {
-    await use(tokens.adminAccessToken);
+  adminToken: async ({ request }, use) => {
+    const { accessToken } = await loginUser(request, adminEmail, adminPassword);
+    await use(accessToken);
   },
 
-  volunteerToken: async ({ tokens }, use) => {
-    await use(tokens.volunteerAccessToken);
+  volunteerToken: async ({ request }, use) => {
+    const { accessToken } = await loginUser(request, volunteerEmail, volunteerPassword);
+    await use(accessToken);
   },
 });
 
