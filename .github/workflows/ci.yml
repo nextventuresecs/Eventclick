@@ -70,7 +70,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U test -d eventclick_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -146,7 +146,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U test -d eventclick_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -158,19 +158,6 @@ jobs:
         image: gotenberg/gotenberg:8
         ports:
           - 8686:3000
-      minio:
-        image: bitnami/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-          MINIO_DEFAULT_BUCKETS: eventclick-test
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd "curl -sf http://localhost:9000/minio/health/live || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -201,6 +188,26 @@ jobs:
 
       - name: Initialize Database Roles
         run: PGPASSWORD=test psql -U test -h localhost -p 5432 -d eventclick_test -v ON_ERROR_STOP=1 -f scripts/init-db.sql
+
+      - name: Start MinIO S3 Container
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
+          
+          echo "Waiting for MinIO..."
+          for i in {1..30}; do
+            if curl -sf http://localhost:9000/minio/health/live; then
+              echo "MinIO is ready."
+              break
+            fi
+            sleep 1
+          done
+          
+          docker exec minio mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker exec minio mc mb --ignore-existing local/eventclick-test
+          echo "MinIO test bucket ready."
 
       - name: Run Database Migrations
         run: npm run db:migrate --workspace=server
