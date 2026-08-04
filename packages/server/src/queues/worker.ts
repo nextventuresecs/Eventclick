@@ -68,17 +68,17 @@ async function startVisibilityHeartbeat(
 }
 
 export async function startSqsWorker(): Promise<void> {
-  if (!env.SQS_QUEUE_URL) {
-    logger.info("SQS_QUEUE_URL not provided, worker will not start");
+  if (!env.SQS_PDF_QUEUE_URL) {
+    logger.info("SQS_PDF_QUEUE_URL not provided, worker will not start");
     return;
   }
 
-  logger.info({ queue: env.SQS_QUEUE_URL }, "Starting SQS worker loop");
+  logger.info({ queue: env.SQS_PDF_QUEUE_URL }, "Starting SQS worker loop");
 
   while (true) {
     try {
       const receiveCmd = new ReceiveMessageCommand({
-        QueueUrl: env.SQS_QUEUE_URL,
+        QueueUrl: env.SQS_PDF_QUEUE_URL,
         MaxNumberOfMessages: MAX_MESSAGES,
         WaitTimeSeconds: MAX_RECEIVE_WAIT,
         VisibilityTimeout: VISIBILITY_TIMEOUT_SECONDS,
@@ -111,79 +111,81 @@ async function processMessage(msg: { Body?: string; ReceiptHandle?: string; Mess
     if (payload.type === "generate_pdf") {
       await processPdfJob(payload, msg.ReceiptHandle);
     } else {
-      logger.warn({ messageId: msg.MessageId, payload }, "Unknown SQS message type");
+      logger.warn({ messageId: msg.MessageId, payload, event: "sqs.unknown_message_type" }, "Unknown SQS message type");
+      await deleteMessage(msg.ReceiptHandle);
+      return;
     }
 
     await deleteMessage(msg.ReceiptHandle);
   } catch (err) {
-    logger.error({ err, messageId: msg.MessageId }, "Failed to process SQS message");
+    logger.error({ err, messageId: msg.MessageId, event: "sqs.process_failed" }, "Failed to process SQS message");
   }
 }
 
 async function processPdfJob(payload: any, receiptHandle: string): Promise<void> {
   const { roomId, orgId, userId, jobId: payloadJobId } = payload;
-  const queueUrl = env.SQS_QUEUE_URL;
+  const queueUrl = env.SQS_PDF_QUEUE_URL;
 
-  // Use the stable jobId from the payload rather than the ephemeral receipt handle
   const jobId = payloadJobId ?? receiptHandle;
   const startedAt = Date.now();
+  const aborted = { aborted: false };
 
-  // 1. Idempotency
-  const [existing] = await db
-    .select()
-    .from(pdfJobs)
-    .where(eq(pdfJobs.jobId, jobId))
-    .limit(1);
-
-  if (existing) {
-    if (existing.status === "completed") {
-      logger.info({ jobId, roomId }, "PDF job already completed, skipping");
-      return;
-    }
-
-    if (existing.status === "failed") {
-      const attempts = existing.attempts || 0;
-      if (attempts >= (existing.maxAttempts || 3)) {
-        logger.warn({ jobId, roomId, attempts }, "PDF job exceeded max attempts");
-        return;
-      }
-      await db
-        .update(pdfJobs)
-        .set({ status: "pending", attempts: attempts + 1, updatedAt: new Date() })
-        .where(eq(pdfJobs.jobId, jobId));
-    }
-
-    if (existing.status === "processing") {
-      logger.info({ jobId, roomId }, "PDF job already being processed, skipping duplicate");
-      return;
-    }
-  } else {
-    await db.insert(pdfJobs).values({
-      jobId,
-      roomId,
-      orgId,
-      userId,
-      status: "pending",
-      attempts: 1,
-      maxAttempts: 3,
-    });
-  }
-
-  // 2. Mark processing
-  await db
-    .update(pdfJobs)
-    .set({ status: "processing", updatedAt: new Date() })
-    .where(eq(pdfJobs.jobId, jobId));
-
-  const heartbeatCleanup = await startVisibilityHeartbeat(queueUrl!, receiptHandle, { aborted: false });
+  const heartbeatCleanup = await startVisibilityHeartbeat(queueUrl!, receiptHandle, aborted);
 
   try {
+    // 1. Idempotency
+    const [existing] = await db
+      .select()
+      .from(pdfJobs)
+      .where(eq(pdfJobs.jobId, jobId))
+      .limit(1);
+
+    if (existing) {
+      if (existing.status === "completed") {
+        logger.info({ jobId, roomId, event: "sqs.pdf_already_completed" }, "PDF job already completed, skipping");
+        return;
+      }
+
+      if (existing.status === "failed") {
+        const attempts = existing.attempts || 0;
+        if (attempts >= (existing.maxAttempts || 3)) {
+          logger.warn({ jobId, roomId, attempts, event: "sqs.pdf_max_attempts_exceeded" }, "PDF job exceeded max attempts");
+          return;
+        }
+        await db
+          .update(pdfJobs)
+          .set({ status: "pending", attempts: attempts + 1, updatedAt: new Date() })
+          .where(eq(pdfJobs.jobId, jobId));
+      }
+
+      if (existing.status === "processing") {
+        logger.info({ jobId, roomId, event: "sqs.pdf_already_processing" }, "PDF job already being processed, skipping duplicate");
+        return;
+      }
+    } else {
+      await db.insert(pdfJobs).values({
+        jobId,
+        roomId,
+        orgId,
+        userId,
+        status: "pending",
+        attempts: 1,
+        maxAttempts: 3,
+      });
+    }
+
+    // 2. Mark processing
+    await db
+      .update(pdfJobs)
+      .set({ status: "processing", updatedAt: new Date() })
+      .where(eq(pdfJobs.jobId, jobId));
+
     const user = await findUserById(userId);
     if (!user) {
       throw new Error(`User not found for PDF job: ${userId}`);
     }
 
-    logger.info({ roomId, orgId, userId, jobId }, "Processing generate_pdf job");
+    logger.info({ roomId, orgId, userId, jobId, event: "sqs.pdf_started" }, "Processing generate_pdf job");
 
     // 3. Generate PDF with timeout
     const pdfBuffer = await Promise.race([
@@ -193,7 +195,7 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
       ),
     ]);
     logger.info(
-      { roomId, size: pdfBuffer.length, jobId, durationMs: Date.now() - startedAt },
+      { roomId, size: pdfBuffer.length, jobId, durationMs: Date.now() - startedAt, event: "sqs.pdf_generated" },
       "PDF generated successfully",
     );
 
@@ -212,7 +214,7 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
     );
 
     const s3Url = buildPublicUrl(s3Key);
-    logger.info({ s3Key, s3Url, jobId, durationMs: Date.now() - startedAt }, "PDF uploaded to S3");
+    logger.info({ s3Key, s3Url, jobId, durationMs: Date.now() - startedAt, event: "sqs.pdf_uploaded" }, "PDF uploaded to S3");
 
     // 5. Mark completed
     await db
@@ -228,12 +230,12 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
 
     // 6. Deliver to user (non-blocking side effects)
     deliverReportToUser(userId, orgId, roomId, jobId, s3Url, user).catch((deliverErr) => {
-      logger.error({ err: deliverErr, jobId }, "Failed to deliver report to user, but PDF is ready");
+      logger.error({ err: deliverErr, jobId, event: "sqs.pdf_delivery_failed" }, "Failed to deliver report to user, but PDF is ready");
     });
 
-    logger.info({ jobId, durationMs: Date.now() - startedAt }, "PDF job completed successfully");
+    logger.info({ jobId, durationMs: Date.now() - startedAt, event: "sqs.pdf_completed" }, "PDF job completed successfully");
   } catch (err) {
-    logger.error({ err, roomId, jobId, durationMs: Date.now() - startedAt }, "Error processing PDF job");
+    logger.error({ err, roomId, jobId, durationMs: Date.now() - startedAt, event: "sqs.pdf_failed" }, "Error processing PDF job");
 
     const [job] = await db
       .select()
@@ -270,6 +272,7 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
 
     throw err;
   } finally {
+    aborted.aborted = true;
     heartbeatCleanup();
   }
 }
@@ -304,7 +307,7 @@ async function deleteMessage(receiptHandle: string): Promise<void> {
   try {
     await sqsClient.send(
       new DeleteMessageCommand({
-        QueueUrl: env.SQS_QUEUE_URL,
+        QueueUrl: env.SQS_PDF_QUEUE_URL,
         ReceiptHandle: receiptHandle,
       }),
     );

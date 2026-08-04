@@ -69,14 +69,12 @@ export interface PdfJobPayload {
 }
 
 export async function enqueuePdfJob(payload: PdfJobPayload): Promise<{ jobId: string }> {
-  const queueUrl = env.SQS_QUEUE_URL;
+  const queueUrl = env.SQS_PDF_QUEUE_URL;
   const jobId = `pdf_${crypto.randomUUID()}`;
 
   if (!queueUrl) {
-    logger.warn(
-      { payload, event: "sqs.fallback_pdf" },
-      "SQS Queue URL not configured. PDF jobs will not be processed locally unless worker is running."
-    );
+    logger.warn({ event: "sqs.pdf_queue_missing" }, 
+      "SQS_PDF_QUEUE_URL not configured, PDF job will not be queued");
     return { jobId };
   }
 
