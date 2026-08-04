@@ -36,7 +36,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else if (
-        env.NODE_ENV === "development" &&
+        (env.NODE_ENV === "development" || env.NODE_ENV === "test") &&
         (origin.includes("localhost") || origin.includes("127.0.0.1"))
       ) {
         callback(null, true);
@@ -110,6 +110,7 @@ app.use(
     limit: env.RATE_LIMIT_MAX,
     standardHeaders: "draft-7",
     legacyHeaders: false,
+    skip: () => env.NODE_ENV === "test" || process.env.NODE_ENV === "test",
     store: new RedisStore({
       sendCommand: async (...args: string[]) => {
         if (!redisClient.isOpen) {

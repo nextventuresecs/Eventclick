@@ -41,6 +41,13 @@ export const eventRooms = pgTable(
     index("event_rooms_scheduled_start_idx").on(t.scheduledStart),
     index("event_rooms_org_status_idx").on(t.organizationId, t.status),
     index("event_rooms_org_created_at_idx").on(t.organizationId, t.createdAt),
+    pgPolicy("event_rooms_tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    }),
   ],
 );
 

@@ -1,10 +1,8 @@
-import { chromium } from "@playwright/test";
 import { Client } from "pg";
 import argon2 from "argon2";
 import { createClient } from "redis";
 
 const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000";
-const BASE_URL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||
@@ -45,28 +43,6 @@ async function createUserInDb(
   }
 }
 
-async function loginAndGetToken(email: string, password: string): Promise<{ accessToken: string | null; refreshToken: string | null }> {
-  const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Origin": BASE_URL,
-      "Referer": BASE_URL,
-    },
-    body: JSON.stringify({ email, password }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`[globalSetup] login failed for ${email}: ${res.status} ${body}`);
-  }
-  const body = await res.json();
-  const setCookie = res.headers.get("set-cookie") || "";
-  const refreshMatch = setCookie.match(/Eventclick_rt=([^;]+)/);
-  const refreshToken = refreshMatch ? refreshMatch[1] : null;
-  return { accessToken: body.accessToken, refreshToken };
-}
-
 async function waitForServer(url: string, retries = 60, delayMs = 1000) {
   console.log(`[globalSetup] waiting for server at ${url}`);
   for (let i = 0; i < retries; i++) {
@@ -76,17 +52,17 @@ async function waitForServer(url: string, retries = 60, delayMs = 1000) {
         console.log(`[globalSetup] server is ready`);
         return;
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
-    await new Promise(r => setTimeout(r, delayMs));
+    await new Promise((r) => setTimeout(r, delayMs));
   }
   throw new Error(`[globalSetup] server at ${url} failed to become ready`);
 }
 
 export default async function globalSetup() {
   console.log("[globalSetup] starting");
-  
+
   await waitForServer(`${API_BASE}/api/v1/health`);
 
   if (!DATABASE_URL) {
@@ -104,7 +80,7 @@ export default async function globalSetup() {
   try {
     console.log("[globalSetup] flushing redis cache");
     await redisClient.flushAll();
-    // 1. Truncate Tables
+
     await client.query("BEGIN");
     console.log("[globalSetup] truncate transaction started");
     const result = await client.query(`
@@ -121,7 +97,6 @@ export default async function globalSetup() {
     }
     await client.query("COMMIT");
 
-    // 2. Seed Data
     console.log("[globalSetup] creating admin user");
     await client.query("BEGIN");
     await createUserInDb(client, adminEmail, adminPassword!, "E2E Admin", "admin", null);
@@ -144,7 +119,7 @@ export default async function globalSetup() {
        SELECT id, $1, $2, NOW(), NOW() FROM users WHERE email = $3`,
       [orgId, "admin", adminEmail]
     );
-    
+
     console.log("[globalSetup] creating volunteer user");
     await createUserInDb(client, volunteerEmail, volunteerPassword!, "E2E Volunteer", "volunteer", orgId);
     await client.query("COMMIT");
@@ -157,49 +132,5 @@ export default async function globalSetup() {
     await redisClient.disconnect();
   }
 
-  const cookieDomain = new URL(BASE_URL).hostname;
-
-  // Admin Login
-  console.log("[globalSetup] logging in admin");
-  const { refreshToken: adminRefreshToken } = await loginAndGetToken(adminEmail, adminPassword!);
-  
-  console.log("[globalSetup] launching browser");
-  const browser = await chromium.launch();
-  const context = await browser.newContext({ baseURL: BASE_URL });
-
-  if (adminRefreshToken) {
-    await context.addCookies([{
-      name: "Eventclick_rt",
-      value: adminRefreshToken,
-      domain: cookieDomain,
-      path: "/api/v1/auth",
-      httpOnly: true,
-      sameSite: "Lax",
-    } as any]);
-  }
-
-  await context.storageState({ path: ".auth/admin.json" });
-
-  // Volunteer Login
-  console.log("[globalSetup] logging in volunteer");
-  const { refreshToken: volunteerRefreshToken } = await loginAndGetToken(volunteerEmail, volunteerPassword!);
-  const volunteerContext = await browser.newContext({ baseURL: BASE_URL });
-
-  if (volunteerRefreshToken) {
-    await volunteerContext.addCookies([{
-      name: "Eventclick_rt",
-      value: volunteerRefreshToken,
-      domain: cookieDomain,
-      path: "/api/v1/auth",
-      httpOnly: true,
-      sameSite: "Lax",
-    } as any]);
-  }
-
-  await volunteerContext.storageState({ path: ".auth/volunteer.json" });
-
-  console.log("[globalSetup] closing browser");
-  await browser.close();
   console.log("[globalSetup] complete");
 }
-

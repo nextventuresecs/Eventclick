@@ -8,6 +8,13 @@
       "when": 1785620719331,
       "tag": "0000_slow_firestar",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785786078217,
+      "tag": "0001_clumsy_bloodstrike",
+      "breakpoints": true
     }
   ]
 }

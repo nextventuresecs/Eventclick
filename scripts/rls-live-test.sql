@@ -50,11 +50,13 @@ SET app.current_tenant = '11111111-1111-1111-1111-111111111111';
 SELECT id, title, organization_id FROM event_rooms WHERE deleted_at IS NULL AND organization_id = '22222222-2222-2222-2222-222222222222';
 
 \echo '=== Step 11: Test activity_submissions ==='
-INSERT INTO activity_submissions (id, event_room_id, activity_id, user_id, organization_id, submitted_at, data) VALUES
-  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'activity-1', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', NOW(), '{}'),
-  ('ffffffff-ffff-ffff-ffff-ffffffffff', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'activity-2', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222', NOW(), '{}')
+RESET ROLE;
+INSERT INTO activity_submissions (id, room_id, organization_id, activity_id) VALUES
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'cccccccc-cccc-cccc-cccc-cccccccccccc', '11111111-1111-1111-1111-111111111111', 'activity-1'),
+  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'dddddddd-dddd-dddd-dddd-dddddddddddd', '22222222-2222-2222-2222-222222222222', 'activity-2')
 ON CONFLICT (id) DO NOTHING;
 
+SET ROLE app_user;
 SET app.current_tenant = '11111111-1111-1111-1111-111111111111';
 SELECT id, organization_id, count(*) OVER() AS total_rows FROM activity_submissions ORDER BY id;
 
@@ -67,7 +69,7 @@ SELECT current_setting('app.current_tenant', true) AS current_tenant;
 
 \echo '=== Step 13: Test audit_logs ==='
 INSERT INTO audit_logs (id, organization_id, actor_user_id, action, resource_type, resource_id, old_values, new_values, ip_address, user_agent) VALUES
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa1', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'user.login', 'user', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '{}', '{}', 'localhost', 'test'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', '11111111-1111-1111-1111-111111111111', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'user.login', 'user', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '{}', '{}', 'localhost', 'test'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', '22222222-2222-2222-2222-222222222222', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'user.login', 'user', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '{}', '{}', 'localhost', 'test')
 ON CONFLICT (id) DO NOTHING;
 
@@ -80,8 +82,8 @@ SELECT id, organization_id, count(*) OVER() AS total_rows FROM audit_logs ORDER 
 
 \echo '=== Step 14: Cleanup test data ==='
 RESET ROLE;
-DELETE FROM audit_logs WHERE id IN ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa1', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1');
-DELETE FROM activity_submissions WHERE id IN ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'ffffffff-ffff-ffff-ffff-ffffffffff');
+DELETE FROM audit_logs WHERE id IN ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1');
+DELETE FROM activity_submissions WHERE id IN ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'ffffffff-ffff-ffff-ffff-ffffffffffff');
 DELETE FROM event_rooms WHERE id IN ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'dddddddd-dddd-dddd-dddd-dddddddddddd');
 DELETE FROM users WHERE id IN ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
 DELETE FROM organizations WHERE id IN ('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');

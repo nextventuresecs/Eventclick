@@ -32,6 +32,13 @@ export const formDefinitions = pgTable(
     index("form_definitions_room_idx").on(t.roomId),
     index("form_definitions_org_idx").on(t.organizationId),
     uniqueIndex("form_definitions_room_version_unique").on(t.roomId, t.version),
+    pgPolicy("form_definitions_tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    }),
   ],
 );
 

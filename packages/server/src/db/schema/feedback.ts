@@ -18,6 +18,18 @@ export const feedback = pgTable(
   (t) => [
     index("feedback_user_idx").on(t.userId),
     index("feedback_org_idx").on(t.organizationId),
+    pgPolicy("feedback_tenant_isolation", {
+      as: "permissive",
+      for: "select",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid OR ${t.organizationId} IS NULL`,
+    }),
+    pgPolicy("feedback_insert_new", {
+      as: "permissive",
+      for: "insert",
+      to: "app_user",
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid OR ${t.organizationId} IS NULL`,
+    }),
   ],
 );
 

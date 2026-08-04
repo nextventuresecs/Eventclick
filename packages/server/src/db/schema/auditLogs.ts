@@ -16,7 +16,20 @@ export const auditLogs = pgTable("audit_logs", {
   ipAddress: varchar("ip_address", { length: 64 }),
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  pgPolicy("audit_logs_tenant_isolation", {
+    as: "permissive",
+    for: "select",
+    to: "app_user",
+    using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+  }),
+  pgPolicy("audit_logs_insert_only", {
+    as: "permissive",
+    for: "insert",
+    to: "app_user",
+    withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+  }),
+]);
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;

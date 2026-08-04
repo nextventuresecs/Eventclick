@@ -17,7 +17,7 @@ export class LoginPage {
 
   async goto(baseURL: string) {
     await this.page.goto(`${baseURL}/login`);
-    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForLoadState("load");
   }
 
   async login(email: string, password: string) {

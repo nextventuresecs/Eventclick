@@ -20,6 +20,13 @@ export const orgMembers = pgTable(
     uniqueIndex("org_members_user_org_uniq").on(t.userId, t.organizationId),
     index("org_members_org_idx").on(t.organizationId),
     index("org_members_invited_by_idx").on(t.invitedBy),
+    pgPolicy("org_members_tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    }),
   ],
 );
 

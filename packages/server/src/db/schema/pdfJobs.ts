@@ -30,6 +30,13 @@ export const pdfJobs = pgTable("pdf_jobs", {
   index("pdf_jobs_room_id_idx").on(t.roomId),
   index("pdf_jobs_user_id_idx").on(t.userId),
   index("pdf_jobs_status_idx").on(t.status),
+  pgPolicy("pdf_jobs_tenant_isolation", {
+    as: "permissive",
+    for: "all",
+    to: "app_user",
+    using: sql`${t.orgId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    withCheck: sql`${t.orgId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+  }),
 ]);
 
 export type PdfJobRow = typeof pdfJobs.$inferSelect;

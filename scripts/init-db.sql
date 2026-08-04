@@ -32,9 +32,13 @@ BEGIN
 END
 $$;
 
--- Default privileges for app_user
+-- Default privileges for app_user (applies to tables created by migrations)
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_user;
+
+-- Auth tables are locked from app_user via REVOKE statements in migration
+-- 0001_clumsy_bloodstrike.sql (tables don't exist at this point — they're
+-- created by migrations which run after this script)
 
 -- Confirm DB is ready
 SELECT 'Eventclick_db database initialized' AS status;

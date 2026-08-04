@@ -7,7 +7,8 @@ const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000";
 
 export default defineConfig({
   testDir: "./tests",
-  fullyParallel: true,
+  timeout: 60000,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
@@ -19,7 +20,6 @@ export default defineConfig({
   globalTeardown: "./utils/global-teardown.ts",
   use: {
     baseURL,
-    storageState: ".auth/admin.json",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
@@ -29,9 +29,13 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "chromium",
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
+      name: "authenticated",
+      dependencies: ["setup"],
       use: {
-        ...devices["Desktop Chrome"],
         launchOptions: {
           args: [
             "--use-fake-device-for-media-stream",
@@ -39,13 +43,23 @@ export default defineConfig({
           ],
         },
       },
+      testIgnore: /auth\.setup\.ts/,
     },
   ],
-  webServer: {
-        command: "npm run dev",
-        cwd: "../../",
-        url: `${process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000"}/`,
-        reuseExistingServer: !process.env.CI,
-        timeout: 120 * 1000,
-      },
+  webServer: [
+    {
+      command: "npm run dev --workspace=server",
+      cwd: "../../",
+      url: `${process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000"}/api/v1/health`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+    {
+      command: "npm run dev --workspace=client",
+      cwd: "../../",
+      url: `${process.env.PLAYWRIGHT_TEST_BASE_URL || "http://localhost:3000"}/`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120 * 1000,
+    },
+  ],
 });

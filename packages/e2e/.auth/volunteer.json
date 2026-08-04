@@ -2,9 +2,9 @@
   "cookies": [
     {
       "name": "Eventclick_rt",
-      "value": "byUncJZkrYQ6sGHconaR7GtIeZYBYuAmYyEZABmFeL2YetTgKeabDNsoO_GwHWTg",
+      "value": "ikYjHFATjIsd_3Hi7QN0fHJhlt5kPwM6tn-8PqfS4PFBnhZ3m5NfT355BuqB5u_m",
       "domain": "localhost",
-      "path": "/api/v1/auth",
+      "path": "/",
       "expires": -1,
       "httpOnly": true,
       "secure": false,

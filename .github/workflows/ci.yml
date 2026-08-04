@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main, develop]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-audit:
     name: Lint and Security Audit
@@ -35,9 +42,27 @@ jobs:
     name: Unit and Integration Tests
     runs-on: ubuntu-latest
     needs: lint-and-audit
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+      APP_DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+      AUTH_DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+      REDIS_URL: redis://localhost:6379/1
+      JWT_SECRET: test-jwt-secret-at-least-16
+      JWT_REFRESH_SECRET: test-jwt-refresh-secret-at-least-16
+      LIVEKIT_URL: ws://localhost:7880
+      LIVEKIT_PUBLIC_URL: ws://localhost:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: test-secret-at-least-16-chars
+      S3_ENDPOINT: http://localhost:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: eventclick-test
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_FORCE_PATH_STYLE: "true"
     services:
       postgres:
-        image: postgres:16
+        image: postgis/postgis:16-3.4-alpine
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -45,7 +70,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U test -d eventclick_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -63,29 +88,57 @@ jobs:
 
       - run: npm ci
 
+      - name: Build Shared Package
+        run: npm run build --workspace=@application/shared
+
       - run: npm run test --workspace=@application/shared
       - run: npm run test --workspace=client
       
+      - name: Initialize Database Roles
+        run: PGPASSWORD=test psql -U test -h localhost -p 5432 -d eventclick_test -v ON_ERROR_STOP=1 -f scripts/init-db.sql
+
       - name: Run Database Migrations
         run: npm run db:migrate --workspace=server
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
       
       - name: Verify RLS Policies
         run: PGPASSWORD=test psql -U test -h localhost -p 5432 -d eventclick_test -v ON_ERROR_STOP=1 -f scripts/rls-live-test.sql
       
       - run: npm run test --workspace=server
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
-          REDIS_URL: redis://localhost:6379/1
 
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: lint-and-audit
+    env:
+      NODE_ENV: test
+      PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
+      PLAYWRIGHT_API_BASE_URL: http://localhost:4000
+      PLAYWRIGHT_ADMIN_PASSWORD: "e2e_admin_password_123!"
+      PLAYWRIGHT_VOLUNTEER_PASSWORD: "e2e_volunteer_password_123!"
+      DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+      APP_DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+      AUTH_DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
+      REDIS_URL: redis://localhost:6379/1
+      GOTENBERG_URL: http://localhost:8686
+      JWT_SECRET: test-jwt-secret-at-least-16
+      JWT_REFRESH_SECRET: test-jwt-refresh-secret-at-least-16
+      LIVEKIT_URL: ws://localhost:7880
+      LIVEKIT_PUBLIC_URL: ws://localhost:7880
+      LIVEKIT_API_KEY: devkey
+      LIVEKIT_API_SECRET: test-secret-at-least-16-chars
+      S3_ENDPOINT: http://localhost:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: eventclick-test
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_FORCE_PATH_STYLE: "true"
+      CORS_ORIGIN: http://localhost:3000
+      APP_URL: http://localhost:3000
+      CI: "true"
     services:
       postgres:
-        image: postgres:16
+        image: postgis/postgis:16-3.4-alpine
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
@@ -93,7 +146,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U test -d eventclick_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -101,6 +154,10 @@ jobs:
         image: redis:7
         ports:
           - 6379:6379
+      gotenberg:
+        image: gotenberg/gotenberg:8
+        ports:
+          - 8686:3000
     steps:
       - uses: actions/checkout@v4
 
@@ -111,41 +168,59 @@ jobs:
 
       - run: npm ci
 
-      - run: npx playwright install --with-deps chromium
+      - name: Build Shared Package
+        run: npm run build --workspace=@application/shared
+
+      - name: Cache Playwright Browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright Browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright System Dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Initialize Database Roles
+        run: PGPASSWORD=test psql -U test -h localhost -p 5432 -d eventclick_test -v ON_ERROR_STOP=1 -f scripts/init-db.sql
+
+      - name: Start MinIO S3 Container
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
+          
+          echo "Waiting for MinIO..."
+          for i in {1..30}; do
+            if curl -sf http://localhost:9000/minio/health/live; then
+              echo "MinIO is ready."
+              break
+            fi
+            sleep 1
+          done
+          
+          docker exec minio mc alias set local http://localhost:9000 minioadmin minioadmin
+          docker exec minio mc mb --ignore-existing local/eventclick-test
+          echo "MinIO test bucket ready."
 
       - name: Run Database Migrations
         run: npm run db:migrate --workspace=server
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
 
-      - run: npm run test --workspace=e2e
-        env:
-          PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
-          PLAYWRIGHT_API_BASE_URL: http://localhost:4000
-          PLAYWRIGHT_ADMIN_PASSWORD: "e2e_admin_password_123!"
-          PLAYWRIGHT_VOLUNTEER_PASSWORD: "e2e_volunteer_password_123!"
-          DATABASE_URL: postgresql://test:test@localhost:5432/eventclick_test
-          APP_DATABASE_URL: postgresql://app_user_login:local_dev_app@localhost:5432/eventclick_test
-          AUTH_DATABASE_URL: postgresql://auth_svc_role:local_dev_auth@localhost:5432/eventclick_test
-          REDIS_URL: redis://localhost:6379/1
-          JWT_SECRET: test-jwt-secret-at-least-16
-          JWT_REFRESH_SECRET: test-jwt-refresh-secret-at-least-16
-          LIVEKIT_URL: ws://localhost:7880
-          LIVEKIT_PUBLIC_URL: ws://localhost:7880
-          LIVEKIT_API_KEY: devkey
-          LIVEKIT_API_SECRET: test-secret-at-least-16-chars
-          S3_ENDPOINT: http://localhost:9000
-          S3_PUBLIC_ENDPOINT: http://localhost:9000
-          S3_REGION: us-east-1
-          S3_BUCKET: eventclick-test
-          S3_ACCESS_KEY: minioadmin
-          S3_SECRET_KEY: minioadmin
-          S3_FORCE_PATH_STYLE: "true"
-          
+      - name: Run Playwright E2E Tests
+        run: npm run test --workspace=e2e
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Test Report Artifacts
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
-          path: packages/e2e/playwright-report/
+          path: |
+            packages/e2e/playwright-report/
+            packages/e2e/test-results/
           retention-days: 14

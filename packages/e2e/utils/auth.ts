@@ -5,7 +5,7 @@ export async function getTokenFromStorageState(storageStatePath: string): Promis
   try {
     const content = await readFile(storageStatePath, "utf-8");
     const state = JSON.parse(content);
-    const cookie = state.cookies?.find((c: any) => c.name === "Eventclick_at");
+    const cookie = state.cookies?.find((c: any) => c.name === "Eventclick_rt");
     return cookie?.value || null;
   } catch {
     return null;

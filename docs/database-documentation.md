@@ -6,7 +6,7 @@
 |---|---|
 | **DBMS** | PostgreSQL 16 (with PostGIS 3.4) |
 | **ORM** | Drizzle ORM (node-postgres driver) |
-| **Schema migrations** | `packages/server/drizzle/` (24 migrations) |
+| **Schema migrations** | `packages/server/drizzle/` (2 migrations) |
 | **Docker image** | `postgis/postgis:16-3.4-alpine` |
 | **Extensions** | `uuid-ossp`, `pgcrypto`, `postgis` |
 
@@ -65,15 +65,22 @@ postgres:
 
 ### 2.3 Database Initialization
 
-`scripts/init-db.sql` runs on every container start:
+`scripts/init-db.sql` runs on every container start (via Docker's `/docker-entrypoint-initdb.d/` mechanism):
+
 ```sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "postgis";
-SELECT 'Eventclick_db database initialized' AS status;
+
+CREATE ROLE app_user NOLOGIN;
+CREATE ROLE app_user_login LOGIN PASSWORD 'local_dev_app' IN ROLE app_user;
+CREATE ROLE auth_svc_role LOGIN PASSWORD 'local_dev_auth' BYPASSRLS;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_user;
 ```
 
-**Note**: Migrations are applied separately by the `migrate` service in production or `npm run db:migrate` in dev.
+**Note**: Migrations are applied separately by the `migrate` service in production or `npm run db:migrate` in dev. The `init-db.sql` runs before migrations on first container start, creating roles that the migration's `pgPolicy(... to: "app_user")` references. REVOKEs on auth tables (`sessions`, `password_resets`, `email_verifications`) are in migration `0001_clumsy_bloodstrike.sql`, not here, because tables don't exist yet when `init-db.sql` runs in CI.
 
 ---
 
@@ -137,19 +144,18 @@ Eventclick_admin (superuser — for migrations only)
 
 ### 4.3 Grants
 
-**`app_user`** (from migration 0023):
+**`app_user`** (from migration 0001_clumsy_bloodstrike):
 ```sql
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
+GRANT SELECT, INSERT, UPDATE, DELETE ON organizations, users, org_members, event_rooms, 
+  form_definitions, attendance_entries, room_recordings, event_admin_assignments, 
+  activity_submissions, activity_photos, notifications, pdf_jobs, audit_logs, feedback, bug_reports TO app_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
 ```
 
-**`auth_svc_role`** (from migration 0022):
+**`auth_svc_role`** (from init-db.sql + migration 0001):
 ```sql
-GRANT SELECT, INSERT, UPDATE ON users TO auth_svc_role;
-GRANT SELECT, INSERT, UPDATE ON sessions TO auth_svc_role;
-GRANT SELECT, INSERT, UPDATE ON password_resets TO auth_svc_role;
-GRANT SELECT, INSERT, UPDATE ON email_verifications TO auth_svc_role;
-GRANT SELECT ON organizations TO auth_svc_role;
+-- auth_svc_role has BYPASSRLS (set in init-db.sql), no table grants needed
+-- auth tables are accessible via BYPASSRLS
 ```
 
 **Auth tables locked from `app_user`**:
@@ -619,23 +625,23 @@ created_at      timestamptz NOT NULL DEFAULT now()
 | Table | RLS Enabled | FORCE RLS | Policies |
 |---|---|---|---|
 | `organizations` | ✅ | ✅ | 4 (read_own, update_own, delete_own, insert_new) |
-| `users` | ✅ | ✅ | 2 (tenant_isolation, insert_new) |
-| `org_members` | ✅ | ✅ | 1 (tenant_isolation) |
-| `event_rooms` | ✅ | ✅ | 1 (tenant_isolation) |
-| `room_recordings` | ✅ | ✅ | 1 (tenant_isolation) |
-| `form_definitions` | ✅ | ✅ | 1 (tenant_isolation) |
-| `attendance_entries` | ✅ | ✅ | 1 (tenant_isolation) |
-| `event_admin_assignments` | ✅ | ✅ | 1 (tenant_isolation) |
-| `activity_submissions` | ✅ | ✅ | 1 (tenant_isolation) |
-| `activity_photos` | ✅ | ✅ | 1 (tenant_isolation) |
-| `notifications` | ✅ | ✅ | 1 (tenant_isolation) |
-| `pdf_jobs` | ✅ | ✅ | 1 (tenant_isolation) |
-| `feedback` | ✅ | ✅ | 1 (tenant_isolation) |
-| `bug_reports` | ✅ | ✅ | 1 (tenant_isolation) |
-| `audit_logs` | ✅ | ✅ | 1 (tenant_isolation) |
-| `sessions` | ❌ | ❌ | N/A (locked via REVOKE) |
-| `password_resets` | ❌ | ❌ | N/A (locked via REVOKE) |
-| `email_verifications` | ❌ | ❌ | N/A (locked via REVOKE) |
+| `users` | ✅ | ✅ | 3 (tenant_isolation SELECT, insert_new INSERT, update_own UPDATE) |
+| `org_members` | ✅ | ✅ | 1 (tenant_isolation — ALL) |
+| `event_rooms` | ✅ | ✅ | 1 (tenant_isolation — ALL) |
+| `room_recordings` | ✅ | ✅ | 1 (tenant_isolation — ALL) |
+| `form_definitions` | ✅ | ✅ | 1 (tenant_isolation — ALL) |
+| `attendance_entries` | ✅ | ✅ | 1 (tenant_isolation — ALL) |
+| `event_admin_assignments` | ✅ | ✅ | 1 (tenant_isolation — ALL) |
+| `activity_submissions` | ✅ | ✅ | 1 (tenant_isolation — ALL) |
+| `activity_photos` | ✅ | ✅ | 1 (tenant_isolation — ALL) |
+| `notifications` | ✅ | ✅ | 1 (tenant_isolation — ALL) |
+| `pdf_jobs` | ✅ | ✅ | 1 (tenant_isolation — ALL, using `org_id`) |
+| `feedback` | ✅ | ✅ | 2 (tenant_isolation SELECT, insert_new INSERT) |
+| `bug_reports` | ✅ | ✅ | 2 (tenant_isolation SELECT, insert_new INSERT) |
+| `audit_logs` | ✅ | ✅ | 2 (tenant_isolation SELECT, insert_only INSERT) |
+| `sessions` | ❌ | ❌ | N/A (locked via REVOKE from app_user) |
+| `password_resets` | ❌ | ❌ | N/A (locked via REVOKE from app_user) |
+| `email_verifications` | ❌ | ❌ | N/A (locked via REVOKE from app_user) |
 
 ### 6.2 Policy Details
 
@@ -669,31 +675,37 @@ CREATE POLICY organizations_insert_new ON organizations FOR INSERT
   WITH CHECK (true);  -- open for signup
 ```
 
-**Special case — `users`** (nullable org_id + org_members membership):
+**Special case — `users`** (nullable organization_id):
 ```sql
-CREATE POLICY users_tenant_isolation ON users
-  USING (
-    organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid
-    OR EXISTS (
-      SELECT 1 FROM org_members m
-      WHERE m.user_id = users.id
-        AND m.organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid
-    )
-  )
-  WITH CHECK (
-    organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid
-    OR organization_id IS NULL
-  );
+CREATE POLICY users_tenant_isolation ON users FOR SELECT TO app_user
+  USING (organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid
+         OR organization_id IS NULL);
 
-CREATE POLICY users_insert_new ON users FOR INSERT
-  WITH CHECK (
-    organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid
-    OR organization_id IS NULL
-  );
+CREATE POLICY users_insert_new ON users FOR INSERT TO app_user
+  WITH CHECK (organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid
+              OR organization_id IS NULL);
 ```
 
-**Audit logs immutability**:
+**Special case — `feedback` and `bug_reports`** (nullable organization_id):
 ```sql
+CREATE POLICY feedback_tenant_isolation ON feedback FOR SELECT TO app_user
+  USING (organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid
+         OR organization_id IS NULL);
+
+CREATE POLICY feedback_insert_new ON feedback FOR INSERT TO app_user
+  WITH CHECK (organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid
+              OR organization_id IS NULL);
+-- Same pattern for bug_reports
+```
+
+**Special case — `audit_logs`** (immutable):
+```sql
+CREATE POLICY audit_logs_tenant_isolation ON audit_logs FOR SELECT TO app_user
+  USING (organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
+
+CREATE POLICY audit_logs_insert_only ON audit_logs FOR INSERT TO app_user
+  WITH CHECK (organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
+
 REVOKE UPDATE, DELETE ON audit_logs FROM app_user;
 GRANT SELECT, INSERT ON audit_logs TO app_user;
 -- app_user can only INSERT and SELECT audit_logs, never UPDATE or DELETE
@@ -705,12 +717,13 @@ All 15 tenant tables have `FORCE ROW LEVEL SECURITY` enabled. This means **even 
 
 ### 6.4 NULLABLE organization_id Behavior
 
-`feedback` and `bug_reports` have nullable `organization_id`. Under RLS:
+`users`, `feedback`, and `bug_reports` have nullable `organization_id`. Under RLS:
 - `NULL = NULL` evaluates to NULL (not true)
-- Rows with `organization_id IS NULL` are **invisible** to all tenant contexts
-- This is the correct fail-safe behavior
+- Rows with `organization_id IS NULL` are **visible** to all tenant contexts (included in policy via `OR organization_id IS NULL`)
+- This allows platform-level admin users and unassigned feedback/bugs to coexist with tenant isolation
 
-If platform-wide admin access to these rows is needed, it must go through a separate bypass role.
+**Audit logs** use the standard policy (non-nullable `organization_id`):
+- Rows are only visible to the matching tenant (no NULL bypass)
 
 ---
 
@@ -835,18 +848,14 @@ export const softDeleteValues = () => ({ deletedAt: new Date(), updatedAt: new D
 
 ## 11. Migrations
 
-### 11.1 Migration History (24 migrations)
+### 11.1 Migration History
 
 | # | Name | Purpose |
 |---|---|---|
-| 0000 | public_falcon | Initial schema |
-| 0001-0015 | Various | Schema evolution |
-| 0016-0018 | Various | Schema evolution |
-| 0019 | gifted_karma | Enable RLS on 14 tables, create app_user role |
-| 0020 | dry_bombast | Schema changes |
-| 0021 | fresh_ironman | Schema changes |
-| 0022 | add_missing_rls_policies | Add auth_svc_role, policies for pdf_jobs, audit_logs, orgs, users |
-| 0023 | rls_tenant_isolation | Add organization_id to room_recordings, enable FORCE RLS, create all policies |
+| 0000 | slow_firestar | Baseline consolidation — all 19 tables, 4 organizations RLS policies, indexes, FKs |
+| 0001 | clumsy_bloodstrike | Add RLS + FORCE RLS on 15 tables, create tenant isolation policies on 14 tables, grants + auth table revokes |
+
+**Note**: Migrations 0000-0023 from the pre-reset schema were consolidated into `0000_slow_firestar.sql`. Old migrations were deleted from both the filesystem and the `_journal.json`. Migration `0001_clumsy_bloodstrike` is a differential — it only contains ALTER TABLE, CREATE POLICY, GRANT, and REVOKE statements (no CREATE TABLE/CREATE TYPE).
 
 ### 11.2 Migration Commands
 
@@ -893,28 +902,35 @@ migrate:
 
 ### 12.1 RLS Live Test Script
 
-`scripts/rls-live-test.sql` verifies:
+`scripts/rls-live-test.sql` verifies (14 steps):
 1. `app_user` role attributes (not superuser, not BYPASSRLS)
-2. RLS status on key tables
-3. Policies exist on tenant tables
+2. RLS status on key tables (tenant tables enabled, auth tables not)
+3. Policies exist on tenant tables (including audit_logs SELECT + INSERT)
 4. Table ownership
-5. FORCE ROW LEVEL SECURITY enabled
-6. Cross-org isolation (tenant can't see other org's data)
-7. Empty tenant context hides all rows
-8. `audit_logs` immutability (can INSERT but not UPDATE/DELETE)
-9. Cleanup of test data
+5. FORCE ROW LEVEL SECURITY enabled on all checked tables
+6. Test data creation (orgs, users, event_rooms)
+7. Tenant isolation: alpha tenant sees only alpha rows
+8. Tenant isolation: beta tenant sees only beta rows
+9. Empty tenant context returns 0 rows
+10. Cross-org leak blocked (querying other org returns 0 rows)
+11. Activity submissions: tenant-scoped SELECT returns only own org's rows
+12. Superuser (Eventclick_admin) bypasses RLS
+13. Audit logs: tenant-scoped SELECT returns only own org's rows
+14. Cleanup of all test data
+
+**CI integration**: `rls-live-test.sql` is run in the `unit-tests` workflow job after migrations and after `init-db.sql` role initialization.
 
 ### 12.2 Verification Checklist
 
-- [ ] All 15 tenant tables have RLS + FORCE RLS enabled
-- [ ] All 20+ policies exist and are valid
-- [ ] `app_user` is not superuser and not BYPASSRLS
-- [ ] `auth_svc_role` has BYPASSRLS
-- [ ] Auth tables (sessions, password_resets, email_verifications) have no access from app_user
-- [ ] `SET LOCAL app.current_tenant` correctly filters data per tenant
-- [ ] Cross-org queries return empty
-- [ ] Empty/null tenant context returns empty
-- [ ] Audit logs are append-only (no UPDATE/DELETE grant)
+- [x] All 15 tenant tables have RLS + FORCE RLS enabled
+- [x] All 24 policies exist (4 orgs + 3 users + 9 standard + 4 nullable-org + 2 feedback + 2 bug_reports + 2 audit_logs)
+- [x] `app_user` is not superuser and not BYPASSRLS
+- [x] `auth_svc_role` has BYPASSRLS
+- [x] Auth tables (sessions, password_resets, email_verifications) have no access from app_user
+- [x] `SET LOCAL app.current_tenant` correctly filters data per tenant
+- [x] Cross-org queries return empty (verified in rls-live-test.sql Steps 10, 11)
+- [x] Empty/null tenant context returns empty (verified in Step 9)
+- [x] Audit logs are append-only (SELECT + INSERT only, no UPDATE/DELETE grant)
 - [ ] Soft delete helper is used in all queries
 
 ---

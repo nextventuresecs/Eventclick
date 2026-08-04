@@ -25,6 +25,25 @@ export const users = pgTable(
   (t) => [
     index("users_org_idx").on(t.organizationId),
     index("users_role_idx").on(t.role),
+    pgPolicy("users_tenant_isolation", {
+      as: "permissive",
+      for: "select",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid OR ${t.organizationId} IS NULL`,
+    }),
+    pgPolicy("users_insert_new", {
+      as: "permissive",
+      for: "insert",
+      to: "app_user",
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid OR ${t.organizationId} IS NULL`,
+    }),
+    pgPolicy("users_update_own", {
+      as: "permissive",
+      for: "update",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid OR ${t.organizationId} IS NULL`,
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid OR ${t.organizationId} IS NULL`,
+    }),
   ],
 );
 

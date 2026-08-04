@@ -48,6 +48,13 @@ export const attendanceEntries = pgTable(
     index("attendance_entries_submitted_by_idx").on(t.submittedBy),
     index("attendance_entries_room_submitted_at_idx").on(t.roomId, t.submittedAt),
     index("attendance_entries_location_idx").using("gist", t.location),
+    pgPolicy("attendance_entries_tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "app_user",
+      using: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+      withCheck: sql`${t.organizationId} = NULLIF(current_setting('app.current_tenant', true), '')::uuid`,
+    }),
   ],
 );
 

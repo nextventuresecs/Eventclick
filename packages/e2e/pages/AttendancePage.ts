@@ -17,12 +17,16 @@ export class AttendancePage {
 
   async goto(baseURL: string, roomId: string) {
     await this.page.goto(`${baseURL}/rooms/${roomId}/attendance`);
-    await this.page.waitForLoadState("networkidle");
+    await this.page.waitForLoadState("load");
   }
 
   async fillField(fieldId: string, value: string) {
     const input = this.page.locator(`#${fieldId}`);
+    await input.waitFor({ state: "visible", timeout: 15000 });
+    await input.focus();
     await input.fill(value);
+    await input.dispatchEvent("input");
+    await input.dispatchEvent("change");
   }
 
   async selectOption(fieldId: string, value: string) {

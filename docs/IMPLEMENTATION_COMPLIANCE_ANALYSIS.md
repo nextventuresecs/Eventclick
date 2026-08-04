@@ -34,7 +34,7 @@
 | **C-7** | **MEDIUM**      | **No `errorElement` on React Router routes**    | Fixed. Added `errorElement` to all route groups in `App.tsx` and created `RouteErrorFallback` component. Loader/action/router errors now show user-friendly fallback with reload/back buttons.                                                                |
 | **C-8** | **MEDIUM**      | **RoomRecordings lacks `organizationId`**       | Fixed. Added `organizationId` column to `room_recordings` table with FK to `organizations`. Backfill migration included. `livekit.provider.ts` sets org on insert; `room-recording.controller.ts` filters by org on read/stop.                                |
 | **C-6** | **MEDIUM-HIGH** | **Weak default credentials in `.env`**          | Fixed. Added all env to parameter store.`.env:3` — `DB_PASSWORD=1234`. `.env:58-59` — `devkey` / `devsecretdevsecretdevsecretdevse`. While `.env` is gitignored, these will be the live credentials if not overridden at deployment.                          |
-| **C-9** | **HIGH**        | **No audit logging for GDPR / admin actions**   | Fixed. Added `auditLogs` schema, `audit.service.ts`, migration `0020_dry_bombast.sql`, and wired into admin user deletion. Immutable append-only audit trail with actor, IP, and user agent.                                                                  |
+| **C-9** | **HIGH**        | **No audit logging for GDPR / admin actions**   | Fixed. Added `auditLogs` schema, `audit.service.ts`, baseline migration `0000_slow_firestar.sql`, and wired into admin user deletion. Immutable append-only audit trail with actor, IP, and user agent. RLS policies for audit_logs (SELECT + INSERT only) in `0001_clumsy_bloodstrike.sql`. |
 | **C-10**| **HIGH**        | **No GDPR data export or self-service delete**  | Fixed. Added `GET /api/v1/profile/me/export` (JSON with redacted secrets) and `DELETE /api/v1/profile/me/account` (email confirm + soft delete). Routes mounted under `/profile`.                                                                          |
 
 ---
@@ -68,7 +68,7 @@
 | **Migrations**         | ✅ Safe    | Advisory lock prevents race conditions. Extensions created.               |
 | **photo_url column**   | ✅ Fixed   | `users.ts:14` has `photoUrl: text("photo_url")`.                          |
 | **Connection pooling** | ⚠️ Tuned | `DB_POOL_MAX` is configurable via env (default 10). Separate `AUTH_DATABASE_URL` + `authPool` added for pre-tenant auth queries (`auth_svc_role`). |
-| **RLS**                | ⚠️ Partial | Per-request `SET LOCAL app.current_tenant` for PgBouncer compatibility. Pending migration `0022_add_missing_rls_policies.sql` to apply actual policies. |
+| **RLS**                | ✅ Enforced  | RLS + FORCE RLS enabled on all 15 tenant tables. `SET LOCAL app.current_tenant` middleware implemented. All 24 policies (tenant isolation, insert, update, audit immutability) applied via migration `0001_clumsy_bloodshake.sql`. `auth_svc_role` with `BYPASSRLS` for pre-tenant auth queries. |
 
 ---
 
@@ -130,9 +130,9 @@
 
 | Area                           | Status             | Notes                                                                                                                                                            |
 | ------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Tenant isolation**           | ✅ App + DB level  | All controllers enforce `organizationId`. PostgreSQL RLS implemented with per-request `app.current_tenant` session variable.                                     |
+| **Tenant isolation**           | ✅ App + DB level  | All controllers enforce `organizationId`. PostgreSQL RLS + FORCE RLS on all 15 tenant tables with 24 policies. `SET LOCAL app.current_tenant` per-request via `tenantContext.ts`.          |
 | **Child table tenant columns** | ✅ Complete        | `room_recordings`, `activity_submissions`, `form_definitions`, `activity_photos`, `attendance_entries`, `event_admin_assignments` all have `organization_id` FK. |
-| **RLS**                        | ⚠️ Partial     | RLS enabled on tenant tables. `SET LOCAL app.current_tenant` middleware implemented. Actual policies + `auth_svc_role` pending in migration `0022_add_missing_rls_policies.sql`. |
+| **RLS**                        | ✅ Enforced  | RLS enabled on all 15 tenant tables with FORCE ROW LEVEL SECURITY. `SET LOCAL app.current_tenant` middleware implemented. All 24 policies applied via migration `0001_clumsy_bloodstrike.sql`. `auth_svc_role` with `BYPASSRLS` for pre-tenant auth queries. |
 | **Billing/quotas**             | ❌ Not implemented | No subscription, usage limits, or metering.                                                                                                                      |
 | **Audit trail**                | ✅ Present         | Immutable append-only audit logging implemented via `auditLogs` table + `audit.service.ts`. 7-year retention configured.                                         |
 
@@ -148,17 +148,17 @@
 
 **Database migrations:**
 
-- `0018_gifted_karma.sql`: Add `organization_id` to child tables + backfill
-- `0019_gifted_karma.sql`: Enable RLS on all tenant tables + create `app_user` role + grant permissions
-- `0020_dry_bombast.sql`: Create `audit_logs` table for GDPR Article 30 and operational audit trail
-- `0022_add_missing_rls_policies.sql`: Pending — adds actual RLS policies, `auth_svc_role` with `BYPASSRLS`, and hardens table grants. **Not yet applied.** Requires DB verification before running.
+- `0000_slow_firestar.sql`: Baseline schema consolidation — all 19 tables, extensions, indexes, FK constraints
+- `0001_clumsy_bloodstrike.sql`: Enable RLS + FORCE RLS on all 15 tenant tables; create 24 policies (tenant isolation, insert, update, audit immutability); grant app_user on 15 tenant tables; REVOKE app_user from sessions/password_resets/email_verifications; create auth_svc_role with BYPASSRLS
 
-**RLS policies (implemented in pending migration `0022_add_missing_rls_policies.sql`):**
+**RLS policies (implemented in migration `0001_clumsy_bloodstrike.sql`):**
 
 ```sql
 CREATE POLICY tenant_isolation ON event_rooms
-  USING (organization_id = current_setting('app.current_tenant')::uuid);
--- Same pattern applied to all tenant tables
+  FOR SELECT TO app_user
+  USING (organization_id = NULLIF(current_setting('app.current_tenant', true), '')::uuid);
+-- Same pattern applied to all 14 tenant tables
+-- Special policies for organizations (4), users (3), feedback/bug_reports (2 each), audit_logs (2)
 ```
 
 **PgBouncer compatibility:**
@@ -170,7 +170,7 @@ CREATE POLICY tenant_isolation ON event_rooms
 
 **Auth service role (`auth_svc_role`):**
 
-- Migration `0022` creates `auth_svc_role` with `BYPASSRLS` for pre-tenant auth queries
+- Migration `0001_clumsy_bloodstrike.sql` creates `auth_svc_role` with `BYPASSRLS` for pre-tenant auth queries (also set in `init-db.sql` for local dev)
 - `AUTH_DATABASE_URL` added to `env.ts`; `authPool`/`authDb` created in `db/index.ts`
 - Auth services (`auth-login.service.ts`, `auth-registration.service.ts`, `auth-password.service.ts`, `auth-helpers.ts`) repointed to `authDb`
 - `app_user` role loses access to `sessions`, `password_resets`, `email_verifications`; only `auth_svc_role` can touch them
@@ -399,7 +399,7 @@ For a 10K-user deployment, monthly cost breakdown (estimates):
 | ----------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | **Security**      | 10/10 | Strong auth, CSP enforced, nginx non-root, XSS protections, immutable audit logging, GDPR endpoints implemented. `auth_svc_role` isolation for pre-tenant queries. |
 | **Code Quality**  | 8/10  | Clean architecture, strong typing, consistent patterns. Auth layer refactored to use `authDb` for pre-tenant isolation.                     |
-| **Database**      | 8/10  | Good schema, indexes, migrations. `SET LOCAL` for PgBouncer safety. RLS policies pending in `0022_add_missing_rls_policies.sql`.          |
+| **Database**      | 10/10 | Good schema, indexes, migrations. `SET LOCAL` for PgBouncer safety. RLS + FORCE RLS enforced on all 15 tenant tables with 24 policies. `app_user` connects non-superuser; `auth_svc_role` (BYPASSRLS) for auth. Auth tables REVOKE'd from app_user. |
 | **API Design**    | 9/10  | RESTful, versioned, validated, consistent errors. GDPR export/delete endpoints follow same patterns. Integration tests cover both.        |
 | **Frontend**      | 9/10  | Modern stack, code-split, secure auth. Route error boundaries implemented. Client unit tests added. Bundle analysis configured. Cookie consent added. |
 | **DevOps**        | 10/10 | Docker hardening strong. CI/CD workflows enforce lint/typecheck/audit/test + Playwright E2E. Deploy via SSM with approval gate.         |
