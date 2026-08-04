@@ -16,7 +16,7 @@ describe("Zod schema validation", () => {
   describe("RegisterSchema", () => {
     it("accepts valid input", () => {
       const result = RegisterSchema.safeParse({
-        email: "admin@eventclick.org",
+        email: "admin@eventclick.live",
         password: "SecurePass123!",
         fullName: "Admin User",
       });
@@ -34,7 +34,7 @@ describe("Zod schema validation", () => {
 
     it("rejects weak password", () => {
       const result = RegisterSchema.safeParse({
-        email: "admin@eventclick.org",
+        email: "admin@eventclick.live",
         password: "123",
         fullName: "Admin User",
       });
@@ -45,7 +45,7 @@ describe("Zod schema validation", () => {
   describe("LoginSchema", () => {
     it("accepts valid credentials", () => {
       const result = LoginSchema.safeParse({
-        email: "admin@eventclick.org",
+        email: "admin@eventclick.live",
         password: "SecurePass123!",
       });
       expect(result.success).toBe(true);
@@ -53,7 +53,7 @@ describe("Zod schema validation", () => {
 
     it("rejects empty password", () => {
       const result = LoginSchema.safeParse({
-        email: "admin@eventclick.org",
+        email: "admin@eventclick.live",
         password: "",
       });
       expect(result.success).toBe(false);
