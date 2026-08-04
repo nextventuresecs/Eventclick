@@ -6,8 +6,10 @@ import { ToastProvider } from "./hooks/useToast";
 import { App } from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { installGlobalErrorHandlers } from "./lib/log";
+import { initClientSentry } from "./lib/sentry";
 import "./index.css";
 
+initClientSentry();
 installGlobalErrorHandlers();
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;

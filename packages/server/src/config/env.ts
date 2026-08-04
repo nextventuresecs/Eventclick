@@ -57,7 +57,7 @@ const EnvSchema = z.object({
 
   // ─── Email ────────────────────────────────────────
   RESEND_API_KEY: z.string().optional(),
-  RESEND_FROM_EMAIL: z.string().default("noreply@Eventclick.com"),
+  RESEND_FROM_EMAIL: z.string().default("noreply@eventclick.live"),
 
   // ─── LiveKit ──────────────────────────────────────
   LIVEKIT_URL: z.string().min(1, "LIVEKIT_URL is required"),
@@ -83,6 +83,7 @@ const EnvSchema = z.object({
 
   // ─── AWS SQS ──────────────────────────────────────
   SQS_QUEUE_URL: z.string().url().optional(),
+  SQS_PDF_QUEUE_URL: z.string().url().optional(),
   SQS_WORKER_ENABLED: z.string().optional(),
 
   // ─── Server timeouts (production hardening) ─────────
@@ -91,10 +92,18 @@ const EnvSchema = z.object({
   SERVER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
   // ─── Observability (optional) ──────────────────────
-  SENTRY_DSN: z.string().optional(),
+  SENTRY_SERVER_DSN: z.string().optional(),
 }).refine(
-  (e) => e.NODE_ENV !== "production" || !!e.AUTH_DATABASE_URL,
-  { message: "AUTH_DATABASE_URL is required in production", path: ["AUTH_DATABASE_URL"] }
+  (e) => {
+    if (e.NODE_ENV === "production") {
+      return !!e.AUTH_DATABASE_URL && !!e.APP_DATABASE_URL;
+    }
+    return !!e.DATABASE_URL || (!!e.AUTH_DATABASE_URL && !!e.APP_DATABASE_URL);
+  },
+  {
+    message: "In production, AUTH_DATABASE_URL and APP_DATABASE_URL are required for RLS isolation. In dev, DATABASE_URL or both RLS URLs are required.",
+    path: ["DATABASE_URL"],
+  }
 );
 
 const parsed = EnvSchema.safeParse(process.env);

@@ -20,7 +20,7 @@ export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
       "PDF report generation requested"
     );
 
-    if (env.SQS_QUEUE_URL) {
+    if (env.SQS_PDF_QUEUE_URL) {
       const job = await enqueuePdfJob({ roomId, orgId, userId: req.user!.id });
       return res.status(202).json({ jobId: job.jobId });
     }

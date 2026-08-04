@@ -18,8 +18,8 @@ import { initSentry, setupSentryExpressErrorHandler } from "./services/sentry.se
 
 const app = express();
 
-if (env.SENTRY_DSN) {
-  initSentry(env.SENTRY_DSN, env.NODE_ENV).then(() => {
+if (env.SENTRY_SERVER_DSN) {
+  initSentry(env.SENTRY_SERVER_DSN, env.NODE_ENV).then(() => {
     setupSentryExpressErrorHandler(app);
   });
 }
