@@ -14,7 +14,7 @@ This guide covers setting up Cloudflare DNS, SSL, CDN, R2 storage, and security 
 
 1. Log in to Cloudflare Dashboard
 2. Click **"Add a Site"**
-3. Enter your domain (e.g., `eventclick.com`)
+3. Enter your domain (e.g., `eventclick.live`)
 4. Select **Free plan**
 5. Cloudflare will scan existing DNS records
 6. **Update your domain registrar's nameservers** to Cloudflare's:
@@ -27,16 +27,17 @@ This guide covers setting up Cloudflare DNS, SSL, CDN, R2 storage, and security 
 
 Create the following DNS records:
 
-| Type | Name | Content | Proxy | TTL |
-|------|------|---------|-------|-----|
-| `A` | `app` | `<EC2_ELASTIC_IP>` | ☁️ Proxied | Auto |
-| `A` | `api` | `<EC2_ELASTIC_IP>` | ☁️ Proxied | Auto |
-| `CNAME` | `www` | `app.eventclick.com` | ☁️ Proxied | Auto |
-| `A` | `@` | `<EC2_ELASTIC_IP>` | ☁️ Proxied | Auto |
+| Type    | Name  | Content               | Proxy      | TTL  |
+| ------- | ----- | --------------------- | ---------- | ---- |
+| `A`     | `app` | `<EC2_ELASTIC_IP>`    | ☁️ Proxied | Auto |
+| `A`     | `api` | `<EC2_ELASTIC_IP>`    | ☁️ Proxied | Auto |
+| `CNAME` | `www` | `app.eventclick.live` | ☁️ Proxied | Auto |
+| `A`     | `@`   | `<EC2_ELASTIC_IP>`    | ☁️ Proxied | Auto |
 
 > **Note:** All records should be **Proxied** (orange cloud ☁️) to get Cloudflare's CDN, DDoS protection, and SSL.
 
 ### For LiveKit Cloud (no DNS needed)
+
 Since we're using LiveKit Cloud, you don't need a `lk.` subdomain. The LiveKit Cloud URL (e.g., `wss://your-project.livekit.cloud`) is managed by LiveKit.
 
 ---
@@ -52,7 +53,7 @@ Since we're using LiveKit Cloud, you don't need a `lk.` subdomain. The LiveKit C
 2. Click **Create Certificate**
 3. Settings:
    - Private key type: **RSA (2048)**
-   - Hostnames: `*.eventclick.com, eventclick.com`
+   - Hostnames: `*.eventclick.live, eventclick.live`
    - Certificate validity: **15 years** (free)
 4. **Download** the certificate and private key
 5. Save on EC2:
@@ -139,6 +140,7 @@ S3_FORCE_PATH_STYLE=false
 2. Create a rule to block suspicious traffic:
 
 **Example: Block non-browser traffic to API**
+
 ```
 Rule name: Block suspicious API requests
 Expression: (http.request.uri.path contains "/api/" and cf.client.bot)
@@ -163,20 +165,24 @@ Cloudflare free plan doesn't include advanced rate limiting, but your Express se
 Create these page rules in order:
 
 **Rule 1: No cache for API**
-- URL: `*api.eventclick.com/api/*`
+
+- URL: `*app.eventclick.live/api/*`
 - Setting: Cache Level → **Bypass**
 
 **Rule 2: Cache static assets aggressively**
-- URL: `*app.eventclick.com/*.js`
+
+- URL: `*app.eventclick.live/*.js`
 - Setting: Cache Level → **Cache Everything**, Edge Cache TTL → **1 month**
 
 **Rule 3: Force HTTPS everywhere**
-- URL: `*eventclick.com/*`
+
+- URL: `*eventclick.live/*`
 - Setting: **Always Use HTTPS**
 
 ### Cache Behavior
 
 With Cloudflare proxying, your Nginx `Cache-Control` headers are respected:
+
 - `public, immutable` on hashed assets → Cloudflare caches at edge
 - `no-cache` on `index.html` → Always fetches from origin (instant deploys)
 
@@ -188,15 +194,14 @@ After configuring everything, verify:
 
 ```bash
 # Check DNS propagation
-dig app.eventclick.com +short
-dig api.eventclick.com +short
+dig app.eventclick.live +short
 
 # Check SSL
-curl -I https://app.eventclick.com
+curl -I https://app.eventclick.live
 # Should show: HTTP/2 200, cf-ray header, strict-transport-security
 
 # Check API through Cloudflare
-curl https://api.eventclick.com/api/v1/health
+curl https://app.eventclick.live/api/v1/health
 # Should return: {"status":"ok","timestamp":"...","uptime":...}
 
 # Verify R2 connectivity (from EC2)
@@ -210,6 +215,7 @@ aws s3 ls s3://eventclick-recordings/ \
 ## 8. Monitoring with Cloudflare Analytics
 
 Cloudflare free plan includes:
+
 - **Traffic analytics**: Requests, bandwidth, threats blocked
 - **DNS analytics**: Query volume
 - **Web Analytics** (add JS snippet for real user monitoring)
@@ -221,17 +227,21 @@ Go to **Analytics & Logs** → **Traffic** for real-time dashboards.
 ## Troubleshooting
 
 ### "522 Connection Timed Out"
+
 - EC2 security group doesn't allow port 80/443 from Cloudflare IPs
 - Fix: Add inbound rule for `0.0.0.0/0` on port 80 (Cloudflare acts as proxy)
 
 ### "521 Web Server Is Down"
+
 - Nginx/Docker not running on EC2
 - Fix: `docker compose -f docker-compose.prod.yml ps` and restart
 
 ### "525 SSL Handshake Failed"
+
 - Origin certificate not properly installed
 - Fix: Switch SSL mode to **Full** (instead of Full Strict) as interim fix
 
 ### R2 "Access Denied"
+
 - API token doesn't have the right bucket permissions
 - Fix: Regenerate token with Object Read & Write on the specific bucket

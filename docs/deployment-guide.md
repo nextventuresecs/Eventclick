@@ -37,21 +37,21 @@ External Services:
 
 ### Instance Configuration
 
-| Setting | Value |
-|---------|-------|
-| **AMI** | Ubuntu 24.04 LTS (HVM, SSD) |
-| **Instance type** | `t3.small` (2 vCPU, 2 GB RAM) |
-| **Storage** | 30 GB gp3 |
-| **Security Group** | See below |
-| **Key Pair** | Create or use existing SSH key |
+| Setting            | Value                          |
+| ------------------ | ------------------------------ |
+| **AMI**            | Ubuntu 24.04 LTS (HVM, SSD)    |
+| **Instance type**  | `t3.small` (2 vCPU, 2 GB RAM)  |
+| **Storage**        | 30 GB gp3                      |
+| **Security Group** | See below                      |
+| **Key Pair**       | Create or use existing SSH key |
 
 ### Security Group Rules
 
-| Type | Protocol | Port Range | Source | Description |
-|------|----------|-----------|--------|-------------|
-| SSH | TCP | 22 | Your IP | SSH access |
-| HTTP | TCP | 80 | 0.0.0.0/0 | Cloudflare proxy |
-| HTTPS | TCP | 443 | 0.0.0.0/0 | Cloudflare proxy |
+| Type  | Protocol | Port Range | Source    | Description      |
+| ----- | -------- | ---------- | --------- | ---------------- |
+| SSH   | TCP      | 22         | Your IP   | SSH access       |
+| HTTP  | TCP      | 80         | 0.0.0.0/0 | Cloudflare proxy |
+| HTTPS | TCP      | 443        | 0.0.0.0/0 | Cloudflare proxy |
 
 ### Allocate Elastic IP
 
@@ -107,13 +107,14 @@ nano .env
 Fill in ALL values:
 
 1. **Generate secrets:**
+
    ```bash
    # JWT secrets (run twice, use different values)
    openssl rand -base64 48
-   
+
    # Database password
    openssl rand -base64 24
-   
+
    # Redis password
    openssl rand -base64 24
    ```
@@ -142,6 +143,7 @@ Fill in ALL values:
 Follow the complete guide: [cloudflare-setup.md](./cloudflare-setup.md)
 
 Quick summary:
+
 1. Add domain to Cloudflare
 2. Update registrar nameservers
 3. Create DNS records (A records for app, api subdomains)
@@ -186,14 +188,14 @@ curl https://api.yourdomain.com/api/v1/health
 
 Go to your repo → **Settings** → **Secrets and variables** → **Actions**:
 
-| Secret Name | Value |
-|-------------|-------|
-| `EC2_HOST` | Your EC2 Elastic IP |
-| `EC2_USER` | `deploy` |
-| `EC2_SSH_KEY` | Contents of your SSH private key |
-| `VITE_API_URL` | `https://app.yourdomain.com/api/v1` |
-| `VITE_LIVEKIT_URL` | `wss://your-project.livekit.cloud` |
-| `VITE_GOOGLE_CLIENT_ID` | Your Google OAuth client ID |
+| Secret Name             | Value                               |
+| ----------------------- | ----------------------------------- |
+| `EC2_HOST`              | Your EC2 Elastic IP                 |
+| `EC2_USER`              | `deploy`                            |
+| `EC2_SSH_KEY`           | Contents of your SSH private key    |
+| `VITE_API_URL`          | `https://app.yourdomain.com/api/v1` |
+| `VITE_LIVEKIT_URL`      | `wss://your-project.livekit.cloud`  |
+| `VITE_GOOGLE_CLIENT_ID` | Your Google OAuth client ID         |
 
 ### GitHub Environment
 
@@ -204,6 +206,7 @@ Go to your repo → **Settings** → **Secrets and variables** → **Actions**:
 ### Test the Pipeline
 
 Push to `main`:
+
 ```bash
 git add .
 git commit -m "chore: add production deployment infrastructure"
@@ -252,13 +255,14 @@ crontab -e
 
 1. Create account at [sentry.io](https://sentry.io)
 2. Create a Node.js project → get DSN
-3. Add `SENTRY_DSN` to your `.env`
+3. Add `SENTRY_SERVER_DSN` and `VITE_SENTRY_CLIENT_DSN` to your `.env`
 4. (Future) Add `@sentry/node` to the server package
 
 ### SSE (Server-Sent Events) Monitoring
 
 With the real-time notification system, Nginx holds open long-lived HTTP connections (`proxy_read_timeout 86400s;`).
 **Failure Modes to Monitor:**
+
 - **File Descriptor Exhaustion:** 10k users = 10k open TCP connections. Monitor EC2 open file limits (`ulimit -n`).
 - **Nginx Worker Connections:** May need to increase `worker_connections` in Nginx if `502` or connection dropped errors appear.
 - **Client Reconnect Storms:** If the server restarts, all clients disconnect and reconnect simultaneously. SSE clients have built-in exponential backoff, but monitor CPU usage during restarts.
@@ -346,31 +350,31 @@ swapon --show
 
 ## Troubleshooting
 
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| Server won't start | Missing env vars | Check `docker logs eventclick_server_prod` |
-| 502 Bad Gateway | Server crashed or not ready | `docker compose restart server` |
-| Out of memory | Too many containers | Check `docker stats`, increase instance size |
-| Migration failed | Schema conflict | Check migration files, run `db:generate` locally |
-| R2 upload fails | Wrong credentials | Verify S3_ENDPOINT, S3_ACCESS_KEY in .env |
-| CORS errors | Wrong CORS_ORIGIN | Update CORS_ORIGIN in .env to match domain |
-| WebRTC not working | Wrong LiveKit URL | Verify LIVEKIT_PUBLIC_URL and VITE_LIVEKIT_URL |
+| Issue              | Cause                       | Fix                                              |
+| ------------------ | --------------------------- | ------------------------------------------------ |
+| Server won't start | Missing env vars            | Check `docker logs eventclick_server_prod`       |
+| 502 Bad Gateway    | Server crashed or not ready | `docker compose restart server`                  |
+| Out of memory      | Too many containers         | Check `docker stats`, increase instance size     |
+| Migration failed   | Schema conflict             | Check migration files, run `db:generate` locally |
+| R2 upload fails    | Wrong credentials           | Verify S3_ENDPOINT, S3_ACCESS_KEY in .env        |
+| CORS errors        | Wrong CORS_ORIGIN           | Update CORS_ORIGIN in .env to match domain       |
+| WebRTC not working | Wrong LiveKit URL           | Verify LIVEKIT_PUBLIC_URL and VITE_LIVEKIT_URL   |
 
 ---
 
 ## Cost Summary (MVP)
 
-| Service | Free Tier | Monthly Cost |
-|---------|-----------|-------------|
-| EC2 `t3.small` | 750 hrs (12 months, t2/t3.micro only) | ~$15/month* |
-| EBS 30 GB gp3 | 30 GB (12 months) | $0 |
-| Elastic IP | Free when attached | $0 |
-| Cloudflare DNS + CDN | Unlimited | $0 |
-| Cloudflare R2 | 10 GB + 10M reads | $0 |
-| LiveKit Cloud | 50 participant-min | $0 |
-| Resend | 3000 emails/month | $0 |
-| GitHub Actions | 2000 min/month | $0 |
+| Service              | Free Tier                             | Monthly Cost |
+| -------------------- | ------------------------------------- | ------------ |
+| EC2 `t3.small`       | 750 hrs (12 months, t2/t3.micro only) | ~$15/month\* |
+| EBS 30 GB gp3        | 30 GB (12 months)                     | $0           |
+| Elastic IP           | Free when attached                    | $0           |
+| Cloudflare DNS + CDN | Unlimited                             | $0           |
+| Cloudflare R2        | 10 GB + 10M reads                     | $0           |
+| LiveKit Cloud        | 50 participant-min                    | $0           |
+| Resend               | 3000 emails/month                     | $0           |
+| GitHub Actions       | 2000 min/month                        | $0           |
 
-> *Note: `t3.small` is needed for Gotenberg (PDF gen uses ~512 MB). If you can defer PDF to Phase 2, `t2.micro` (free tier) works. Otherwise, budget ~$15/month for `t3.small`.
+> \*Note: `t3.small` is needed for Gotenberg (PDF gen uses ~512 MB). If you can defer PDF to Phase 2, `t2.micro` (free tier) works. Otherwise, budget ~$15/month for `t3.small`.
 
 > **Alternative:** Use a `t2.micro` free tier instance and run Gotenberg only on-demand (start → generate PDF → stop). This keeps costs at $0 but adds complexity.
