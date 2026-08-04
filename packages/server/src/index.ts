@@ -36,7 +36,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else if (
-        env.NODE_ENV === "development" &&
+        (env.NODE_ENV === "development" || env.NODE_ENV === "test") &&
         (origin.includes("localhost") || origin.includes("127.0.0.1"))
       ) {
         callback(null, true);

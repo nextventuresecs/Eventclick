@@ -133,6 +133,8 @@ jobs:
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
       S3_FORCE_PATH_STYLE: "true"
+      CORS_ORIGIN: http://localhost:3000
+      APP_URL: http://localhost:3000
       CI: "true"
     services:
       postgres:
@@ -156,6 +158,19 @@ jobs:
         image: gotenberg/gotenberg:8
         ports:
           - 8686:3000
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+          MINIO_DEFAULT_BUCKETS: eventclick-test
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -sf http://localhost:9000/minio/health/live || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
