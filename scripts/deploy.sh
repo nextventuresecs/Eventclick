@@ -45,6 +45,37 @@ dc() {
   docker compose --env-file "$SECRETS_FILE" -f "$COMPOSE_FILE" "$@"
 }
 
+MIGRATION_SNAPSHOT=""
+
+rollback() {
+  warn "Rolling back to previous version..."
+  if [[ "$PREV_SERVER_IMAGE" != "none" ]]; then
+    log "Rolling back server..."
+    dc stop server
+    docker tag "$PREV_SERVER_IMAGE" "ghcr.io/${GHCR_NAMESPACE}/server:${IMAGE_TAG}"
+    dc up -d --no-deps server
+    log "Server rollback complete."
+  fi
+  if [[ "$PREV_CLIENT_IMAGE" != "none" ]]; then
+    log "Rolling back client..."
+    dc stop client
+    docker tag "$PREV_CLIENT_IMAGE" "ghcr.io/${GHCR_NAMESPACE}/client:${IMAGE_TAG}"
+    dc up -d --no-deps client
+    log "Client rollback complete."
+  fi
+  warn "Rollback finished. Check deploy log: ${DEPLOY_LOG}"
+}
+
+rollback_db() {
+  if [[ -n "$MIGRATION_SNAPSHOT" && -f "$MIGRATION_SNAPSHOT" ]]; then
+    log "Restoring pre-migration DB snapshot..."
+    docker exec "${DB_CONTAINER:-${DB_NAME}_postgres}" pg_restore \
+      -U "${DB_USER}" -d "${DB_NAME}" \
+      --clean --no-owner --no-acl \
+      -v < "$MIGRATION_SNAPSHOT" 2>&1 | tee -a "$DEPLOY_LOG" || warn "DB restore failed — manual intervention may be needed"
+  fi
+}
+
 # ── Navigate to project root ───────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -61,6 +92,8 @@ log "Deploy log: ${DEPLOY_LOG}"
 # fetch-secrets.sh pulls all params under /eventclick/prod/* and writes
 # /etc/eventclick/.env (runtime-only, never committed to git).
 # If fetch-secrets.sh is missing or fails, we fall back to the existing file.
+
+IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 SECRETS_FILE="/etc/eventclick/.env"
 
@@ -153,12 +186,30 @@ fi
 # ═══════════════════════════════════════════════════════════════════════════
 # 3. Run database migrations
 # ═══════════════════════════════════════════════════════════════════════════
+
+# Load secrets for DB snapshot (needed before migrations)
+set -a
+source "$SECRETS_FILE"
+set +a
+
+log "Creating pre-migration DB snapshot..."
+DB_CONTAINER=$(dc ps --format '{{.Name}}' --filter 'name=postgres' | head -1)
+SNAPSHOT_TS=$(date +%Y%m%d-%H%M%S)
+MIGRATION_SNAPSHOT="/tmp/db-pre-migrate-${SNAPSHOT_TS}.dump"
+if docker exec "$DB_CONTAINER" pg_dump -U "${DB_USER}" -d "${DB_NAME}" --format=custom \
+  > "$MIGRATION_SNAPSHOT" 2>&1; then
+  log "Pre-migration snapshot saved: ${MIGRATION_SNAPSHOT}"
+else
+  warn "Pre-migration snapshot failed — continuing without DB rollback safety"
+  MIGRATION_SNAPSHOT=""
+fi
+
 log "Running database migrations..."
-dc up migrate --pull --abort-on-container-exit
-MIGRATE_EXIT=$?
-if [[ $MIGRATE_EXIT -ne 0 ]]; then
-  err "Database migration failed with exit code ${MIGRATE_EXIT}!"
+if ! dc up migrate --pull --abort-on-container-exit; then
+  err "Database migration failed!"
   err "Aborting deployment. Fix migrations before retrying."
+  rollback_db
+  rollback
   exit 1
 fi
 log "Migrations complete ✅"
@@ -168,41 +219,22 @@ log "Migrations complete ✅"
 # ═══════════════════════════════════════════════════════════════════════════
 log "Rotating database role passwords..."
 
-# Load secrets into the environment so we can access them
-set -a
-source "$SECRETS_FILE"
-set +a
-
-extract_pg_field() {
-  # $1 = full connection url, $2 = field: user|password|host|port|dbname
-  node -e "
-    const u = new URL(process.argv[1]);
-    const map = { user: u.username, password: decodeURIComponent(u.password), host: u.hostname, port: u.port, dbname: u.pathname.slice(1) };
-    process.stdout.write(map[process.argv[2]] || '');
-  " "$1" "$2"
-}
-
-# The password may have special characters, URL parsing ensures they are decoded correctly.
-APP_PW="$(extract_pg_field "$APP_DATABASE_URL" password)"
-AUTH_PW="$(extract_pg_field "$AUTH_DATABASE_URL" password)"
+# Secrets already loaded above (before migration snapshot)
 
 # Temporarily disable set -x if it was enabled, to prevent logging passwords
-# (It shouldn't be on by default, but this is an extra safety measure)
 [[ "$-" == *x* ]] && XTRACE_ON=1 || XTRACE_ON=0
 set +x
 
-# Use psql parameterization to safely pass passwords containing quotes without escaping issues,
-# and without exposing them in 'ps aux' output.
-psql "$DATABASE_URL" \
+  # Execute ALTER ROLE inside postgres container using DB credentials from SSM
+  docker exec -i "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" \
   -v ON_ERROR_STOP=1 \
-  -v app_pw="$APP_PW" \
-  -v auth_pw="$AUTH_PW" \
+  -v app_pw="${APP_DB_PASSWORD}" \
+  -v auth_pw="${AUTH_DB_PASSWORD}" \
   <<'SQL'
 ALTER ROLE app_user_login PASSWORD :'app_pw';
 ALTER ROLE auth_svc_role PASSWORD :'auth_pw';
 SQL
 
-unset APP_PW AUTH_PW
 [[ $XTRACE_ON -eq 1 ]] && set -x
 
 log "Passwords rotated ✅"
@@ -236,20 +268,7 @@ if [[ "$HEALTHY" != "true" ]]; then
   err "Health check failed after ${HEALTH_RETRIES} attempts!"
   err "Server logs:"
   dc logs --tail=50 server | tee -a "$DEPLOY_LOG"
-
-  # ═══════════════════════════════════════════════════════════════════════
-  # Rollback
-  # ═══════════════════════════════════════════════════════════════════════
-  warn "Rolling back to previous version..."
-  if [[ "$PREV_SERVER_IMAGE" != "none" ]]; then
-    dc stop server
-    docker tag "$PREV_SERVER_IMAGE" "eventclick/server:latest"
-    dc up -d --no-deps server
-    warn "Rollback complete. Previous image restored."
-    warn "Check the deploy log: ${DEPLOY_LOG}"
-  else
-    err "No previous image to rollback to!"
-  fi
+  rollback
   exit 1
 fi
 
@@ -262,8 +281,8 @@ log "Server health check passed ✅"
 log "Running deep health smoke test..."
 SMOKE_OK=false
 for i in $(seq 1 5); do
-  SMOKE_RESP=$(curl -sf http://localhost:4000/api/v1/health/deep 2>/dev/null || true)
-  if [[ -n "$SMOKE_RESP" ]]; then
+  SMOKE_RESP=$(docker exec Eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health/deep | grep -o '"status":"healthy"' | wc -l )
+  if [[ "$SMOKE_RESP" -eq 1 ]]; then
     SMOKE_OK=true
     break
   fi
@@ -273,18 +292,8 @@ done
 
 if [[ "$SMOKE_OK" != "true" ]]; then
   err "Deep health smoke test failed — server is not responding correctly"
-  # Show the raw output for debugging
-  curl -v http://localhost:4000/api/v1/health/deep 2>&1 | tee -a "$DEPLOY_LOG" || true
-  warn "Rolling back to previous version..."
-  if [[ "$PREV_SERVER_IMAGE" != "none" ]]; then
-    dc stop server
-    docker tag "$PREV_SERVER_IMAGE" "eventclick/server:latest"
-    dc up -d --no-deps server
-    warn "Rollback complete. Previous image restored."
-    warn "Check the deploy log: ${DEPLOY_LOG}"
-  else
-    err "No previous image to rollback to!"
-  fi
+  docker exec Eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health/deep 2>&1 | tee -a "$DEPLOY_LOG" || true
+  rollback
   exit 1
 fi
 

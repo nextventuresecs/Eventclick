@@ -32,7 +32,7 @@ if [[ -f "${PROJECT_ROOT}/.env" ]]; then
   set +a
 fi
 
-ALERT_EMAIL="${RESEND_FROM_EMAIL:-admin@eventclick.com}"
+ALERT_EMAIL="${RESEND_FROM_EMAIL:-admin@eventclick.live}"
 TIMESTAMP=$(date +%Y-%m-%dT%H:%M:%S)
 
 ALERTS=()

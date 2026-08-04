@@ -95,7 +95,10 @@ log "Deleted ${DELETED_COUNT} local backups older than 7 days"
 # ═══════════════════════════════════════════════════════════════════════════
 # 4. Cleanup old R2 backups (daily > 7 days, weekly > 30 days)
 # ═══════════════════════════════════════════════════════════════════════════
-if command -v aws &>/dev/null && [[ -n "${S3_ENDPOINT:-}" ]]; then
+if ! command -v aws || [[ -z "${S3_ENDPOINT:-}" ]]; then
+  err "AWS CLI or S3_ENDPOINT not configured — R2 backup cleanup skipped (this is non-fatal)"
+  warn "Local backups will age out after 7 days via find -mtime +7"
+else
   log "Cleaning up old R2 daily backups (>7 days)..."
   CUTOFF_DAILY=$(date -d "7 days ago" +%Y%m%d 2>/dev/null || date -v-7d +%Y%m%d)
 

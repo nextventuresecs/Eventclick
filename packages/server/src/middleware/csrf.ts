@@ -17,7 +17,23 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
     allowedOrigins.push(env.APP_URL);
   }
 
-  const isAllowedOrigin = allowedOrigins.some((allowedOrigin) => origin.startsWith(allowedOrigin));
+  const originUrl = (() => {
+    try {
+      return new URL(origin).origin;
+    } catch {
+      return null;
+    }
+  })();
+
+  const isAllowedOrigin =
+    !!originUrl &&
+    allowedOrigins.some((allowedOrigin) => {
+      try {
+        return new URL(allowedOrigin).origin === originUrl;
+      } catch {
+        return origin === allowedOrigin;
+      }
+    });
   
   const isDevOrTestLocalhost =
     (env.NODE_ENV === "development" || env.NODE_ENV === "test") &&

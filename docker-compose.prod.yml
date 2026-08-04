@@ -23,11 +23,13 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD}
       # Performance tuning for 2 GB RAM instance
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
       - pg_data_prod:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init.sh:ro
     command:
       - "postgres"
       - "-c" 
@@ -67,7 +69,7 @@ services:
   # ─── Redis ────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: Eventclick_redis_prod
+    container_name: eventclick_redis_prod
     restart: always
     expose:
       - "6379"
@@ -103,7 +105,7 @@ services:
   # Required for report PDF generation
   gotenberg:
     image: gotenberg/gotenberg:8
-    container_name: Eventclick_gotenberg_prod
+    container_name: eventclick_gotenberg_prod
     restart: always
     expose:
       - "3000"
@@ -137,7 +139,7 @@ services:
   # ─── Database Migration (run-once init) ──────────────────────────────────
   # Runs Drizzle migrations before server starts, then exits
   migrate:
-    image: ghcr.io/owner/eventclick/server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    image: ghcr.io/${GHCR_NAMESPACE}/server:${IMAGE_TAG:?IMAGE_TAG must be set}
     pull_policy: always
     container_name: eventclick_migrate_prod
     environment:
@@ -148,7 +150,7 @@ services:
       const { drizzle } = require('drizzle-orm/node-postgres');
       const { migrate } = require('drizzle-orm/node-postgres/migrator');
       async function run() {
-        const pool = new Pool({ connectionString: env.DATABASE_URL, max: 1 });
+        const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
         await pool.query('CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"');
         await pool.query('CREATE EXTENSION IF NOT EXISTS \"pgcrypto\"');
         const db = drizzle(pool);
@@ -171,16 +173,18 @@ services:
 
   # ─── Backend API ─────────────────────────────────────────────────────────
   server:
-    image: ghcr.io/owner/eventclick/server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    image: ghcr.io/${GHCR_NAMESPACE}/server:${IMAGE_TAG:?IMAGE_TAG must be set}
     pull_policy: always
-    container_name: Eventclick_server_prod
+    container_name: eventclick_server_prod
     restart: always
     expose:
       - "4000"
     environment:
       NODE_ENV: production
-      SQS_WORKER_ENABLED: "false"
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      SQS_WORKER_ENABLED: "true"
+      SQS_PDF_QUEUE_URL: ${SQS_PDF_QUEUE_URL}
+      APP_DATABASE_URL: postgresql://app_user_login:${APP_DB_PASSWORD}@postgres:5432/${DB_NAME}
+      AUTH_DATABASE_URL: postgresql://auth_svc_role:${AUTH_DB_PASSWORD}@postgres:5432/${DB_NAME}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
@@ -216,6 +220,8 @@ services:
       # Attendance
       ATTENDANCE_WINDOW_BEFORE_MINUTES: ${ATTENDANCE_WINDOW_BEFORE_MINUTES:-15}
       ATTENDANCE_WINDOW_AFTER_MINUTES: ${ATTENDANCE_WINDOW_AFTER_MINUTES:-30}
+      # Sentry
+      SENTRY_SERVER_DSN: ${SENTRY_SERVER_DSN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -252,15 +258,17 @@ services:
 
   # ─── PDF Worker (SQS async job processor) ────────────────────────────────
   pdf-worker:
-    image: ghcr.io/owner/eventclick/server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    image: ghcr.io/${GHCR_NAMESPACE}/server:${IMAGE_TAG:?IMAGE_TAG must be set}
     pull_policy: always
-    container_name: Eventclick_pdf_worker_prod
+    container_name: eventclick_pdf_worker_prod
     restart: always
     command: ["node", "packages/server/dist/worker-entry.js"]
     environment:
       NODE_ENV: production
-      SQS_WORKER_ENABLED: "false"
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      SQS_WORKER_ENABLED: "true"
+      SQS_PDF_QUEUE_URL: ${SQS_PDF_QUEUE_URL}
+      APP_DATABASE_URL: postgresql://app_user_login:${APP_DB_PASSWORD}@postgres:5432/${DB_NAME}
+      AUTH_DATABASE_URL: postgresql://auth_svc_role:${AUTH_DB_PASSWORD}@postgres:5432/${DB_NAME}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
@@ -287,7 +295,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY}
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      SQS_QUEUE_URL: ${SQS_QUEUE_URL}
+      SENTRY_SERVER_DSN: ${SENTRY_SERVER_DSN}
     depends_on:
       postgres:
         condition: service_healthy
@@ -317,9 +325,9 @@ services:
   # ─── Frontend (Nginx + Vite static build) ────────────────────────────────
   # Also acts as the reverse proxy for API + Gotenberg
   client:
-    image: ghcr.io/owner/eventclick/client:${IMAGE_TAG:?IMAGE_TAG must be set}
+    image: ghcr.io/${GHCR_NAMESPACE}/client:${IMAGE_TAG:?IMAGE_TAG must be set}
     pull_policy: always
-    container_name: Eventclick_client_prod
+    container_name: eventclick_client_prod
     restart: always
     ports:
       - "${CLIENT_PORT:-80}:8080"

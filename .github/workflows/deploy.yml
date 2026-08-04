@@ -132,6 +132,7 @@ jobs:
             VITE_API_URL=${{ secrets.VITE_API_URL }}
             VITE_LIVEKIT_URL=${{ secrets.VITE_LIVEKIT_URL }}
             VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+            VITE_SENTRY_CLIENT_DSN=${{ secrets.VITE_SENTRY_CLIENT_DSN }}
           cache-from: type=gha,scope=client
           cache-to: type=gha,mode=max,scope=client
           provenance: false
