@@ -13,6 +13,7 @@ import React, { Suspense } from "react";
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { RouteErrorFallback } from "./components/RouteErrorFallback";
+import { CookieBanner } from "./components/CookieBanner";
 
 const lazyLoad = (importFunc: () => Promise<any>, exportName: string) => {
   const LazyComponent = React.lazy(() => importFunc().then((m) => ({ default: m[exportName] })));
@@ -303,6 +304,7 @@ export function App() {
   return (
     <ErrorBoundary>
       <RouterProvider router={router} />
+      <CookieBanner/>
     </ErrorBoundary>
   );
 }

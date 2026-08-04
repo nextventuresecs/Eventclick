@@ -115,8 +115,8 @@ export const VerifyEmailPage = () => {
             Back to sign in
           </Link>
           <div className="flex items-center gap-4 pt-1">
-            <Link to="/terms" className="text-xs text-gray-400 hover:text-(--color-gray-600) transition-colors">Terms</Link>
-            <Link to="/privacy" className="text-xs text-gray-400 hover:text-(--color-gray-600) transition-colors">Privacy</Link>
+            <a href="https://eventclick.live/terms" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-(--color-gray-600) transition-colors">Terms</a>
+            <a href="https://eventclick.live/privacy" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-400 hover:text-(--color-gray-600) transition-colors">Privacy</a>
           </div>
         </CardFooter>
       </Card>

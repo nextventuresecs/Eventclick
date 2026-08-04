@@ -57,36 +57,15 @@ const HelpDropdown = () => {
       </button>
       {open && (
         <div className="absolute left-full top-0 ml-1 w-52 bg-(--color-surface) border border-(--color-gray-200) rounded-xl shadow-xl py-1.5 z-50">
-          {HELP_ITEMS.map((item) => {
-            const isExternal = item.path.startsWith("http");
-            const content = (
-              <>
-                <item.icon className="w-4 h-4" /> {item.name}
-              </>
-            );
-            if (isExternal) {
-              return (
-                <a
-                  key={item.path}
-                  href={item.path}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-4 py-2 text-sm text-(--color-gray-600) hover:bg-(--color-gray-50) hover:text-(--color-gray-900) transition-colors"
-                >
-                  {content}
-                </a>
-              );
-            }
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className="flex items-center gap-3 px-4 py-2 text-sm text-(--color-gray-600) hover:bg-(--color-gray-50) hover:text-(--color-gray-900) transition-colors"
-              >
-                {content}
-              </Link>
-            );
-          })}
+          {HELP_ITEMS.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className="flex items-center gap-3 px-4 py-2 text-sm text-(--color-gray-600) hover:bg-(--color-gray-50) hover:text-(--color-gray-900) transition-colors"
+            >
+              <item.icon className="w-4 h-4" /> {item.name}
+            </Link>
+          ))}
         </div>
       )}
     </div>
@@ -109,9 +88,8 @@ const TOOLS_ITEMS = [
 export const HELP_ITEMS = [
   { name: "Help Center", path: "/help", icon: HelpCircle },
   { name: "Download app", path: "/download", icon: Download },
-  { name: "Terms of Service", path: "https://eventclick.live/terms", icon: Shield },
-  { name: "Privacy Policy", path: "https://eventclick.live/privacy", icon: Shield },
-  { name: "Cookie Policy", path: "https://eventclick.live/cookies", icon: Shield },
+  { name: "Terms of Service", path: "/terms", icon: Shield },
+  { name: "Privacy Policy", path: "/privacy", icon: Shield },
   { name: "Feedback", path: "/feedback", icon: MessageSquare },
   { name: "Report a bug", path: "/report-bug", icon: AlertTriangle },
 ];
@@ -679,19 +657,6 @@ export const DashboardLayout = () => {
             );
           })}
         </div>
-
-        {/* Legal Footer */}
-        <footer className="border-t border-gray-200 bg-gray-50 py-3 px-4 md:px-8">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-gray-500">
-            <span>© {new Date().getFullYear()} Eventclick. All rights reserved.</span>
-            <div className="flex items-center gap-3">
-              <a href="https://eventclick.live/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-gray-900 transition-colors">Privacy</a>
-              <a href="https://eventclick.live/terms" target="_blank" rel="noopener noreferrer" className="hover:text-gray-900 transition-colors">Terms</a>
-              <a href="https://eventclick.live/cookies" target="_blank" rel="noopener noreferrer" className="hover:text-gray-900 transition-colors">Cookies</a>
-              <a href="https://eventclick.live/gdpr-dpa" target="_blank" rel="noopener noreferrer" className="hover:text-gray-900 transition-colors">GDPR DPA</a>
-            </div>
-          </div>
-        </footer>
       </main>
     </div>
   );

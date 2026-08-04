@@ -172,7 +172,7 @@ export const RegisterPage = () => {
               className="w-4 h-4 rounded border-gray-300 text-purple-700 focus:ring-purple-600 cursor-pointer"
             />
             <label htmlFor="terms" className="text-xs text-gray-600 cursor-pointer select-none">
-              I agree to the <span className="font-semibold text-purple-700 hover:underline">Terms and Conditions</span>
+              I agree to the <a href="https://eventclick.live/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-purple-700 hover:underline">Terms and Conditions</a>
             </label>
           </div>
 
