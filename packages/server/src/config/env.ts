@@ -20,7 +20,7 @@ const EnvSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .optional(),
 
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.string().url().optional(),
   AUTH_DATABASE_URL: z.string().url(),
   APP_DATABASE_URL: z.string().url(),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
@@ -82,7 +82,7 @@ const EnvSchema = z.object({
   GOTENBERG_URL: z.string().url().default(process.env.GOTENBERG_URL || "http://localhost:8686"),
 
   // ─── AWS SQS ──────────────────────────────────────
-  SQS_QUEUE_URL: z.string().url(),
+  SQS_QUEUE_URL: z.string().url().optional(),
   SQS_PDF_QUEUE_URL: z.string().url(),
   SQS_WORKER_ENABLED: z.string().default("true"),
 
@@ -92,7 +92,7 @@ const EnvSchema = z.object({
   SERVER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
   // ─── Observability (optional) ──────────────────────
-  SENTRY_SERVER_DSN: z.string(),
+  SENTRY_SERVER_DSN: z.string().optional(),
 }).refine(
   (e) => {
     if (e.NODE_ENV === "production") {
