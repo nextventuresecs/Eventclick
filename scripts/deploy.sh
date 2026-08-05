@@ -205,7 +205,7 @@ else
 fi
 
 log "Running database migrations..."
-if ! dc up migrate --pull --abort-on-container-exit; then
+if ! dc up migrate --abort-on-container-exit; then
   err "Database migration failed!"
   err "Aborting deployment. Fix migrations before retrying."
   rollback_db
