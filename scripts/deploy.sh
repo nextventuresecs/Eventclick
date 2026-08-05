@@ -93,7 +93,8 @@ log "Deploy log: ${DEPLOY_LOG}"
 # /etc/eventclick/.env (runtime-only, never committed to git).
 # If fetch-secrets.sh is missing or fails, we fall back to the existing file.
 
-IMAGE_TAG="${IMAGE_TAG:-latest}"
+export IMAGE_TAG="${IMAGE_TAG:-latest}"
+export GHCR_NAMESPACE="${GHCR_NAMESPACE:-nextventuresecs/eventclick}"
 
 SECRETS_FILE="/etc/eventclick/.env"
 
@@ -136,6 +137,14 @@ if [[ ! -f "$COMPOSE_FILE" ]]; then
   err "Compose file '${COMPOSE_FILE}' not found!"
   exit 1
 fi
+
+# Export secrets into shell environment for docker compose interpolation
+if [[ -f "$SECRETS_FILE" ]]; then
+  set -a
+  source "$SECRETS_FILE" 2>/dev/null || true
+  set +a
+fi
+export GHCR_NAMESPACE="${GHCR_NAMESPACE:-}"
 
 log "Pre-flight checks passed ✅"
 
