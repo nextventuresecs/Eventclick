@@ -60,6 +60,12 @@ jobs:
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
       S3_FORCE_PATH_STYLE: "true"
+      COOKIE_DOMAIN: localhost
+      GOOGLE_CLIENT_ID: test-google-client-id.apps.googleusercontent.com
+      RESEND_API_KEY: test-resend-api-key
+      SQS_QUEUE_URL: http://localhost:4566/000000000000/eventclick-test-queue
+      SQS_PDF_QUEUE_URL: http://localhost:4566/000000000000/eventclick-test-pdf-queue
+      SENTRY_SERVER_DSN: ""
     services:
       postgres:
         image: postgis/postgis:16-3.4-alpine
@@ -135,6 +141,12 @@ jobs:
       S3_FORCE_PATH_STYLE: "true"
       CORS_ORIGIN: http://localhost:3000
       APP_URL: http://localhost:3000
+      COOKIE_DOMAIN: localhost
+      GOOGLE_CLIENT_ID: test-google-client-id.apps.googleusercontent.com
+      RESEND_API_KEY: test-resend-api-key
+      SQS_QUEUE_URL: http://localhost:4566/000000000000/eventclick-test-queue
+      SQS_PDF_QUEUE_URL: http://localhost:4566/000000000000/eventclick-test-pdf-queue
+      SENTRY_SERVER_DSN: ""
       CI: "true"
     services:
       postgres:

@@ -232,14 +232,40 @@ fi
 
 log "Running database migrations..."
 
-# --- AUTO-HEAL LEGACY SCHEMA ---
-# If the database contains the old pre-multi-tenant schema (form_definitions exists but is missing organization_id),
-# wipe the public schema so Drizzle can initialize cleanly.
-if docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -tAc "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='form_definitions'" | grep -q 1; then
-  if ! docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -tAc "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='form_definitions' AND column_name='organization_id'" | grep -q 1; then
-    warn "Detected legacy schema without organization_id! Wiping public schema to start fresh (Option 2)..."
-    docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA public; CREATE EXTENSION IF NOT EXISTS \"pgcrypto\" SCHEMA public; CREATE EXTENSION IF NOT EXISTS \"postgis\" SCHEMA public;"
-    log "Legacy schema wiped successfully."
+# --- AUTO-HEAL LEGACY SCHEMA (DESTRUCTIVE — requires explicit opt-in) ---
+# If the database contains the old pre-multi-tenant schema (form_definitions
+# exists but is missing organization_id), this WOULD wipe the public schema
+# so Drizzle can initialize cleanly.
+#
+# DISABLED BY DEFAULT. A partially-applied migration (e.g. a prior deploy that
+# failed mid-way through 0000_slow_firestar.sql) looks IDENTICAL to this
+# heuristic and would trigger a full DROP SCHEMA CASCADE — permanent,
+# unrecoverable data loss across every organization — with zero confirmation.
+#
+# To run this intentionally for a genuine legacy-schema migration, a human
+# must set ALLOW_SCHEMA_WIPE=1 explicitly for that single invocation:
+#   ALLOW_SCHEMA_WIPE=1 ./scripts/deploy.sh
+# Never set this in CI/automated pipelines.
+if [[ "${ALLOW_SCHEMA_WIPE:-0}" == "1" ]]; then
+  if docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -tAc "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='form_definitions'" | grep -q 1; then
+    if ! docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -tAc "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='form_definitions' AND column_name='organization_id'" | grep -q 1; then
+      warn "ALLOW_SCHEMA_WIPE=1 set AND legacy schema detected (form_definitions missing organization_id)."
+      warn "Wiping public schema in 10s — Ctrl+C now to abort..."
+      sleep 10
+      docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA public; CREATE EXTENSION IF NOT EXISTS \"pgcrypto\" SCHEMA public; CREATE EXTENSION IF NOT EXISTS \"postgis\" SCHEMA public;"
+      log "Legacy schema wiped successfully."
+    fi
+  fi
+else
+  # Still surface the same diagnostic info, just without acting on it, so
+  # an ambiguous partial-migration state is visible in the logs instead of
+  # silently nuking the DB.
+  if docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -tAc "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='form_definitions'" | grep -q 1; then
+    if ! docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -tAc "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='form_definitions' AND column_name='organization_id'" | grep -q 1; then
+      warn "form_definitions exists without organization_id (legacy schema OR a partially-applied migration)."
+      warn "Auto-wipe is disabled by default. If this is a genuine legacy DB, re-run with ALLOW_SCHEMA_WIPE=1."
+      warn "If this is a partially-applied migration instead, fix the migration to be idempotent rather than wiping data."
+    fi
   fi
 fi
 # -------------------------------

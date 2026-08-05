@@ -65,9 +65,16 @@ fi
 log "Fetching secrets from SSM path: ${SSM_PATH} (region: ${AWS_REGION})"
 
 # ── Fetch all parameters with pagination ──────────────────────────────────────
-# SSM returns max 10 params per page. We need to paginate to get all of them.
-ALL_PARAMS="[]"
+# SSM returns a limited number of params per page — paginate via NextToken
+# until exhausted. Each page's raw JSON is streamed into a python helper via
+# STDIN (never interpolated into the python source as a string literal) so
+# that secret values containing quotes, backslashes, or any other shell/python
+# metacharacters can never break the merge or leak into a syntax error.
+RAW_PAGES_FILE=$(mktemp)
+trap 'rm -f "$RAW_PAGES_FILE"' EXIT
+
 NEXT_TOKEN=""
+PAGE_COUNT=0
 
 while true; do
   if [[ -n "$NEXT_TOKEN" ]]; then
@@ -77,46 +84,55 @@ while true; do
       --recursive \
       --output json \
       --region "$AWS_REGION" \
-      --next-token "$NEXT_TOKEN" 2>/dev/null)
+      --next-token "$NEXT_TOKEN")
   else
     RESPONSE=$(aws ssm get-parameters-by-path \
       --path "$SSM_PATH" \
       --with-decryption \
       --recursive \
       --output json \
-      --region "$AWS_REGION" 2>/dev/null)
+      --region "$AWS_REGION")
   fi
 
-  # Extract parameters from this page and merge into ALL_PARAMS
-  PAGE_PARAMS=$(echo "$RESPONSE" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-params = data.get('Parameters', [])
-print(json.dumps([{'Name': p['Name'], 'Value': p['Value']} for p in params]))
-" 2>/dev/null || echo "[]")
+  PAGE_COUNT=$((PAGE_COUNT + 1))
+  echo "$RESPONSE" >> "$RAW_PAGES_FILE"
+  echo "---PAGE-BREAK---" >> "$RAW_PAGES_FILE"
 
-  ALL_PARAMS=$(python3 -c "
-import sys, json
-existing = json.loads('$ALL_PARAMS' if len('$ALL_PARAMS') < 10000 else sys.stdin.read())
-new_page = json.loads('''$PAGE_PARAMS''')
-existing.extend(new_page)
-print(json.dumps(existing))
-" 2>/dev/null <<< "$ALL_PARAMS")
-
-  # Check for NextToken (more pages)
   NEXT_TOKEN=$(echo "$RESPONSE" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 print(data.get('NextToken', ''))
-" 2>/dev/null || echo "")
+")
 
   if [[ -z "$NEXT_TOKEN" ]]; then
     break
   fi
-  log "  ...fetching next page of parameters"
+  log "  ...fetching next page of parameters (page ${PAGE_COUNT} done)"
 done
 
-PARAM_COUNT=$(echo "$ALL_PARAMS" | python3 -c "import sys,json; data=json.load(sys.stdin); print(len(data))" 2>/dev/null || echo "0")
+# ── Merge all pages via a single python pass over the raw-pages file ──────────
+# Reads every JSON blob written above, split on the page-break marker, and
+# merges Name/Value pairs. No secret value ever passes through a shell
+# string-interpolation boundary.
+ALL_PARAMS_JSON=$(python3 -c "
+import json
+
+with open('$RAW_PAGES_FILE') as f:
+    raw = f.read()
+
+merged = []
+for chunk in raw.split('---PAGE-BREAK---'):
+    chunk = chunk.strip()
+    if not chunk:
+        continue
+    data = json.loads(chunk)
+    for p in data.get('Parameters', []):
+        merged.append({'Name': p['Name'], 'Value': p['Value']})
+
+print(json.dumps(merged))
+")
+
+PARAM_COUNT=$(echo "$ALL_PARAMS_JSON" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
 
 if [[ "$PARAM_COUNT" -eq 0 ]]; then
   err "No parameters found at SSM path '${SSM_PATH}'."
@@ -149,18 +165,21 @@ cat >> "$OUTPUT_FILE" << EOF
 # ─────────────────────────────────────────────────────────────────────────────
 EOF
 
-# Convert SSM JSON output to KEY=VALUE pairs
+# Convert SSM JSON output to KEY=VALUE pairs.
 # SSM param name: /eventclick/prod/JWT_SECRET → env key: JWT_SECRET
-echo "$ALL_PARAMS" | python3 -c "
+# Uses json.dumps() for the value so quotes/backslashes/newlines in a secret
+# are always escaped correctly and can never break the resulting .env line —
+# no manual replace() escaping.
+echo "$ALL_PARAMS_JSON" | python3 -c "
 import sys, json
+
 data = json.load(sys.stdin)
 prefix = '${SSM_PATH}/'
+
 for item in sorted(data, key=lambda x: x['Name']):
     key = item['Name'].replace(prefix, '').replace('/', '_').upper()
     value = item['Value']
-    # Escape any double quotes in value
-    value = value.replace('\"', '\\\\\"')
-    print(f'{key}=\"{value}\"')
+    print(f'{key}={json.dumps(value)}')
 " >> "$OUTPUT_FILE"
 
 log "SSM secrets written to ${OUTPUT_FILE} (${PARAM_COUNT} variables, mode 600)"
@@ -170,7 +189,9 @@ SECRETS_DIR="/etc/eventclick/secrets"
 mkdir -p "$SECRETS_DIR"
 chmod 700 "$SECRETS_DIR"
 
-# Sensitive keys that should be Docker secrets (not environment variables)
+# Sensitive keys that should also be exposed as individual Docker secret files
+# (in addition to living in the .env file), for services that mount secrets
+# as files rather than reading environment variables.
 SECRET_KEYS=(
   "JWT_SECRET"
   "JWT_REFRESH_SECRET"
@@ -182,18 +203,26 @@ SECRET_KEYS=(
   "LIVEKIT_API_SECRET"
   "RESEND_API_KEY"
   "SQS_QUEUE_URL"
+  "SQS_PDF_QUEUE_URL"
+  "DATABASE_URL"
   "APP_DATABASE_URL"
   "AUTH_DATABASE_URL"
   "AUTH_DB_PASSWORD"
   "APP_DB_PASSWORD"
-  "SQS_PDF_QUEUE_URL"
   "SENTRY_SERVER_DSN"
 )
 
 for key in "${SECRET_KEYS[@]}"; do
-  value=$(grep "^${key}=" "$OUTPUT_FILE" 2>/dev/null | cut -d'"' -f2)
+  value=$(python3 -c "
+import json
+with open('$OUTPUT_FILE') as f:
+    for line in f:
+        if line.startswith('${key}='):
+            print(json.loads(line.strip().split('=', 1)[1]))
+            break
+" 2>/dev/null || echo "")
   if [[ -n "$value" ]]; then
-    echo "$value" > "${SECRETS_DIR}/${key}"
+    printf '%s' "$value" > "${SECRETS_DIR}/${key}"
     chmod 600 "${SECRETS_DIR}/${key}"
   fi
 done
@@ -201,43 +230,72 @@ done
 log "Secret files created in ${SECRETS_DIR} for Docker secrets"
 
 # ── Append hardcoded defaults for non-secret values ──────────────────────────
-# These are internal Docker network values that never change and don't belong in SSM
+# NODE_ENV is the only remaining hardcoded default — it is deliberately forced
+# to "production" here regardless of what (if anything) is in SSM, since this
+# script only ever runs against the production path.
+#
+# NOTE: GOTENBERG_URL used to be hardcoded here too, but it is now an SSM-
+# managed parameter (see the confirmed param list). Do NOT re-add a hardcoded
+# GOTENBERG_URL line below — docker compose's --env-file takes the LAST
+# occurrence of a duplicate key, so a hardcoded line here would silently
+# override the real SSM value written above.
 cat >> "$OUTPUT_FILE" << 'DEFAULTS'
 
-# ── Hardcoded defaults (internal Docker network, not managed by SSM) ─────────
-GOTENBERG_URL="http://gotenberg:3000"
+# ── Hardcoded defaults (forced regardless of SSM) ─────────────────────────
 NODE_ENV="production"
 DEFAULTS
 
-log "Appended hardcoded defaults (GOTENBERG_URL, NODE_ENV)"
+log "Appended hardcoded defaults (NODE_ENV)"
 
 # ── Verify required secrets are present ──────────────────────────────────────
+# This list matches the confirmed set of 44 parameters under /eventclick/prod/*.
+# Keep in sync with SSM — if you add/remove a param there, update this list too.
 REQUIRED_KEYS=(
-  "JWT_SECRET"
-  "JWT_REFRESH_SECRET"
-  "DB_PASSWORD"
-  "DB_NAME"
-  "DB_USER"
-  "DATABASE_URL"
   "APP_DATABASE_URL"
+  "APP_DB_PASSWORD"
+  "APP_URL"
+  "ATTENDANCE_WINDOW_AFTER_MINUTES"
+  "ATTENDANCE_WINDOW_BEFORE_MINUTES"
   "AUTH_DATABASE_URL"
   "AUTH_DB_PASSWORD"
-  "APP_DB_PASSWORD"
-  "REDIS_PASSWORD"
-  "REDIS_URL"
-  "CORS_ORIGIN"
-  "APP_URL"
+  "BCRYPT_ROUNDS"
   "COOKIE_DOMAIN"
+  "CORS_ORIGIN"
+  "DATABASE_URL"
+  "DB_HOST"
+  "DB_NAME"
+  "DB_PASSWORD"
+  "DB_USER"
+  "GOOGLE_CLIENT_ID"
+  "GOTENBERG_URL"
+  "JWT_ACCESS_TTL"
+  "JWT_REFRESH_SECRET"
+  "JWT_REFRESH_TTL"
+  "JWT_SECRET"
   "LIVEKIT_API_KEY"
   "LIVEKIT_API_SECRET"
+  "LIVEKIT_PUBLIC_URL"
+  "LIVEKIT_URL"
+  "RATE_LIMIT_MAX"
+  "RATE_LIMIT_WINDOW_MS"
+  "REDIS_PASSWORD"
+  "REDIS_URL"
   "RESEND_API_KEY"
   "RESEND_FROM_EMAIL"
   "S3_ACCESS_KEY"
+  "S3_BUCKET"
+  "S3_ENDPOINT"
+  "S3_FORCE_PATH_STYLE"
+  "S3_PUBLIC_ENDPOINT"
+  "S3_REGION"
   "S3_SECRET_KEY"
-  "SQS_QUEUE_URL"
-  "SQS_PDF_QUEUE_URL"
-  "VITE_SENTRY_CLIENT_DSN"
   "SENTRY_SERVER_DSN"
+  "SQS_PDF_QUEUE_URL"
+  "SQS_QUEUE_URL"
+  "VITE_API_URL"
+  "VITE_GOOGLE_CLIENT_ID"
+  "VITE_LIVEKIT_URL"
+  "VITE_SENTRY_CLIENT_DSN"
 )
 
 MISSING=()
