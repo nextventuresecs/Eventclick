@@ -27,7 +27,8 @@ COMPOSE_FILE="docker-compose.prod.yml"
 HEALTH_RETRIES=20
 HEALTH_INTERVAL=3
 DEPLOY_LOG="/tmp/deploy-$(date +%Y%m%d-%H%M%S).log"
-GHCR_NAMESPACE = "nextventuresecs/eventclick"
+GHCR_NAMESPACE="nextventuresecs/eventclick"
+export GHCR_NAMESPACE
 
 # ── Colors ──────────────────────────────────────────
 RED='\033[0;31m'
