@@ -24,7 +24,7 @@ vi.mock("argon2", () => ({
 vi.mock("../session.service", () => ({
   revokeAllUserSessions: vi.fn().mockResolvedValue(undefined),
   issueRefreshToken: vi.fn(),
-  findActiveSessionByToken: vi.fn(),
+  findSessionByToken: vi.fn(),
   revokeSession: vi.fn(),
   rotateSession: vi.fn(),
   refreshTtlMs: 1000 * 60 * 60 * 24 * 7,

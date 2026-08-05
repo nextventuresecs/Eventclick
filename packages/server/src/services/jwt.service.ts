@@ -13,12 +13,14 @@ export const signAccessToken = (claims: AccessTokenClaims): string =>
     expiresIn: env.JWT_ACCESS_TTL as SignOptions["expiresIn"],
     issuer: "Eventclick",
     audience: "Eventclick-api",
+    algorithm: "HS256",
   });
 
 export const verifyAccessToken = (token: string): AccessTokenClaims => {
   const decoded = jwt.verify(token, env.JWT_SECRET, {
     issuer: "Eventclick",
     audience: "Eventclick-api",
+    algorithms: ["HS256"],
   });
   if (typeof decoded === "string") throw new Error("Invalid token payload");
   return decoded as AccessTokenClaims & { iat: number; exp: number };

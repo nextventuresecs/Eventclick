@@ -112,6 +112,7 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
     { userId: created.id, orgId: created.organizationId, role: created.role, event: "user.registered" },
     "user registered",
   );
+  await invalidateUserCache(created.id, created.email);
   
   await enqueueEmail({
     type: "verification",

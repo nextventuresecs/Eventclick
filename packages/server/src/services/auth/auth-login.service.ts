@@ -6,8 +6,9 @@ import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
 import argon2 from "argon2";
 import { verifyGoogleIdToken } from "../google.service";
+import crypto from "crypto";
 import {
-  findActiveSessionByToken,
+  findSessionByToken,
   revokeSession,
   rotateSession,
   type SessionMeta,
@@ -23,20 +24,14 @@ import {
 
 export const loginUser = async (input: LoginInput, meta: SessionMeta): Promise<AuthResult> => {
   const user = await findUserByEmail(input.email);
+
   if (!user || !user.passwordHash) {
+    await argon2.hash(crypto.randomBytes(32).toString("hex"));
     logger.warn(
       { email: input.email, event: "login.failed", reason: user ? "no_password" : "unknown_email" },
       "login failed",
     );
     throw ApiError.unauthorized("Invalid email or password");
-  }
-  if (!user.isActive) {
-    logger.warn({ userId: user.id, event: "login.disabled" }, "login blocked: account disabled");
-    throw ApiError.forbidden("This account is disabled");
-  }
-  if (!user.emailVerifiedAt) {
-    logger.warn({ userId: user.id, event: "login.unverified" }, "login blocked: email not verified");
-    throw ApiError.forbidden("Please verify your email address before logging in.");
   }
 
   const ok = await argon2.verify(user.passwordHash, input.password);
@@ -46,6 +41,15 @@ export const loginUser = async (input: LoginInput, meta: SessionMeta): Promise<A
       "login failed",
     );
     throw ApiError.unauthorized("Invalid email or password");
+  }
+
+  if (!user.isActive) {
+    logger.warn({ userId: user.id, event: "login.disabled" }, "login blocked: account disabled");
+    throw ApiError.forbidden("This account is disabled");
+  }
+  if (!user.emailVerifiedAt) {
+    logger.warn({ userId: user.id, event: "login.unverified" }, "login blocked: email not verified");
+    throw ApiError.forbidden("Please verify your email address before logging in.");
   }
 
   logger.info({ userId: user.id, event: "user.login" }, "user logged in");
@@ -96,6 +100,7 @@ export const loginWithGoogle = async (
     if (!created) throw ApiError.internal("Failed to create user");
     user = created;
     logger.info({ userId: user.id, event: "user.registered", via: "google" }, "user registered via google");
+    await invalidateUserCache(user.id, user.email);
   }
 
   logger.info({ userId: user.id, event: "user.login", via: "google" }, "user logged in via google");
@@ -106,7 +111,7 @@ export const refreshSession = async (
   refreshToken: string,
   meta: SessionMeta,
 ): Promise<AuthResult> => {
-  const session = await findActiveSessionByToken(refreshToken);
+  const session = await findSessionByToken(refreshToken);
   if (!session) throw ApiError.unauthorized("Invalid refresh token");
 
   const next = await rotateSession(session, meta);
@@ -119,7 +124,7 @@ export const refreshSession = async (
 
 export const logoutSession = async (refreshToken: string | undefined): Promise<void> => {
   if (!refreshToken) return;
-  const session = await findActiveSessionByToken(refreshToken);
+  const session = await findSessionByToken(refreshToken);
   if (session && !session.revokedAt) {
     await revokeSession(session.id);
     logger.info({ userId: session.userId, sessionId: session.id, event: "user.logout" }, "user logged out");

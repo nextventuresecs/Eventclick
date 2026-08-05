@@ -59,7 +59,7 @@ export const issueRefreshToken = async (
   return { raw, sessionId: row.id, familyId };
 };
 
-export const findActiveSessionByToken = async (raw: string): Promise<Session | null> => {
+export const findSessionByToken = async (raw: string): Promise<Session | null> => {
   const tokenHash = hashToken(raw);
   const cacheKey = `session:token:${tokenHash}`;
 
