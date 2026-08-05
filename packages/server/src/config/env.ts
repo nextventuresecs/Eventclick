@@ -20,9 +20,9 @@ const EnvSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .optional(),
 
-  DATABASE_URL: z.string().url().optional(),
-  AUTH_DATABASE_URL: z.string().url().optional(),
-  APP_DATABASE_URL: z.string().url().optional(),
+  DATABASE_URL: z.string().url(),
+  AUTH_DATABASE_URL: z.string().url(),
+  APP_DATABASE_URL: z.string().url(),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
   REDIS_URL: z.string().url(),
 
@@ -49,14 +49,14 @@ const EnvSchema = z.object({
     .default(30),
 
   APP_URL: z.url().default("http://localhost:3000"),
-  COOKIE_DOMAIN: z.string().optional(),
+  COOKIE_DOMAIN: z.string(),
 
-  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_ID: z.string(),
   
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
   // ─── Email ────────────────────────────────────────
-  RESEND_API_KEY: z.string().optional(),
+  RESEND_API_KEY: z.string(),
   RESEND_FROM_EMAIL: z.string().default("noreply@eventclick.live"),
 
   // ─── LiveKit ──────────────────────────────────────
@@ -82,9 +82,9 @@ const EnvSchema = z.object({
   GOTENBERG_URL: z.string().url().default(process.env.GOTENBERG_URL || "http://localhost:8686"),
 
   // ─── AWS SQS ──────────────────────────────────────
-  SQS_QUEUE_URL: z.string().url().optional(),
-  SQS_PDF_QUEUE_URL: z.string().url().optional(),
-  SQS_WORKER_ENABLED: z.string().optional(),
+  SQS_QUEUE_URL: z.string().url(),
+  SQS_PDF_QUEUE_URL: z.string().url(),
+  SQS_WORKER_ENABLED: z.string().default("true"),
 
   // ─── Server timeouts (production hardening) ─────────
   SERVER_HEADERS_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
@@ -92,7 +92,7 @@ const EnvSchema = z.object({
   SERVER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
   // ─── Observability (optional) ──────────────────────
-  SENTRY_SERVER_DSN: z.string().optional(),
+  SENTRY_SERVER_DSN: z.string(),
 }).refine(
   (e) => {
     if (e.NODE_ENV === "production") {

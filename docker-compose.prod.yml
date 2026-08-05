@@ -139,7 +139,7 @@ services:
   # ─── Database Migration (run-once init) ──────────────────────────────────
   # Runs Drizzle migrations before server starts, then exits
   migrate:
-    image: ghcr.io/nextventuresecs/eventclick/server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    image: ghcr.io/nextventuresecs/eventclick/server:${IMAGE_TAG:-latest}
     pull_policy: always
     container_name: eventclick_migrate_prod
     environment:
@@ -174,7 +174,7 @@ services:
 
   # ─── Backend API ─────────────────────────────────────────────────────────
   server:
-    image: ghcr.io/nextventuresecs/eventclick/server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    image: ghcr.io/nextventuresecs/eventclick/server:${IMAGE_TAG:-latest}
     pull_policy: always
     container_name: eventclick_server_prod
     restart: always
@@ -259,7 +259,7 @@ services:
 
   # ─── PDF Worker (SQS async job processor) ────────────────────────────────
   pdf-worker:
-    image: ghcr.io/nextventuresecs/eventclick/server:${IMAGE_TAG:?IMAGE_TAG must be set}
+    image: ghcr.io/nextventuresecs/eventclick/server:${IMAGE_TAG:-latest}
     pull_policy: always
     container_name: eventclick_pdf_worker_prod
     restart: always
@@ -326,7 +326,7 @@ services:
   # ─── Frontend (Nginx + Vite static build) ────────────────────────────────
   # Also acts as the reverse proxy for API + Gotenberg
   client:
-    image: ghcr.io/nextventuresecs/eventclick/client:${IMAGE_TAG:?IMAGE_TAG must be set}
+    image: ghcr.io/nextventuresecs/eventclick/client:${IMAGE_TAG:-latest}
     pull_policy: always
     container_name: eventclick_client_prod
     restart: always
