@@ -27,6 +27,7 @@ COMPOSE_FILE="docker-compose.prod.yml"
 HEALTH_RETRIES=20
 HEALTH_INTERVAL=3
 DEPLOY_LOG="/tmp/deploy-$(date +%Y%m%d-%H%M%S).log"
+GHCR_NAMESPACE = "nextventuresecs/eventclick"
 
 # ── Colors ──────────────────────────────────────────
 RED='\033[0;31m'
@@ -94,7 +95,6 @@ log "Deploy log: ${DEPLOY_LOG}"
 # If fetch-secrets.sh is missing or fails, we fall back to the existing file.
 
 export IMAGE_TAG="${IMAGE_TAG:-latest}"
-export GHCR_NAMESPACE="${GHCR_NAMESPACE:-nextventuresecs/eventclick}"
 
 SECRETS_FILE="/etc/eventclick/.env"
 
@@ -144,7 +144,6 @@ if [[ -f "$SECRETS_FILE" ]]; then
   source "$SECRETS_FILE" 2>/dev/null || true
   set +a
 fi
-export GHCR_NAMESPACE="${GHCR_NAMESPACE:-}"
 
 log "Pre-flight checks passed ✅"
 

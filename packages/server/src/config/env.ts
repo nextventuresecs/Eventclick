@@ -91,8 +91,6 @@ const EnvSchema = z.object({
   SERVER_KEEPALIVE_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
   SERVER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
-  GHCR_NAMESPACE:z.string().default("nextventuresecs/eventclick"),
-
   // ─── Observability (optional) ──────────────────────
   SENTRY_SERVER_DSN: z.string().optional(),
 }).refine(
