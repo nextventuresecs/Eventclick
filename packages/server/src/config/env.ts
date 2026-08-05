@@ -52,7 +52,9 @@ const EnvSchema = z.object({
   COOKIE_DOMAIN: z.string().optional(),
 
   GOOGLE_CLIENT_ID: z.string().optional(),
-
+  
+  GHCR_NAMESPACE:z.string(),
+  
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
   // ─── Email ────────────────────────────────────────
