@@ -162,11 +162,13 @@ fi
 # names exactly (lowercase, per docker-compose.prod.yml). Output is sanitized
 # with `tr -d` to strip any stray whitespace/newlines that could otherwise
 # corrupt the later `!= "none"` string comparison in rollback().
-PREV_SERVER_IMAGE=$(docker inspect --format='{{.Image}}' eventclick_server_prod 2>/dev/null | tr -d '[:space:]')
+PREV_SERVER_IMAGE=$(docker inspect --format='{{.Image}}' eventclick_server_prod 2>/dev/null | tr -d '[:space:]' || true)
 PREV_SERVER_IMAGE="${PREV_SERVER_IMAGE:-none}"
+if [[ -z "$PREV_SERVER_IMAGE" ]]; then PREV_SERVER_IMAGE="none"; fi
 
-PREV_CLIENT_IMAGE=$(docker inspect --format='{{.Image}}' eventclick_client_prod 2>/dev/null | tr -d '[:space:]')
+PREV_CLIENT_IMAGE=$(docker inspect --format='{{.Image}}' eventclick_client_prod 2>/dev/null | tr -d '[:space:]' || true)
 PREV_CLIENT_IMAGE="${PREV_CLIENT_IMAGE:-none}"
+if [[ -z "$PREV_CLIENT_IMAGE" ]]; then PREV_CLIENT_IMAGE="none"; fi
 
 info "Previous server image: ${PREV_SERVER_IMAGE:0:12}"
 info "Previous client image: ${PREV_CLIENT_IMAGE:0:12}"
