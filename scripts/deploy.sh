@@ -223,7 +223,7 @@ if docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER
   if ! docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -tAc "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='form_definitions' AND column_name='organization_id'" | grep -q 1; then
     warn "Detected legacy schema without organization_id! Wiping public schema to start fresh (Option 2)..."
     docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA public; CREATE EXTENSION IF NOT EXISTS \"pgcrypto\" SCHEMA public;"
-    ok "Legacy schema wiped successfully."
+    log "Legacy schema wiped successfully."
   fi
 fi
 # -------------------------------
