@@ -286,16 +286,28 @@ jobs:
       - name: Verify External Health
         if: success()
         run: |
-          echo "Verifying external health endpoint..."
+          APP_URL="${{ vars.APP_URL }}"
+          # Trim trailing slash if present
+          APP_URL="${APP_URL%/}"
+
+          if [ -z "$APP_URL" ]; then
+            echo "⚠️  vars.APP_URL is not defined in GitHub repository/environment variables."
+            echo "    To enable external health verification, add 'APP_URL' under GitHub Settings -> Secrets and variables -> Actions -> Variables (e.g., https://app.eventclick.live)."
+            echo "    Skipping external health check."
+            exit 0
+          fi
+
+          TARGET_URL="${APP_URL}/api/v1/health"
+          echo "Verifying external health endpoint at ${TARGET_URL}..."
           for i in $(seq 1 10); do
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${{ vars.APP_URL }}/api/v1/health" || echo "failed")
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${TARGET_URL}" || echo "failed")
             if [ "$STATUS" = "200" ]; then
-              echo "✅ External health check passed"
+              echo "✅ External health check passed (${TARGET_URL})"
               exit 0
             fi
             echo "Attempt ${i}/10 — status: ${STATUS}, retrying in 10s..."
             sleep 10
           done
-          echo "❌ External health check failed after 10 attempts"
+          echo "❌ External health check failed for ${TARGET_URL} after 10 attempts"
           exit 1
 
