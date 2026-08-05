@@ -204,8 +204,8 @@ log "Creating pre-migration DB snapshot..."
 DB_CONTAINER=$(dc ps --format '{{.Name}}' postgres | head -1)
 SNAPSHOT_TS=$(date +%Y%m%d-%H%M%S)
 MIGRATION_SNAPSHOT="/tmp/db-pre-migrate-${SNAPSHOT_TS}.dump"
-if docker exec "$DB_CONTAINER" pg_dump -U "${DB_USER}" -d "${DB_NAME}" --format=custom \
-  > "$MIGRATION_SNAPSHOT" 2>&1; then
+if docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" pg_dump -U "${DB_USER}" -d "${DB_NAME}" --format=custom \
+  > "$MIGRATION_SNAPSHOT"; then
   log "Pre-migration snapshot saved: ${MIGRATION_SNAPSHOT}"
 else
   warn "Pre-migration snapshot failed — continuing without DB rollback safety"
