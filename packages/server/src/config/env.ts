@@ -53,8 +53,6 @@ const EnvSchema = z.object({
 
   GOOGLE_CLIENT_ID: z.string().optional(),
   
-  GHCR_NAMESPACE:z.string(),
-  
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
   // ─── Email ────────────────────────────────────────
@@ -93,6 +91,8 @@ const EnvSchema = z.object({
   SERVER_KEEPALIVE_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
   SERVER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
+  GHCR_NAMESPACE:z.string().default("nextventuresecs/eventclick"),
+
   // ─── Observability (optional) ──────────────────────
   SENTRY_SERVER_DSN: z.string().optional(),
 }).refine(
@@ -107,6 +107,7 @@ const EnvSchema = z.object({
     path: ["DATABASE_URL"],
   }
 );
+
 
 const parsed = EnvSchema.safeParse(process.env);
 
