@@ -146,6 +146,13 @@ if [[ -f "$SECRETS_FILE" ]]; then
   set +a
 fi
 
+# Ensure dynamic runtime variables are present in SECRETS_FILE for docker compose --env-file
+grep -q "^IMAGE_TAG=" "$SECRETS_FILE" 2>/dev/null || echo "IMAGE_TAG=\"${IMAGE_TAG}\"" >> "$SECRETS_FILE"
+grep -q "^GHCR_NAMESPACE=" "$SECRETS_FILE" 2>/dev/null || echo "GHCR_NAMESPACE=\"${GHCR_NAMESPACE}\"" >> "$SECRETS_FILE"
+
+export IMAGE_TAG
+export GHCR_NAMESPACE
+
 log "Pre-flight checks passed ✅"
 
 # ═══════════════════════════════════════════════════════════════════════════
