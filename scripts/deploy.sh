@@ -69,7 +69,7 @@ rollback() {
 rollback_db() {
   if [[ -n "$MIGRATION_SNAPSHOT" && -f "$MIGRATION_SNAPSHOT" ]]; then
     log "Restoring pre-migration DB snapshot..."
-    docker exec "${DB_CONTAINER:-${DB_NAME}_postgres}" pg_restore \
+    docker exec "${DB_CONTAINER:-eventclick_db_postgres}" pg_restore \
       -U "${DB_USER}" -d "${DB_NAME}" \
       --clean --no-owner --no-acl \
       -v < "$MIGRATION_SNAPSHOT" 2>&1 | tee -a "$DEPLOY_LOG" || warn "DB restore failed — manual intervention may be needed"
@@ -158,8 +158,16 @@ else
 fi
 
 # Save current image IDs for rollback
-PREV_SERVER_IMAGE=$(docker inspect --format='{{.Image}}' Eventclick_server_prod 2>/dev/null || echo "none")
-PREV_CLIENT_IMAGE=$(docker inspect --format='{{.Image}}' Eventclick_client_prod 2>/dev/null || echo "none")
+# NOTE: docker container names are case-sensitive — must match actual running
+# names exactly (lowercase, per docker-compose.prod.yml). Output is sanitized
+# with `tr -d` to strip any stray whitespace/newlines that could otherwise
+# corrupt the later `!= "none"` string comparison in rollback().
+PREV_SERVER_IMAGE=$(docker inspect --format='{{.Image}}' eventclick_server_prod 2>/dev/null | tr -d '[:space:]')
+PREV_SERVER_IMAGE="${PREV_SERVER_IMAGE:-none}"
+
+PREV_CLIENT_IMAGE=$(docker inspect --format='{{.Image}}' eventclick_client_prod 2>/dev/null | tr -d '[:space:]')
+PREV_CLIENT_IMAGE="${PREV_CLIENT_IMAGE:-none}"
+
 info "Previous server image: ${PREV_SERVER_IMAGE:0:12}"
 info "Previous client image: ${PREV_CLIENT_IMAGE:0:12}"
 
@@ -253,7 +261,7 @@ sleep 3
 log "Waiting for server health check..."
 HEALTHY=false
 for i in $(seq 1 $HEALTH_RETRIES); do
-  STATUS=$(docker inspect --format='{{.State.Health.Status}}' Eventclick_server_prod 2>/dev/null || echo "failed")
+  STATUS=$(docker inspect --format='{{.State.Health.Status}}' eventclick_server_prod 2>/dev/null || echo "failed")
   if [[ "$STATUS" == "healthy" ]]; then
     HEALTHY=true
     break
@@ -279,7 +287,7 @@ log "Server health check passed ✅"
 log "Running deep health smoke test..."
 SMOKE_OK=false
 for i in $(seq 1 5); do
-  SMOKE_RESP=$(docker exec Eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health/deep | grep -o '"status":"ok"' | wc -l )
+  SMOKE_RESP=$(docker exec eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health/deep | grep -o '"status":"ok"' | wc -l )
   if [[ "$SMOKE_RESP" -eq 1 ]]; then
     SMOKE_OK=true
     break
@@ -290,7 +298,7 @@ done
 
 if [[ "$SMOKE_OK" != "true" ]]; then
   err "Deep health smoke test failed — server is not responding correctly"
-  docker exec Eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health/deep 2>&1 | tee -a "$DEPLOY_LOG" || true
+  docker exec eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health/deep 2>&1 | tee -a "$DEPLOY_LOG" || true
   rollback
   exit 1
 fi
