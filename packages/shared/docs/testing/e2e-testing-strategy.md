@@ -6,16 +6,16 @@ Eventclick is a real-time organization transparency and verification platform fo
 
 ### Current Implementation Status
 
-| Layer | Tooling | Status | Test Count |
-|-------|---------|--------|------------|
-| **Client** | Vitest + React Testing Library + jsdom | ✅ Implemented | 3 unit tests |
-| **Shared** | Vitest | ✅ Implemented | 23 schema/RBAC tests |
-| **Server** | Vitest + Supertest | ✅ Implemented | 81 tests across 13 files |
-| **E2E** | Playwright | ✅ Implemented | 3 passing specs |
-| **CI/CD** | GitHub Actions | ✅ Implemented | 3 jobs |
-| **Bundle Analysis** | rollup-plugin-visualizer | ✅ Implemented | `dist/stats.html` |
-| **Performance** | k6 | ⏳ Planned | — |
-| **Security** | Semgrep / OWASP ZAP / Trivy | ⏳ Planned | — |
+| Layer               | Tooling                                | Status         | Test Count               |
+| ------------------- | -------------------------------------- | -------------- | ------------------------ |
+| **Client**          | Vitest + React Testing Library + jsdom | ✅ Implemented | 3 unit tests             |
+| **Shared**          | Vitest                                 | ✅ Implemented | 23 schema/RBAC tests     |
+| **Server**          | Vitest + Supertest                     | ✅ Implemented | 81 tests across 13 files |
+| **E2E**             | Playwright                             | ✅ Implemented | 3 passing specs          |
+| **CI/CD**           | GitHub Actions                         | ✅ Implemented | 3 jobs                   |
+| **Bundle Analysis** | rollup-plugin-visualizer               | ✅ Implemented | `dist/stats.html`        |
+| **Performance**     | k6                                     | ⏳ Planned     | —                        |
+| **Security**        | Semgrep / OWASP ZAP / Trivy            | ⏳ Planned     | —                        |
 
 ---
 
@@ -36,11 +36,11 @@ Client tests run in a `jsdom` environment using Vitest and React Testing Library
 
 #### Current Coverage
 
-| Component | What It Tests |
-|-----------|---------------|
-| `RouteErrorFallback` | Fallback UI rendering, reload/back buttons |
-| `ErrorBoundary` | Child error catching, fallback UI |
-| `useAuth` | Hook guard when used outside `AuthProvider` |
+| Component            | What It Tests                               |
+| -------------------- | ------------------------------------------- |
+| `RouteErrorFallback` | Fallback UI rendering, reload/back buttons  |
+| `ErrorBoundary`      | Child error catching, fallback UI           |
+| `useAuth`            | Hook guard when used outside `AuthProvider` |
 
 ### 2.2 Shared Package Testing (Vitest)
 
@@ -97,13 +97,13 @@ E2E tests validate critical user journeys against a running server. They are org
 
 #### Planned E2E Enhancements
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| `storageState` / `auth.setup.ts` | ⏳ Planned | Pre-authenticated sessions per role to avoid login per test |
-| Page Object Model (`packages/e2e/pages/`) | ⏳ Planned | Centralize locators and flows |
-| WebRTC / LiveKit assertions | ⏳ Planned | Video element visibility and `readyState` checks |
-| Start backend server in CI webServer | ✅ Implemented | `playwright.config.ts` runs `npm run dev` and probes `/api/v1/health` on port 4000 |
-| Critical journey coverage | ⏳ Planned | Registration, room scheduling, attendance, activity upload, PDF report |
+| Feature                                   | Status         | Notes                                                                              |
+| ----------------------------------------- | -------------- | ---------------------------------------------------------------------------------- |
+| `storageState` / `auth.setup.ts`          | ⏳ Planned     | Pre-authenticated sessions per role to avoid login per test                        |
+| Page Object Model (`packages/e2e/pages/`) | ⏳ Planned     | Centralize locators and flows                                                      |
+| WebRTC / LiveKit assertions               | ⏳ Planned     | Video element visibility and `readyState` checks                                   |
+| Start backend server in CI webServer      | ✅ Implemented | `playwright.config.ts` runs `npm run dev` and probes `/api/v1/health` on port 4000 |
+| Critical journey coverage                 | ⏳ Planned     | Registration, room scheduling, attendance, activity upload, PDF report             |
 
 ### 2.5 Performance Testing (Grafana k6)
 
@@ -119,14 +119,14 @@ E2E tests validate critical user journeys against a running server. They are org
 
 **Status: Planned**
 
-| Tool | Purpose | Integration Point |
-|------|---------|-------------------|
-| **GitLeaks** | Secrets scanning | Pre-commit + CI |
-| **Semgrep** | SAST for SQLi, XSS, RBAC gaps | PR pipeline |
-| **npm audit / Snyk** | SCA for known CVEs | Build stage |
-| **Trivy** | Container image scanning | Docker build phase |
-| **OWASP ZAP** | DAST against deployed staging | Post-deploy |
-| **Burp Suite Pro** | Manual penetration testing | Release gate |
+| Tool                 | Purpose                       | Integration Point  |
+| -------------------- | ----------------------------- | ------------------ |
+| **GitLeaks**         | Secrets scanning              | Pre-commit + CI    |
+| **Semgrep**          | SAST for SQLi, XSS, RBAC gaps | PR pipeline        |
+| **npm audit / Snyk** | SCA for known CVEs            | Build stage        |
+| **Trivy**            | Container image scanning      | Docker build phase |
+| **OWASP ZAP**        | DAST against deployed staging | Post-deploy        |
+| **Burp Suite Pro**   | Manual penetration testing    | Release gate       |
 
 ---
 
@@ -310,7 +310,7 @@ jobs:
           LIVEKIT_API_SECRET: test-secret-at-least-16-chars
           S3_ENDPOINT: http://localhost:9000
           S3_PUBLIC_ENDPOINT: http://localhost:9000
-          S3_REGION: us-east-1
+          S3_REGION: ap-south-1
           S3_BUCKET: eventclick-test
           S3_ACCESS_KEY: minioadmin
           S3_SECRET_KEY: minioadmin
@@ -367,12 +367,12 @@ jobs:
 
 ### Performance Budgets (Planned)
 
-| Budget | Target | Enforcement |
-|--------|--------|-------------|
-| **JS bundle (gzipped)** | < 200KB initial | CI gate via `rollup-plugin-visualizer` |
-| **CSS bundle (gzipped)** | < 50KB | CI gate |
-| **Largest chunk** | < 100KB | Manual review of `stats.html` |
-| **Time to Interactive** | < 3s on 3G | Lighthouse CI (planned) |
+| Budget                   | Target          | Enforcement                            |
+| ------------------------ | --------------- | -------------------------------------- |
+| **JS bundle (gzipped)**  | < 200KB initial | CI gate via `rollup-plugin-visualizer` |
+| **CSS bundle (gzipped)** | < 50KB          | CI gate                                |
+| **Largest chunk**        | < 100KB         | Manual review of `stats.html`          |
+| **Time to Interactive**  | < 3s on 3G      | Lighthouse CI (planned)                |
 
 ---
 
@@ -399,25 +399,25 @@ All security vulnerabilities and performance regressions identified by automated
 
 ### Completed (Current Branch: `features/testing-suite`)
 
-| Item | Details |
-|------|---------|
-| Client unit tests | Vitest + RTL + jsdom; `App.test.tsx` covering RouteErrorFallback, ErrorBoundary, useAuth (3 tests) |
-| Shared schema tests | 23 tests covering Zod schemas, RBAC utilities, URL extraction |
-| Server tests | 81 tests across 13 files covering services, middleware, and API integration |
-| E2E package | Playwright scaffold with auth, share-links, and health specs (3 specs) |
-| CI/CD | `lint-and-audit`, `unit-tests`, `e2e-tests` jobs with Postgres + Redis services; Node 22 |
-| Bundle analysis | `rollup-plugin-visualizer` generating `dist/stats.html` |
+| Item                | Details                                                                                            |
+| ------------------- | -------------------------------------------------------------------------------------------------- |
+| Client unit tests   | Vitest + RTL + jsdom; `App.test.tsx` covering RouteErrorFallback, ErrorBoundary, useAuth (3 tests) |
+| Shared schema tests | 23 tests covering Zod schemas, RBAC utilities, URL extraction                                      |
+| Server tests        | 81 tests across 13 files covering services, middleware, and API integration                        |
+| E2E package         | Playwright scaffold with auth, share-links, and health specs (3 specs)                             |
+| CI/CD               | `lint-and-audit`, `unit-tests`, `e2e-tests` jobs with Postgres + Redis services; Node 22           |
+| Bundle analysis     | `rollup-plugin-visualizer` generating `dist/stats.html`                                            |
 
 ### Next Steps
 
-| Priority | Item | Owner |
-|----------|------|-------|
-| P0 | Add `storageState` auth setup for E2E tests | Frontend |
-| P0 | Expand E2E coverage beyond smoke tests (registration, rooms, attendance, PDF) | Frontend |
-| P1 | Implement Page Object Model for E2E | Frontend |
-| P1 | Add WebRTC emulation flags to Playwright config | Frontend |
-| P1 | Add database truncation hook to server vitest config | Backend |
-| P2 | Integrate k6 performance tests into CI/CD | DevOps |
-| P2 | Add Semgrep and Gitleaks to CI pipeline | Security |
-| P2 | Add OWASP ZAP DAST to staging verification | Security |
-| P2 | Implement test data isolation with QA tenant UUID | Fullstack |
+| Priority | Item                                                                          | Owner     |
+| -------- | ----------------------------------------------------------------------------- | --------- |
+| P0       | Add `storageState` auth setup for E2E tests                                   | Frontend  |
+| P0       | Expand E2E coverage beyond smoke tests (registration, rooms, attendance, PDF) | Frontend  |
+| P1       | Implement Page Object Model for E2E                                           | Frontend  |
+| P1       | Add WebRTC emulation flags to Playwright config                               | Frontend  |
+| P1       | Add database truncation hook to server vitest config                          | Backend   |
+| P2       | Integrate k6 performance tests into CI/CD                                     | DevOps    |
+| P2       | Add Semgrep and Gitleaks to CI pipeline                                       | Security  |
+| P2       | Add OWASP ZAP DAST to staging verification                                    | Security  |
+| P2       | Implement test data isolation with QA tenant UUID                             | Fullstack |

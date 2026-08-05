@@ -4,7 +4,7 @@ import { logger } from "../utils/logger";
 import { sendVerificationEmail, sendPasswordResetEmail, sendReportReadyEmail } from "../services/email.service";
 import crypto from "crypto";
 
-const region = env.S3_REGION || "us-east-1";
+const region = env.S3_REGION || "ap-south-1";
 
 const credentials = env.S3_ACCESS_KEY && env.S3_SECRET_KEY 
   ? {
@@ -16,6 +16,7 @@ const credentials = env.S3_ACCESS_KEY && env.S3_SECRET_KEY
 export const sqsClient = new SQSClient({
   region,
   credentials,
+  useQueueUrlAsEndpoint: true,
 });
 
 export interface EmailJobPayload {

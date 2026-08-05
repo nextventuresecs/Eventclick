@@ -6,13 +6,14 @@ import {
 import { logger } from "../utils/logger";
 
 const sqsClient = new SQSClient({
-  region: process.env.S3_REGION || process.env.AWS_REGION || "us-east-1",
+  region: process.env.S3_REGION || process.env.AWS_REGION || "ap-south-1",
   credentials: process.env.S3_ACCESS_KEY && process.env.S3_SECRET_KEY
     ? {
         accessKeyId: process.env.S3_ACCESS_KEY,
         secretAccessKey: process.env.S3_SECRET_KEY,
       }
     : undefined,
+    useQueueUrlAsEndpoint: true,
 });
 
 const DLQ_URL = process.env.SQS_DLQ_URL;

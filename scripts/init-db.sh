@@ -11,7 +11,7 @@
 #
 # Required environment (set directly, or leave unset to pull matching
 # SSM_PATH parameters automatically):
-#   AWS_REGION        (default: us-east-1 — override to match your infra)
+#   AWS_REGION        (default: ap-south-1 — override to match your infra)
 #   SSM_PATH           SSM parameter path prefix (default: /eventclick/prod)
 #   PGHOST             Postgres host (falls back to SSM /db/host)
 #   PGPORT             Postgres port (default: 5432)
