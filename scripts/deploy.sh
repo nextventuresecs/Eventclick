@@ -215,6 +215,19 @@ else
 fi
 
 log "Running database migrations..."
+
+# --- AUTO-HEAL LEGACY SCHEMA ---
+# If the database contains the old pre-multi-tenant schema (form_definitions exists but is missing organization_id),
+# wipe the public schema so Drizzle can initialize cleanly.
+if docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -tAc "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='form_definitions'" | grep -q 1; then
+  if ! docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -tAc "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='form_definitions' AND column_name='organization_id'" | grep -q 1; then
+    warn "Detected legacy schema without organization_id! Wiping public schema to start fresh (Option 2)..."
+    docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" SCHEMA public; CREATE EXTENSION IF NOT EXISTS \"pgcrypto\" SCHEMA public;"
+    ok "Legacy schema wiped successfully."
+  fi
+fi
+# -------------------------------
+
 if ! dc up migrate --abort-on-container-exit; then
   err "Database migration failed!"
   err "Aborting deployment. Fix migrations before retrying."
