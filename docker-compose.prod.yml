@@ -153,6 +153,7 @@ services:
         const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
         await pool.query('CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"');
         await pool.query('CREATE EXTENSION IF NOT EXISTS \"pgcrypto\"');
+        await pool.query('CREATE EXTENSION IF NOT EXISTS \"postgis\"');
         const db = drizzle(pool);
         await migrate(db, { migrationsFolder: './packages/server/drizzle' });
         console.log('[migrate] ✅ done');
