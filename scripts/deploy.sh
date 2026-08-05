@@ -193,7 +193,7 @@ source "$SECRETS_FILE"
 set +a
 
 log "Creating pre-migration DB snapshot..."
-DB_CONTAINER=$(dc ps --format '{{.Name}}' --filter 'name=postgres' | head -1)
+DB_CONTAINER=$(dc ps --format '{{.Name}}' postgres | head -1)
 SNAPSHOT_TS=$(date +%Y%m%d-%H%M%S)
 MIGRATION_SNAPSHOT="/tmp/db-pre-migrate-${SNAPSHOT_TS}.dump"
 if docker exec "$DB_CONTAINER" pg_dump -U "${DB_USER}" -d "${DB_NAME}" --format=custom \
