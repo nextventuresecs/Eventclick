@@ -228,9 +228,42 @@ if docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER
 fi
 # -------------------------------
 
-log "Debugging installed extensions in public schema:"
-docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -c "\dx"
-docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -c "\dT geometry"
+# -------------------------------
+
+log "Ensuring database roles exist..."
+docker exec -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" -v ON_ERROR_STOP=1 <<-EOSQL
+  DO \$\$
+  BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_user') THEN
+      CREATE ROLE app_user NOLOGIN;
+    END IF;
+  END
+  \$\$;
+
+  DO \$\$
+  BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_user_login') THEN
+      CREATE ROLE app_user_login LOGIN PASSWORD '${APP_DB_PASSWORD}' IN ROLE app_user;
+    ELSE
+      ALTER ROLE app_user_login PASSWORD '${APP_DB_PASSWORD}';
+    END IF;
+  END
+  \$\$;
+
+  DO \$\$
+  BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'auth_svc_role') THEN
+      CREATE ROLE auth_svc_role LOGIN PASSWORD '${AUTH_DB_PASSWORD}' BYPASSRLS;
+    ELSE
+      ALTER ROLE auth_svc_role PASSWORD '${AUTH_DB_PASSWORD}' BYPASSRLS;
+    END IF;
+  END
+  \$\$;
+
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_user;
+EOSQL
+log "Database roles verified."
 
 if ! dc up migrate --abort-on-container-exit; then
   err "Database migration failed!"

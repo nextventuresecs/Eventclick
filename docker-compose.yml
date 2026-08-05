@@ -3,7 +3,7 @@ services:
   # ─── PostgreSQL ───────────────────────────────────
   postgres:
     image: postgis/postgis:16-3.4-alpine
-    container_name: ${DB_NAME}_postgres
+    container_name: eventclick_postgres
     restart: unless-stopped
     ports:
       - "${DB_PORT:-5432}:5432"
@@ -23,7 +23,7 @@ services:
   # ─── Redis ────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: Eventclick_redis
+    container_name: eventclick_redis
     restart: unless-stopped
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -39,7 +39,7 @@ services:
   # ─── LiveKit (self-hosted WebRTC SFU) ─────────────
   livekit:
     image: livekit/livekit-server:latest
-    container_name: Eventclick_livekit
+    container_name: eventclick_livekit
     restart: unless-stopped
     command: --dev --bind 0.0.0.0
     ports:
@@ -52,7 +52,7 @@ services:
   # ─── MinIO (S3-compatible object storage for dev) ─
   minio:
     image: minio/minio:latest
-    container_name: Eventclick_minio
+    container_name: eventclick_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     ports:
@@ -72,7 +72,7 @@ services:
   # Seed bucket on first run, then exit
   minio-init:
     image: minio/mc:latest
-    container_name: Eventclick_minio_init
+    container_name: eventclick_minio_init
     depends_on:
       minio:
         condition: service_started
@@ -93,7 +93,7 @@ services:
     build:
       context: .
       dockerfile: packages/server/Dockerfile.dev
-    container_name: Eventclick_server
+    container_name: eventclick_server
     restart: unless-stopped
     ports:
       - "${API_PORT:-4000}:4000"
@@ -135,7 +135,7 @@ services:
     build:
       context: .
       dockerfile: packages/client/Dockerfile.dev
-    container_name: Eventclick_client
+    container_name: eventclick_client
     restart: unless-stopped
     ports:
       - "${CLIENT_PORT:-3000}:3000"
@@ -152,7 +152,7 @@ services:
   # ─── Gotenberg (HTML to PDF) ──────────────────────
   gotenberg:
     image: gotenberg/gotenberg:8
-    container_name: Eventclick_gotenberg
+    container_name: eventclick_gotenberg
     restart: unless-stopped
     ports:
       - "8686:3000"
