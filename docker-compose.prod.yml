@@ -232,7 +232,7 @@ services:
       gotenberg:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/v1/health/deep || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/v1/ready || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3

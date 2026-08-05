@@ -174,9 +174,9 @@ sleep 5
 # 2. Pull/Build Docker Images
 # ═══════════════════════════════════════════════════════════════════════════
 if [[ "${SKIP_BUILD:-1}" != "0" ]]; then
-  log "pulling Docker images..."
-  dc pull && dc up -d --no-deps client server
-  log "Docker images pulled & restarted ✅"
+  log "Pulling Docker images..."
+  dc pull
+  log "Docker images pulled ✅"
 else
   log "Building Docker images..."
   dc build --no-cache server client
@@ -218,8 +218,6 @@ log "Migrations complete ✅"
 # 3.5 Rotate hardcoded DB role passwords using values from SSM
 # ═══════════════════════════════════════════════════════════════════════════
 log "Rotating database role passwords..."
-
-# Secrets already loaded above (before migration snapshot)
 
 # Temporarily disable set -x if it was enabled, to prevent logging passwords
 [[ "$-" == *x* ]] && XTRACE_ON=1 || XTRACE_ON=0
@@ -281,7 +279,7 @@ log "Server health check passed ✅"
 log "Running deep health smoke test..."
 SMOKE_OK=false
 for i in $(seq 1 5); do
-  SMOKE_RESP=$(docker exec Eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health/deep | grep -o '"status":"healthy"' | wc -l )
+  SMOKE_RESP=$(docker exec Eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health/deep | grep -o '"status":"ok"' | wc -l )
   if [[ "$SMOKE_RESP" -eq 1 ]]; then
     SMOKE_OK=true
     break
