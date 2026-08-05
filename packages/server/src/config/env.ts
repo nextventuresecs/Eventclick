@@ -20,7 +20,7 @@ const EnvSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .optional(),
 
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.string().url().optional(),
   AUTH_DATABASE_URL: z.string().url().optional(),
   APP_DATABASE_URL: z.string().url().optional(),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
