@@ -84,3 +84,6 @@ REVOKE ALL ON sessions FROM app_user;--> statement-breakpoint
 REVOKE ALL ON password_resets FROM app_user;--> statement-breakpoint
 REVOKE ALL ON email_verifications FROM app_user;--> statement-breakpoint
 REVOKE UPDATE, DELETE ON audit_logs FROM app_user;--> statement-breakpoint
+-- Grants: auth_svc_role gets full access to all tables--> statement-breakpoint
+GRANT SELECT, INSERT, UPDATE, DELETE ON organizations, users, org_members, event_rooms, form_definitions, attendance_entries, room_recordings, event_admin_assignments, activity_submissions, activity_photos, notifications, pdf_jobs, audit_logs, feedback, bug_reports, sessions, password_resets, email_verifications TO auth_svc_role;--> statement-breakpoint
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO auth_svc_role;--> statement-breakpoint
