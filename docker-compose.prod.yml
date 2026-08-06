@@ -331,7 +331,10 @@ services:
     container_name: eventclick_client_prod
     restart: always
     ports:
-      - "${CLIENT_PORT:-80}:8080"
+      - "80:8080"
+      - "443:8443"
+    volumes:
+      - /etc/ssl/cloudflare:/etc/ssl/cloudflare:ro
     depends_on:
       server:
         condition: service_healthy
