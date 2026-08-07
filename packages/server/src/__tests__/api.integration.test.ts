@@ -61,14 +61,34 @@ describe("Health Endpoints", () => {
     vi.clearAllMocks();
   });
 
-  it("GET /health returns 200", async () => {
+  it("GET /api/v1/health returns 200", async () => {
     const res = await request(app).get("/api/v1/health");
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty("status");
+    expect(res.body).toHaveProperty("status", "ok");
     expect(res.body).toHaveProperty("timestamp");
   });
 
-  it("GET /ready returns 200 or 503", async () => {
+  it("GET /health (root alias) returns 200", async () => {
+    const res = await request(app).get("/health");
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty("status", "ok");
+  });
+
+  it("GET /api/v1/health succeeds even if Redis is disconnected", async () => {
+    const { redisClient } = await import("../config/redis");
+    const originalState = redisClient.isOpen;
+    (redisClient as any).isOpen = false;
+
+    try {
+      const res = await request(app).get("/api/v1/health");
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty("status", "ok");
+    } finally {
+      (redisClient as any).isOpen = originalState;
+    }
+  });
+
+  it("GET /api/v1/ready returns 200 or 503", async () => {
     const res = await request(app).get("/api/v1/ready");
     expect([200, 503]).toContain(res.status);
   });

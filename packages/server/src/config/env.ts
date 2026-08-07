@@ -10,6 +10,19 @@ for (const p of candidates) {
   dotenv.config({ path: p });
 }
 
+const cleanString = (val: unknown): string | undefined => {
+  if (typeof val !== "string") return undefined;
+  const trimmed = val.trim().replace(/^["']|["']$/g, "").trim();
+  return trimmed === "" ? undefined : trimmed;
+};
+
+const optionalUrlSchema = z.preprocess((val) => cleanString(val), z.string().url().optional());
+
+const urlSchema = z.preprocess((val) => {
+  const cleaned = cleanString(val);
+  return cleaned !== undefined ? cleaned : val;
+}, z.string().url());
+
 const EnvSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
@@ -20,11 +33,11 @@ const EnvSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .optional(),
 
-  DATABASE_URL: z.string().url().optional(),
-  AUTH_DATABASE_URL: z.string().url(),
-  APP_DATABASE_URL: z.string().url(),
+  DATABASE_URL: optionalUrlSchema,
+  AUTH_DATABASE_URL: urlSchema,
+  APP_DATABASE_URL: urlSchema,
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
-  REDIS_URL: z.string().url(),
+  REDIS_URL: urlSchema,
 
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 chars"),
   JWT_REFRESH_SECRET: z
@@ -48,7 +61,7 @@ const EnvSchema = z.object({
     .nonnegative()
     .default(30),
 
-  APP_URL: z.url().default("http://localhost:3000"),
+  APP_URL: urlSchema.default("http://localhost:3000"),
   COOKIE_DOMAIN: z.string(),
 
   GOOGLE_CLIENT_ID: z.string(),
@@ -68,8 +81,8 @@ const EnvSchema = z.object({
     .min(16, "LIVEKIT_API_SECRET must be at least 16 chars"),
 
   // ─── S3 (MinIO dev / Cloudflare R2 prod) ──────────
-  S3_ENDPOINT: z.url(),
-  S3_PUBLIC_ENDPOINT: z.url(),
+  S3_ENDPOINT: urlSchema,
+  S3_PUBLIC_ENDPOINT: urlSchema,
   S3_REGION: z.string().default("ap-south-1"),
   S3_BUCKET: z.string().min(1),
   S3_ACCESS_KEY: z.string().min(1),
@@ -79,11 +92,11 @@ const EnvSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
-  GOTENBERG_URL: z.string().url().default(process.env.GOTENBERG_URL || "http://localhost:8686"),
+  GOTENBERG_URL: urlSchema.default(process.env.GOTENBERG_URL || "http://localhost:8686"),
 
   // ─── AWS SQS ──────────────────────────────────────
-  SQS_QUEUE_URL: z.string().url().optional(),
-  SQS_PDF_QUEUE_URL: z.string().url(),
+  SQS_QUEUE_URL: optionalUrlSchema,
+  SQS_PDF_QUEUE_URL: optionalUrlSchema,
   SQS_WORKER_ENABLED: z.string().default("true"),
 
   // ─── Server timeouts (production hardening) ─────────

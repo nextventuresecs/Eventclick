@@ -178,7 +178,8 @@ prefix = '${SSM_PATH}/'
 
 for item in sorted(data, key=lambda x: x['Name']):
     key = item['Name'].replace(prefix, '').replace('/', '_').upper()
-    value = item['Value']
+    raw_val = item['Value']
+    value = raw_val.strip().strip('"').strip("'") if isinstance(raw_val, str) else raw_val
     print(f'{key}={json.dumps(value)}')
 " >> "$OUTPUT_FILE"
 

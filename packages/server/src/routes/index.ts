@@ -39,7 +39,9 @@ apiRouter.get("/ready", async (_req, res) => {
   // Check PostgreSQL
   try {
     const result = await pool.query("SELECT 1 AS alive");
-    checks.database = result.rows[0]?.alive === 1 ? "ok" : "degraded";
+    const isAlive = result.rows.length > 0 && String(result.rows[0]?.alive) === "1";
+    checks.database = isAlive ? "ok" : "degraded";
+    if (!isAlive) healthy = false;
   } catch {
     checks.database = "error";
     healthy = false;
@@ -75,7 +77,9 @@ apiRouter.get("/health/deep", async (_req, res) => {
   // PostgreSQL
   try {
     const result = await pool.query("SELECT 1 AS alive");
-    checks.database = result.rows[0]?.alive === 1 ? "ok" : "degraded";
+    const isAlive = result.rows.length > 0 && String(result.rows[0]?.alive) === "1";
+    checks.database = isAlive ? "ok" : "degraded";
+    if (!isAlive) healthy = false;
   } catch {
     checks.database = "error";
     healthy = false;

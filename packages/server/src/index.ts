@@ -97,9 +97,17 @@ app.use(
     customErrorMessage: (req, res, err) =>
       `${req.method} ${req.url} → ${res.statusCode} (${err.name})`,
     autoLogging: {
-      ignore: (req) =>
-        req.url === `${API_PREFIX}/health` ||
-        req.url === `${API_PREFIX}/ready`,
+      ignore: (req) => {
+        const path = (req.url || "").split("?")[0];
+        return (
+          path === "/health" ||
+          path === "/ready" ||
+          path === "/metrics" ||
+          path.startsWith(`${API_PREFIX}/health`) ||
+          path === `${API_PREFIX}/ready` ||
+          path === `${API_PREFIX}/metrics`
+        );
+      },
     },
   }),
 );
@@ -110,7 +118,18 @@ app.use(
     limit: env.RATE_LIMIT_MAX,
     standardHeaders: "draft-7",
     legacyHeaders: false,
-    skip: () => env.NODE_ENV === "test" || process.env.NODE_ENV === "test",
+    skip: (req) => {
+      if (env.NODE_ENV === "test" || process.env.NODE_ENV === "test") return true;
+      const path = (req.path || req.url || "").split("?")[0];
+      return (
+        path === "/health" ||
+        path === "/ready" ||
+        path === "/metrics" ||
+        path.startsWith(`${API_PREFIX}/health`) ||
+        path === `${API_PREFIX}/ready` ||
+        path === `${API_PREFIX}/metrics`
+      );
+    },
     store: new RedisStore({
       sendCommand: async (...args: string[]) => {
         if (!redisClient.isOpen) {
@@ -140,6 +159,15 @@ app.use(
     }),
   }),
 );
+
+// Root-level health aliases for external load balancers and container probes
+app.get("/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
 
 import { csrfProtection } from "./middleware/csrf";
 import { setTenantContext } from "./middleware/tenantContext";
