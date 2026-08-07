@@ -98,7 +98,7 @@ app.use(
       `${req.method} ${req.url} → ${res.statusCode} (${err.name})`,
     autoLogging: {
       ignore: (req) => {
-        const path = (req.url || "").split("?")[0];
+        const path = (req.url || "").split("?")[0] ?? "";
         return (
           path === "/health" ||
           path === "/ready" ||
@@ -120,7 +120,7 @@ app.use(
     legacyHeaders: false,
     skip: (req) => {
       if (env.NODE_ENV === "test" || process.env.NODE_ENV === "test") return true;
-      const path = (req.path || req.url || "").split("?")[0];
+      const path = (req.path || req.url || "").split("?")[0] ?? "";
       return (
         path === "/health" ||
         path === "/ready" ||
