@@ -18,10 +18,10 @@ const cleanString = (val: unknown): string | undefined => {
 
 const optionalUrlSchema = z.preprocess((val) => cleanString(val), z.string().url().optional());
 
-const urlSchema = z.preprocess((val) => {
-  const cleaned = cleanString(val);
-  return cleaned !== undefined ? cleaned : val;
-}, z.string().url());
+const urlSchema = z.preprocess(
+  (val) => cleanString(val),
+  z.string({ message: "This URL is missing from SSM or .env" }).url("Must be a valid HTTP URL")
+);
 
 const EnvSchema = z.object({
   NODE_ENV: z
