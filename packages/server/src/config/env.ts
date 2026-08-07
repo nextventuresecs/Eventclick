@@ -96,7 +96,7 @@ const EnvSchema = z.object({
 
   // ─── AWS SQS ──────────────────────────────────────
   SQS_QUEUE_URL: optionalUrlSchema,
-  SQS_PDF_QUEUE_URL: optionalUrlSchema,
+  SQS_PDF_QUEUE_URL: urlSchema,
   SQS_WORKER_ENABLED: z.string().default("true"),
 
   // ─── Server timeouts (production hardening) ─────────

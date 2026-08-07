@@ -267,7 +267,7 @@ services:
     environment:
       NODE_ENV: production
       SQS_WORKER_ENABLED: "true"
-      SQS_PDF_QUEUE_URL: ${SQS_PDF_QUEUE_URL:-}
+      SQS_PDF_QUEUE_URL: ${SQS_PDF_QUEUE_URL}
       APP_DATABASE_URL: postgresql://app_user_login:${APP_DB_PASSWORD:-}@postgres:5432/${DB_NAME}
       AUTH_DATABASE_URL: postgresql://auth_svc_role:${AUTH_DB_PASSWORD:-}@postgres:5432/${DB_NAME}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
