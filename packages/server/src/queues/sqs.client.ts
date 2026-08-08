@@ -6,17 +6,9 @@ import crypto from "crypto";
 
 const region = env.S3_REGION || "ap-south-1";
 
-const credentials = env.S3_ACCESS_KEY && env.S3_SECRET_KEY 
-  ? {
-      accessKeyId: env.S3_ACCESS_KEY,
-      secretAccessKey: env.S3_SECRET_KEY,
-    }
-  : undefined;
 
 export const sqsClient = new SQSClient({
   region,
-  credentials,
-  useQueueUrlAsEndpoint: true,
 });
 
 export interface EmailJobPayload {
