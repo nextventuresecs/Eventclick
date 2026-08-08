@@ -18,10 +18,6 @@ import { sendReportReadyEmail } from "../services/email.service";
 
 const sqsClient = new SQSClient({
   region: env.S3_REGION || "ap-south-1",
-  credentials: env.S3_ACCESS_KEY && env.S3_SECRET_KEY
-    ? { accessKeyId: env.S3_ACCESS_KEY, secretAccessKey: env.S3_SECRET_KEY }
-    : undefined,
-    useQueueUrlAsEndpoint: true,
 });
 
 const VISIBILITY_TIMEOUT_SECONDS = 300;
