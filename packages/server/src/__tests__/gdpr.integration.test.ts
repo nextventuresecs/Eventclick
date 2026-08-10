@@ -44,11 +44,12 @@ function makeChain(limitReturn?: any) {
 
 vi.mock("../db", () => {
   const db = makeChain();
+  const pool = { query: vi.fn() };
   return {
     db,
-    pool: {
-      query: vi.fn(),
-    },
+    pool,
+    authDb: db,
+    authPool: pool,
   };
 });
 

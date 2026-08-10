@@ -12,8 +12,8 @@ vi.mock("rate-limit-redis", () => ({
   },
 }));
 
-vi.mock("../db", () => ({
-  db: {
+vi.mock("../db", () => {
+  const db = {
     select: vi.fn().mockReturnThis(),
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
@@ -24,11 +24,15 @@ vi.mock("../db", () => ({
     update: vi.fn().mockReturnThis(),
     set: vi.fn().mockReturnThis(),
     delete: vi.fn().mockReturnThis(),
-  },
-  pool: {
-    query: vi.fn(),
-  },
-}));
+  };
+  const pool = { query: vi.fn() };
+  return {
+    db,
+    pool,
+    authDb: db,       // sessionCleanup.ts now imports authDb — reuse same mock chain
+    authPool: pool,
+  };
+});
 
 vi.mock("@sentry/node", () => ({
   init: vi.fn(),
