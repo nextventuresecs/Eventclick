@@ -25,7 +25,7 @@ COMPOSE_FILE="docker-compose.prod.yml"
 # Health check uses 'docker inspect', NOT curl localhost:4000
 
 HEALTH_RETRIES=20
-HEALTH_INTERVAL=3
+HEALTH_INTERVAL=5
 DEPLOY_LOG="/tmp/deploy-$(date +%Y%m%d-%H%M%S).log"
 GHCR_NAMESPACE="nextventuresecs/eventclick"
 export GHCR_NAMESPACE
@@ -349,7 +349,7 @@ log "Starting rolling restart..."
 # Restart the server
 log "Restarting server..."
 dc up -d --no-deps server
-sleep 3
+sleep "$HEALTH_INTERVAL"
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 5. Health check
