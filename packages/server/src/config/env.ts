@@ -85,9 +85,9 @@ const EnvSchema = z.object({
 
   // ─── AWS SQS ──────────────────────────────────────
   SQS_QUEUE_URL: optionalUrlSchema,
-  SQS_PDF_QUEUE_URL: urlSchema,
+  SQS_PDF_QUEUE_URL: optionalUrlSchema,
   SQS_WORKER_ENABLED: z.string().default("true"),
-  SQS_DLQ_URL:urlSchema,
+  SQS_DLQ_URL:optionalUrlSchema,
 
   // ─── S3 (MinIO dev / Cloudflare R2 prod) ──────────
   S3_ENDPOINT: urlSchema,

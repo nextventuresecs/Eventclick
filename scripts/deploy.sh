@@ -71,7 +71,7 @@ rollback() {
 rollback_db() {
   if [[ -n "$MIGRATION_SNAPSHOT" && -f "$MIGRATION_SNAPSHOT" ]]; then
     log "Restoring pre-migration DB snapshot..."
-    docker exec "${DB_CONTAINER:-eventclick_db_postgres}" pg_restore \
+    docker exec "${DB_CONTAINER:-eventclick_postgres_prod}" pg_restore \
       -U "${DB_USER}" -d "${DB_NAME}" \
       --clean --no-owner --no-acl \
       -v < "$MIGRATION_SNAPSHOT" 2>&1 | tee -a "$DEPLOY_LOG" || warn "DB restore failed — manual intervention may be needed"
