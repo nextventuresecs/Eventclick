@@ -40,8 +40,10 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+YELLOW='\033[1;33m'
 log() { echo -e "${GREEN}[BACKUP]${NC} $(date +%Y-%m-%dT%H:%M:%S) $1"; }
 err() { echo -e "${RED}[ERROR]${NC} $(date +%Y-%m-%dT%H:%M:%S) $1" >&2; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $(date +%Y-%m-%dT%H:%M:%S) $1"; }
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 1. Create backup
@@ -57,11 +59,36 @@ docker exec "$CONTAINER_NAME" \
 BACKUP_SIZE=$(du -sh "${BACKUP_DIR}/${BACKUP_FILE}" | awk '{print $1}')
 log "Backup created: ${BACKUP_FILE} (${BACKUP_SIZE})"
 
+# ── Validate dump is non-empty ───────────────────────
+# pg_dump can succeed (exit 0) while producing an empty/near-empty dump
+# (e.g. wrong DB_NAME, connection reset mid-dump). pipefail catches a
+# crashing pg_dump, NOT a "successful" empty one — gzip of empty input
+# still writes a valid, non-zero-byte .gz file, so this check must be
+# explicit and gate the rest of the script.
+BACKUP_BYTES=$(stat -c%s "${BACKUP_DIR}/${BACKUP_FILE}" 2>/dev/null || stat -f%z "${BACKUP_DIR}/${BACKUP_FILE}")
+MIN_BACKUP_BYTES=1024
+if [[ "$BACKUP_BYTES" -lt "$MIN_BACKUP_BYTES" ]]; then
+  err "Backup file is suspiciously small (${BACKUP_BYTES} bytes) — likely an empty/broken dump."
+  err "Refusing to upload or rotate backups. Investigate pg_dump / DB_NAME / DB_USER before retrying."
+  rm -f "${BACKUP_DIR}/${BACKUP_FILE}"
+  exit 1
+fi
+log "Backup size check passed (${BACKUP_BYTES} bytes)"
+
 # ═══════════════════════════════════════════════════════════════════════════
 # 2. Upload to R2 (optional — requires aws CLI configured)
 # ═══════════════════════════════════════════════════════════════════════════
 if command -v aws &>/dev/null && [[ -n "${S3_ENDPOINT:-}" ]]; then
   log "Uploading to R2..."
+
+  # AWS CLI only reads AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY — not our
+  # S3_ACCESS_KEY / S3_SECRET_KEY var names. Without this export, `aws s3`
+  # silently falls back to the default provider chain (EC2 IMDS role),
+  # which sends an AWS IAM signature to R2's endpoint and fails auth.
+  # Same root cause class as the SQS InvalidClientTokenId bug — wrong
+  # creds var reaching an AWS SDK/CLI call.
+  export AWS_ACCESS_KEY_ID="${S3_ACCESS_KEY}"
+  export AWS_SECRET_ACCESS_KEY="${S3_SECRET_KEY}"
 
   # Determine prefix (daily vs weekly)
   if [[ "$DAY_OF_WEEK" == "7" ]]; then
