@@ -116,6 +116,8 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_FORCE_PATH_STYLE: "true"
       GOTENBERG_URL: http://gotenberg:3000
+      SQS_DLQ_URL: ${SQS_DLQ_URL:-}
+      SQS_PDF_QUEUE_URL: ${SQS_PDF_QUEUE_URL:-}
     volumes:
       - ./packages/server/src:/app/packages/server/src
       - ./packages/shared/src:/app/packages/shared/src
