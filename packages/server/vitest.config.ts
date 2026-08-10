@@ -20,6 +20,7 @@ export default defineConfig({
       AUTH_DATABASE_URL: "postgresql://test:test@localhost:5432/Eventclick_test",
       APP_DATABASE_URL: "postgresql://test:test@localhost:5432/Eventclick_test",
       SQS_PDF_QUEUE_URL: "https://sqs.ap-south-1.amazonaws.com/123456789012/test-pdf-queue",
+      SQS_DLQ_URL: "http://sqs.ap-south-1.amazonaws.com/123456789012/eventclick-test-dlq",
       COOKIE_DOMAIN: "localhost",
       GOOGLE_CLIENT_ID: "test-google-client-id",
       RESEND_API_KEY: "re_test_key",

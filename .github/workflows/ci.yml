@@ -65,6 +65,7 @@ jobs:
       RESEND_API_KEY: test-resend-api-key
       SQS_QUEUE_URL: http://localhost:4566/000000000000/eventclick-test-queue
       SQS_PDF_QUEUE_URL: http://localhost:4566/000000000000/eventclick-test-pdf-queue
+      SQS_DLQ_URL: http://localhost:4566/000000000000/eventclick-test-dlq
       SENTRY_SERVER_DSN: ""
     services:
       postgres:
@@ -146,6 +147,7 @@ jobs:
       RESEND_API_KEY: test-resend-api-key
       SQS_QUEUE_URL: http://localhost:4566/000000000000/eventclick-test-queue
       SQS_PDF_QUEUE_URL: http://localhost:4566/000000000000/eventclick-test-pdf-queue
+      SQS_DLQ_URL: http://localhost:4566/000000000000/eventclick-test-dlq
       SENTRY_SERVER_DSN: ""
       CI: "true"
     services:
