@@ -15,6 +15,13 @@
       "when": 1785786078217,
       "tag": "0001_clumsy_bloodstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786402370915,
+      "tag": "0002_nebulous_ultimates",
+      "breakpoints": true
     }
   ]
 }

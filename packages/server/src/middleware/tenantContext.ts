@@ -18,7 +18,15 @@ export async function setTenantContext(req: Request, res: Response, next: NextFu
 
   try {
     await client.query("BEGIN");
-    await client.query("SELECT set_config('app.current_tenant', $1, true)", [orgId]);
+    // Sets both the tenant scope and the requesting user's own id. The
+    // latter is used by users_tenant_isolation's self-visibility branch
+    // (a user can see their own row even before joining an org) without
+    // exposing every other tenant's unassigned users — see migration
+    // 0002_narrow_users_tenant_isolation.sql.
+    await client.query(
+      "SELECT set_config('app.current_tenant', $1, true), set_config('app.current_user_id', $2, true)",
+      [orgId, req.user?.id ?? ""]
+    );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
     client.release();
