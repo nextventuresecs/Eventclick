@@ -4,18 +4,14 @@ import { logger } from "../utils/logger";
 import { sendVerificationEmail, sendPasswordResetEmail, sendReportReadyEmail } from "../services/email.service";
 import crypto from "crypto";
 
-const region = env.S3_REGION || "ap-south-1";
+const region = env.AWS_REGION || "ap-south-1";
 
-const credentials = env.S3_ACCESS_KEY && env.S3_SECRET_KEY 
-  ? {
-      accessKeyId: env.S3_ACCESS_KEY,
-      secretAccessKey: env.S3_SECRET_KEY,
-    }
-  : undefined;
-
+// Never pass S3_ACCESS_KEY/S3_SECRET_KEY here — those are R2/MinIO creds,
+// not AWS IAM creds, and silently override the default provider chain,
+// causing InvalidClientTokenId against real AWS SQS.
+// Let the SDK default chain resolve creds via IMDS (EventclickEC2Role).
 export const sqsClient = new SQSClient({
   region,
-  credentials,
   useQueueUrlAsEndpoint: true,
 });
 

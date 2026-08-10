@@ -37,7 +37,7 @@ export default defineConfig({
       LIVEKIT_API_SECRET: "test-secret-at-least-16-chars",
       S3_ENDPOINT: "http://localhost:9000",
       S3_PUBLIC_ENDPOINT: "http://localhost:9000",
-      S3_REGION: "ap-south-1",
+      S3_REGION: "auto",
       S3_BUCKET: "Eventclick-test",
       S3_ACCESS_KEY: "minioadmin",
       S3_SECRET_KEY: "minioadmin",

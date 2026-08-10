@@ -80,10 +80,19 @@ const EnvSchema = z.object({
     .string()
     .min(16, "LIVEKIT_API_SECRET must be at least 16 chars"),
 
+  // ─── AWS ──────────────────────────────────────
+  AWS_REGION: z.string().default("ap-south-1"),
+
+  // ─── AWS SQS ──────────────────────────────────────
+  SQS_QUEUE_URL: optionalUrlSchema,
+  SQS_PDF_QUEUE_URL: urlSchema,
+  SQS_WORKER_ENABLED: z.string().default("true"),
+  SQS_DLQ_URL:urlSchema,
+
   // ─── S3 (MinIO dev / Cloudflare R2 prod) ──────────
   S3_ENDPOINT: urlSchema,
   S3_PUBLIC_ENDPOINT: urlSchema,
-  S3_REGION: z.string().default("ap-south-1"),
+  S3_REGION: z.string().default("auto"),
   S3_BUCKET: z.string().min(1),
   S3_ACCESS_KEY: z.string().min(1),
   S3_SECRET_KEY: z.string().min(1),
@@ -93,11 +102,6 @@ const EnvSchema = z.object({
     .transform((v) => v === "true"),
 
   GOTENBERG_URL: urlSchema.default(process.env.GOTENBERG_URL || "http://localhost:8686"),
-
-  // ─── AWS SQS ──────────────────────────────────────
-  SQS_QUEUE_URL: optionalUrlSchema,
-  SQS_PDF_QUEUE_URL: urlSchema,
-  SQS_WORKER_ENABLED: z.string().default("true"),
 
   // ─── Server timeouts (production hardening) ─────────
   SERVER_HEADERS_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),

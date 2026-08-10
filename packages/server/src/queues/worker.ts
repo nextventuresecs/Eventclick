@@ -1,5 +1,4 @@
 import {
-  SQSClient,
   ReceiveMessageCommand,
   DeleteMessageCommand,
   ChangeMessageVisibilityCommand,
@@ -15,14 +14,12 @@ import { eq } from "drizzle-orm";
 import { notificationService } from "../services/notification.service";
 import { s3, buildPublicUrl } from "../services/storage.service";
 import { sendReportReadyEmail } from "../services/email.service";
+import { sqsClient } from "./sqs.client";
 
-const sqsClient = new SQSClient({
-  region: env.S3_REGION || "ap-south-1",
-  credentials: env.S3_ACCESS_KEY && env.S3_SECRET_KEY
-    ? { accessKeyId: env.S3_ACCESS_KEY, secretAccessKey: env.S3_SECRET_KEY }
-    : undefined,
-    useQueueUrlAsEndpoint: true,
-});
+// SQS client is now the single shared instance from sqs.client.ts.
+// Do NOT construct a second SQSClient here — a prior duplicate with an
+// S3_ACCESS_KEY/S3_SECRET_KEY credentials override caused InvalidClientTokenId
+// against real AWS SQS. One client, one config, one place to fix.
 
 const VISIBILITY_TIMEOUT_SECONDS = 300;
 const MAX_RECEIVE_WAIT = 20;
