@@ -290,25 +290,14 @@ jobs:
           INSTANCE_ID="${{ secrets.EC2_INSTANCE_ID }}"
           echo "Verifying health directly on EC2 via SSM (bypasses Cloudflare)..."
 
+          # Use docker exec + wget (same as deploy.sh) because port 4000 is
+          # Docker-internal only (expose, not ports). Single bash -c avoids
+          # SSM JSON escaping issues with for/if across array elements.
           HEALTH_CMD_ID=$(aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --timeout-seconds 120 \
-            --parameters commands='[
-              "set -euo pipefail",
-              "for i in $(seq 1 10); do",
-              "  STATUS=$(curl -sf -o /dev/null -w \"%{http_code}\" http://localhost:4000/api/v1/health || echo \"failed\")",
-              "  if [ \"$STATUS\" = \"200\" ]; then",
-              "    BODY=$(curl -sf http://localhost:4000/api/v1/health)",
-              "    echo \"✅ Origin health check passed — $BODY\"",
-              "    exit 0",
-              "  fi",
-              "  echo \"Attempt ${i}/10 — status: ${STATUS}, retrying in 5s...\"",
-              "  sleep 5",
-              "done",
-              "echo \"❌ Origin health check failed after 10 attempts\"",
-              "exit 1"
-            ]' \
+            --parameters 'commands=["bash -c \"OK=false; for i in 1 2 3 4 5 6 7 8 9 10; do RESP=$(docker exec eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health 2>/dev/null) && echo \\\"Attempt $i: $RESP\\\" && OK=true && break; echo \\\"Attempt $i/10 failed, retrying in 5s...\\\"; sleep 5; done; if [ \\\"$OK\\\" = true ]; then echo \\\"HEALTH_OK\\\"; exit 0; else echo \\\"HEALTH_FAILED\\\"; exit 1; fi\""]' \
             --query "Command.CommandId" \
             --output text)
 
@@ -323,17 +312,24 @@ jobs:
               --output text 2>/dev/null || echo "InProgress")
 
             if [[ "$STATUS" == "Success" ]]; then
-              aws ssm get-command-invocation \
+              OUTPUT=$(aws ssm get-command-invocation \
                 --command-id "$HEALTH_CMD_ID" \
                 --instance-id "$INSTANCE_ID" \
                 --query "StandardOutputContent" \
-                --output text
+                --output text)
+              echo "$OUTPUT"
               echo "✅ Origin health verification passed"
               exit 0
             fi
 
             if [[ "$STATUS" == "Failed" || "$STATUS" == "TimedOut" ]]; then
               echo "❌ Origin health check ${STATUS}:"
+              aws ssm get-command-invocation \
+                --command-id "$HEALTH_CMD_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardOutputContent" \
+                --output text || true
+              echo "--- STDERR ---"
               aws ssm get-command-invocation \
                 --command-id "$HEALTH_CMD_ID" \
                 --instance-id "$INSTANCE_ID" \
