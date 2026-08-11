@@ -284,63 +284,62 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
       # ── Origin Health Check via SSM (bypasses Cloudflare Bot Fight Mode) ──
+      # Strategy: Send a single, dead-simple SSM command (no loops, no variables,
+      # no escaping). Retry logic lives here in CI, not inside SSM.
       - name: Verify Origin Health via SSM
         if: success()
         run: |
           INSTANCE_ID="${{ secrets.EC2_INSTANCE_ID }}"
           echo "Verifying health directly on EC2 via SSM (bypasses Cloudflare)..."
 
-          # Use docker exec + wget (same as deploy.sh) because port 4000 is
-          # Docker-internal only (expose, not ports). Single bash -c avoids
-          # SSM JSON escaping issues with for/if across array elements.
-          HEALTH_CMD_ID=$(aws ssm send-command \
-            --instance-ids "$INSTANCE_ID" \
-            --document-name "AWS-RunShellScript" \
-            --timeout-seconds 120 \
-            --parameters 'commands=["bash -c \"OK=false; for i in 1 2 3 4 5 6 7 8 9 10; do RESP=$(docker exec eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health 2>/dev/null) && echo \\\"Attempt $i: $RESP\\\" && OK=true && break; echo \\\"Attempt $i/10 failed, retrying in 5s...\\\"; sleep 5; done; if [ \\\"$OK\\\" = true ]; then echo \\\"HEALTH_OK\\\"; exit 0; else echo \\\"HEALTH_FAILED\\\"; exit 1; fi\""]' \
-            --query "Command.CommandId" \
-            --output text)
+          for ATTEMPT in 1 2 3 4 5; do
+            echo "--- Health check attempt ${ATTEMPT}/5 ---"
 
-          echo "SSM Health Check Command ID: ${HEALTH_CMD_ID}"
+            # Single command, no shell constructs, no escaping issues
+            CMD_ID=$(aws ssm send-command \
+              --instance-ids "$INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --timeout-seconds 30 \
+              --parameters '{"commands":["docker exec eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health"]}' \
+              --query "Command.CommandId" \
+              --output text)
 
-          # Wait for health check command to complete
-          for i in $(seq 1 20); do
-            STATUS=$(aws ssm get-command-invocation \
-              --command-id "$HEALTH_CMD_ID" \
-              --instance-id "$INSTANCE_ID" \
-              --query "Status" \
-              --output text 2>/dev/null || echo "InProgress")
-
-            if [[ "$STATUS" == "Success" ]]; then
-              OUTPUT=$(aws ssm get-command-invocation \
-                --command-id "$HEALTH_CMD_ID" \
+            # Wait for this single command to finish (max 30s)
+            for POLL in $(seq 1 8); do
+              sleep 5
+              CMD_STATUS=$(aws ssm get-command-invocation \
+                --command-id "$CMD_ID" \
                 --instance-id "$INSTANCE_ID" \
-                --query "StandardOutputContent" \
-                --output text)
-              echo "$OUTPUT"
-              echo "✅ Origin health verification passed"
-              exit 0
-            fi
+                --query "Status" \
+                --output text 2>/dev/null || echo "Pending")
 
-            if [[ "$STATUS" == "Failed" || "$STATUS" == "TimedOut" ]]; then
-              echo "❌ Origin health check ${STATUS}:"
-              aws ssm get-command-invocation \
-                --command-id "$HEALTH_CMD_ID" \
-                --instance-id "$INSTANCE_ID" \
-                --query "StandardOutputContent" \
-                --output text || true
-              echo "--- STDERR ---"
-              aws ssm get-command-invocation \
-                --command-id "$HEALTH_CMD_ID" \
-                --instance-id "$INSTANCE_ID" \
-                --query "StandardErrorContent" \
-                --output text || true
-              exit 1
-            fi
+              if [[ "$CMD_STATUS" == "Success" ]]; then
+                BODY=$(aws ssm get-command-invocation \
+                  --command-id "$CMD_ID" \
+                  --instance-id "$INSTANCE_ID" \
+                  --query "StandardOutputContent" \
+                  --output text)
+                echo "Response: ${BODY}"
+                echo "✅ Origin health check passed"
+                exit 0
+              fi
 
-            sleep 5
+              if [[ "$CMD_STATUS" == "Failed" || "$CMD_STATUS" == "TimedOut" || "$CMD_STATUS" == "Cancelled" ]]; then
+                echo "Attempt ${ATTEMPT} — SSM status: ${CMD_STATUS}"
+                aws ssm get-command-invocation \
+                  --command-id "$CMD_ID" \
+                  --instance-id "$INSTANCE_ID" \
+                  --query "StandardErrorContent" \
+                  --output text 2>/dev/null || true
+                break
+              fi
+            done
+
+            echo "Waiting 10s before retry..."
+            sleep 10
           done
-          echo "❌ Timed out waiting for health check SSM command"
+
+          echo "❌ Origin health check failed after 5 attempts"
           exit 1
 
       # ── Cloudflare-facing check (non-blocking, informational only) ──
