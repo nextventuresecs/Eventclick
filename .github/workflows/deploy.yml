@@ -283,32 +283,88 @@ jobs:
           echo "  Images  : ${{ needs.build.outputs.server_image }}:${{ needs.build.outputs.sha_short }}"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-      - name: Verify External Health
+      # ── Origin Health Check via SSM (bypasses Cloudflare Bot Fight Mode) ──
+      - name: Verify Origin Health via SSM
         if: success()
         run: |
-          APP_URL="${{ vars.APP_URL }}"
-          # Trim trailing slash if present
-          APP_URL="${APP_URL%/}"
+          INSTANCE_ID="${{ secrets.EC2_INSTANCE_ID }}"
+          echo "Verifying health directly on EC2 via SSM (bypasses Cloudflare)..."
 
-          if [ -z "$APP_URL" ]; then
-            echo "⚠️  vars.APP_URL is not defined in GitHub repository/environment variables."
-            echo "    To enable external health verification, add 'APP_URL' under GitHub Settings -> Secrets and variables -> Actions -> Variables (e.g., https://app.eventclick.live)."
-            echo "    Skipping external health check."
-            exit 0
-          fi
+          HEALTH_CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --timeout-seconds 120 \
+            --parameters commands='[
+              "set -euo pipefail",
+              "for i in $(seq 1 10); do",
+              "  STATUS=$(curl -sf -o /dev/null -w \"%{http_code}\" http://localhost:4000/api/v1/health || echo \"failed\")",
+              "  if [ \"$STATUS\" = \"200\" ]; then",
+              "    BODY=$(curl -sf http://localhost:4000/api/v1/health)",
+              "    echo \"✅ Origin health check passed — $BODY\"",
+              "    exit 0",
+              "  fi",
+              "  echo \"Attempt ${i}/10 — status: ${STATUS}, retrying in 5s...\"",
+              "  sleep 5",
+              "done",
+              "echo \"❌ Origin health check failed after 10 attempts\"",
+              "exit 1"
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
 
-          TARGET_URL="${APP_URL}/api/v1/health"
-          USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-          echo "Verifying external health endpoint at ${TARGET_URL}..."
-          for i in $(seq 1 10); do
-            STATUS=$(curl -sf -L -A "${USER_AGENT}" -o /dev/null -w "%{http_code}" "${TARGET_URL}" || echo "failed")
-            if [ "$STATUS" = "200" ]; then
-              echo "✅ External health check passed (${TARGET_URL})"
+          echo "SSM Health Check Command ID: ${HEALTH_CMD_ID}"
+
+          # Wait for health check command to complete
+          for i in $(seq 1 20); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$HEALTH_CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "InProgress")
+
+            if [[ "$STATUS" == "Success" ]]; then
+              aws ssm get-command-invocation \
+                --command-id "$HEALTH_CMD_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardOutputContent" \
+                --output text
+              echo "✅ Origin health verification passed"
               exit 0
             fi
-            echo "Attempt ${i}/10 — status: ${STATUS}, retrying in 10s..."
-            sleep 10
+
+            if [[ "$STATUS" == "Failed" || "$STATUS" == "TimedOut" ]]; then
+              echo "❌ Origin health check ${STATUS}:"
+              aws ssm get-command-invocation \
+                --command-id "$HEALTH_CMD_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardErrorContent" \
+                --output text || true
+              exit 1
+            fi
+
+            sleep 5
           done
-          echo "❌ External health check failed for ${TARGET_URL} after 10 attempts"
+          echo "❌ Timed out waiting for health check SSM command"
           exit 1
+
+      # ── Cloudflare-facing check (non-blocking, informational only) ──
+      - name: Verify Cloudflare Edge (non-blocking)
+        if: success()
+        continue-on-error: true
+        run: |
+          APP_URL="${{ vars.APP_URL }}"
+          APP_URL="${APP_URL%/}"
+          if [ -z "$APP_URL" ]; then
+            echo "⚠️  vars.APP_URL not set — skipping Cloudflare edge check"
+            exit 0
+          fi
+          TARGET_URL="${APP_URL}/api/v1/health"
+          echo "Bonus: verifying through Cloudflare at ${TARGET_URL}..."
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${TARGET_URL}" 2>/dev/null || echo "blocked")
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Cloudflare edge check passed"
+          else
+            echo "⚠️  Cloudflare returned ${STATUS} (expected — Bot Fight Mode blocks CI runners)"
+            echo "    Origin health is verified ✅ — this is informational only"
+          fi
 
