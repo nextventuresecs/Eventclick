@@ -302,7 +302,8 @@ REQUIRED_KEYS=(
 
 MISSING=()
 for key in "${REQUIRED_KEYS[@]}"; do
-  if ! grep -q "^${key}=" "$OUTPUT_FILE" 2>/dev/null; then
+  line=$(grep "^${key}=" "$OUTPUT_FILE" 2>/dev/null || true)
+  if [[ -z "$line" ]] || [[ "$line" == "${key}=\"\"" ]]; then
     MISSING+=("$key")
   fi
 done
