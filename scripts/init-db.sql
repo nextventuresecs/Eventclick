@@ -36,6 +36,11 @@ $$;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO app_user;
 
+
+-- Postgres 15+ no longer auto-grants schema usage — required for roles to
+-- see/query any table in the schema, independent of table-level grants
+GRANT USAGE ON SCHEMA public TO app_user, auth_svc_role;
+
 -- Auth tables are locked from app_user via REVOKE statements in migration
 -- 0001_clumsy_bloodstrike.sql (tables don't exist at this point — they're
 -- created by migrations which run after this script)
