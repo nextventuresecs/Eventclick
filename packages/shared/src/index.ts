@@ -115,9 +115,17 @@ export const OnboardingSchema = z.object({
 });
 export type OnboardingInput = z.infer<typeof OnboardingSchema>;
 
+export const ImageUrlSchema = z
+  .string()
+  .max(1000, "Image URL is too long — upload the file instead of pasting a data URL")
+  .url()
+  .refine((v) => /^https?:\/\//i.test(v), {
+    message: "Must be an http(s) URL — data: and blob: URLs are not accepted",
+  });
+
 export const UpdateProfileSchema = z.object({
   fullName: z.string().min(1).max(120).optional(),
-  photoUrl: z.string().url().max(1000).or(z.literal("")).optional(),
+  photoUrl: ImageUrlSchema.or(z.literal("")).optional(),
 });
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;
 
@@ -130,7 +138,7 @@ export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
 export const UpdateOrganizationSchema = z.object({
   name: z.string().min(1).max(160).optional(),
   description: z.string().max(2000).optional(),
-  logoUrl: z.string().url().max(1000).or(z.literal("")).optional(),
+  logoUrl: ImageUrlSchema.or(z.literal("")).optional(),
 });
 export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationSchema>;
 
@@ -587,3 +595,18 @@ export const ClientLogSchema = z.object({
   timestamp: z.iso.datetime().optional(),
 });
 export type ClientLogInput = z.infer<typeof ClientLogSchema>;
+
+// ─── Branding uploads (organization logo / user avatar) ─────
+export const BrandingUploadRequestSchema = z.object({
+  contentType: z
+    .string()
+    .regex(/^image\/(jpeg|png|webp)$/, "Must be image/jpeg, png, or webp"),
+  sizeBytes: z
+    .number()
+    .int()
+    .positive()
+    .max(5 * 1024 * 1024, "Image must be 5MB or smaller"),
+});
+export type BrandingUploadRequestInput = z.infer<typeof BrandingUploadRequestSchema>;
+export const MAX_BRANDING_UPLOAD_BYTES = 5 * 1024 * 1024;
+export const BRANDING_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;

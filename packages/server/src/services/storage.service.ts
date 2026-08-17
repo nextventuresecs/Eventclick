@@ -37,6 +37,16 @@ export const buildPhotoKey = (roomId: string, contentType: string): string => {
   return `attendance/${roomId}/${nanoid(24)}.${ext}`;
 };
 
+export const buildOrgLogoKey = (orgId: string, contentType: string): string => {
+  const ext = EXT_BY_MIME[contentType] ?? "bin";
+  return `branding/organizations/${orgId}/${nanoid(24)}.${ext}`;
+};
+
+export const buildUserAvatarKey = (userId: string, contentType: string): string => {
+  const ext = EXT_BY_MIME[contentType] ?? "bin";
+  return `branding/users/${userId}/${nanoid(24)}.${ext}`;
+};
+
 export const buildActivityPhotoKey = (roomId: string, activityId: string): string => {
   const timestampUuid = `${Date.now()}_${crypto.randomUUID()}`;
   return `rooms/${roomId}/activities/${activityId}_${timestampUuid}.jpg`;

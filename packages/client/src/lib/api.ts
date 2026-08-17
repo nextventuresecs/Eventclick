@@ -168,6 +168,7 @@ export const authApi = {
 import type {
   AssignEventAdminInput,
   AttendanceEntry,
+  BrandingUploadRequestInput,
   CreateOrgUserInput,
   EventAdminAssignment,
   CreateRoomInput,
@@ -273,6 +274,10 @@ export const eventAssignmentsApi = {
 
 export const settingsApi = {
   updateOrganization: (body: UpdateOrganizationInput) => api.patch("/organizations", body),
+  presignOrganizationLogo: (body: BrandingUploadRequestInput) =>
+    api.post<PhotoUploadResponse>("/organizations/logo-upload", body),
+  presignAvatar: (body: BrandingUploadRequestInput) =>
+    api.post<PhotoUploadResponse>("/auth/avatar-upload", body),
   updatePreferences: (body: UpdatePreferencesInput) => api.patch("/auth/preferences", body),
 };
 

@@ -221,3 +221,10 @@ h1, h2, h3, h4 {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Native browser password reveal (Edge/IE) sits on top of our own eye toggle and
+   swallows the click. We ship our own accessible toggle, so hide the native one. */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}

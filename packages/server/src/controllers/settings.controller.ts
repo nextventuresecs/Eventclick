@@ -1,8 +1,15 @@
 import type { RequestHandler } from "express";
+import type { BrandingUploadRequestInput, PhotoUploadResponse } from "@application/shared";
 import { db } from "../db";
 import { organizations, users } from "../db/schema";
 import { ApiError } from "../utils/errors";
 import { eq } from "drizzle-orm";
+import {
+  buildOrgLogoKey,
+  buildPublicUrl,
+  buildUserAvatarKey,
+  createPresignedPut,
+} from "../services/storage.service";
 
 export const updateOrganization: RequestHandler = async (req, res, next) => {
   try {
@@ -43,6 +50,49 @@ export const updatePreferences: RequestHandler = async (req, res, next) => {
 
     if (!updatedUser) throw ApiError.notFound("User not found");
     res.json({ user: updatedUser });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Issue a short-lived presigned PUT so the browser uploads the image straight to
+// object storage. Only the resulting public URL is ever persisted — never a data URL,
+// which would blow past the 1000-char limit on logoUrl/photoUrl.
+export const presignOrganizationLogo: RequestHandler = async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.organizationId) throw ApiError.unauthorized();
+    const { contentType } = req.body as BrandingUploadRequestInput;
+
+    const key = buildOrgLogoKey(req.user.organizationId, contentType);
+    const { uploadUrl, expiresIn } = await createPresignedPut(key, contentType);
+
+    const body: PhotoUploadResponse = {
+      uploadUrl,
+      key,
+      publicUrl: buildPublicUrl(key),
+      expiresIn,
+    };
+    res.json(body);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const presignUserAvatar: RequestHandler = async (req, res, next) => {
+  try {
+    if (!req.user) throw ApiError.unauthorized();
+    const { contentType } = req.body as BrandingUploadRequestInput;
+
+    const key = buildUserAvatarKey(req.user.id, contentType);
+    const { uploadUrl, expiresIn } = await createPresignedPut(key, contentType);
+
+    const body: PhotoUploadResponse = {
+      uploadUrl,
+      key,
+      publicUrl: buildPublicUrl(key),
+      expiresIn,
+    };
+    res.json(body);
   } catch (err) {
     next(err);
   }
