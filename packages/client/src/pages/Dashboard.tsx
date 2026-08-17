@@ -492,9 +492,11 @@ export const Dashboard = () => {
                       </div>
 
                       {room.location && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+                        <div className="inline-flex items-center gap-1.5 max-w-full text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-100 text-xs font-semibold">
                           <MapPin className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                          <span className="truncate">{room.location}</span>
+                          <span className="truncate min-w-0" title={room.location}>
+                            {room.location}
+                          </span>
                         </div>
                       )}
 

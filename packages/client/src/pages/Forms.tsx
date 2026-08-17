@@ -113,9 +113,11 @@ export const Forms = () => {
                 <div>
                   <CardTitle className="text-base font-bold font-display text-gray-900 leading-tight mb-1">{room.title}</CardTitle>
                   {room.location && (
-                    <div className="inline-flex items-center gap-1.5 text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-100 text-xs font-semibold">
+                    <div className="inline-flex items-center gap-1.5 max-w-full text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-100 text-xs font-semibold">
                       <MapPin className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                      <span className="truncate">{room.location}</span>
+                      <span className="truncate min-w-0" title={room.location}>
+                        {room.location}
+                      </span>
                     </div>
                   )}
                 </div>
