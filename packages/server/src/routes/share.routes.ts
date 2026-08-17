@@ -4,6 +4,7 @@ import RedisStore from "rate-limit-redis";
 import { redisClient } from "../config/redis";
 import { ApiError } from "../utils/errors";
 import { validate } from "../middleware/validate";
+import { shareTenantContext } from "../middleware/shareTenantContext";
 import { ShareLiveTokenSchema } from "@application/shared";
 import {
   getSharedRoom,
@@ -40,6 +41,11 @@ const shareLimiter = rateLimit({
 export const shareRouter = Router();
 
 shareRouter.use(shareLimiter);
+
+// Resolves :token -> organization and pins the RLS tenant before any handler
+// runs. Without it every share query is evaluated with no tenant set and
+// returns zero rows.
+shareRouter.param("token", shareTenantContext);
 
 shareRouter.get("/:token", getSharedRoom);
 shareRouter.post("/:token/live-token", validate(ShareLiveTokenSchema), getShareLiveToken);

@@ -4,10 +4,22 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { pool, tenantContextStorage } from "../db";
 import { ApiError } from "../utils/errors";
 
-export async function setTenantContext(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const orgId = req.user?.organizationId;
-
-  if (!orgId) {
+/**
+ * Pins an RLS tenant to a dedicated connection for the rest of the request.
+ *
+ * Two callers derive the tenant differently: `setTenantContext` takes it from
+ * the verified JWT, `shareTenantContext` from an unguessable share token. The
+ * transaction/cleanup machinery below is identical for both, so it lives here.
+ */
+export async function runInTenantContext(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  orgId: string,
+  userId: string,
+): Promise<void> {
+  // Never nest: if an outer middleware already pinned a tenant, reuse it.
+  if (tenantContextStorage.getStore()) {
     return next();
   }
 
@@ -35,7 +47,7 @@ export async function setTenantContext(req: Request, res: Response, next: NextFu
     // 0002_narrow_users_tenant_isolation.sql.
     await client.query(
       "SELECT set_config('app.current_tenant', $1, true), set_config('app.current_user_id', $2, true)",
-      [orgId, req.user?.id ?? ""]
+      [orgId, userId]
     );
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
@@ -66,4 +78,16 @@ export async function setTenantContext(req: Request, res: Response, next: NextFu
   client.on("error", () => void cleanup(false));
 
   tenantContextStorage.run(tx, () => next());
+}
+
+/**
+ * Tenant context for authenticated requests. Depends on `attachUser` having
+ * populated req.user earlier in the app-level chain — `requireAuth` runs later,
+ * inside the routers, which is too late for this middleware.
+ */
+export async function setTenantContext(req: Request, res: Response, next: NextFunction): Promise<void> {
+  const orgId = req.user?.organizationId;
+  if (!orgId) return next();
+
+  return runInTenantContext(req, res, next, orgId, req.user?.id ?? "");
 }
