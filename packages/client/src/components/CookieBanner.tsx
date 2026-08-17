@@ -37,7 +37,7 @@ export const CookieBanner = () => {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-8 md:bottom-8 z-[100] md:w-[420px] max-w-full">
-      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-border rounded-2xl p-5 sm:p-6 overflow-hidden relative shadow-lg">
+      <div className="bg-white/95 backdrop-blur-xl border border-border rounded-2xl p-5 sm:p-6 overflow-hidden relative shadow-lg">
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
