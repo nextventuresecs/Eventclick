@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import type { PoolClient } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { pool, tenantContextStorage } from "../db";
 import { ApiError } from "../utils/errors";
@@ -14,7 +15,16 @@ export async function setTenantContext(req: Request, res: Response, next: NextFu
   // `SET LOCAL app.current_tenant` only survives within a single
   // transaction on a single connection — it must NOT be released back to
   // the pool (and reused by another request) until this request finishes.
-  const client = await pool.connect();
+  let client: PoolClient;
+  try {
+    client = await pool.connect();
+  } catch (error) {
+    // Pool exhaustion or bad APP_DATABASE_URL credentials land here. Log the
+    // real driver error: errorHandler masks 5xx bodies in production, so this
+    // is the only place the cause is recoverable from.
+    req.log?.error({ error, orgId }, "Failed to acquire tenant connection");
+    return next(ApiError.internal("Database unavailable"));
+  }
 
   try {
     await client.query("BEGIN");
@@ -30,7 +40,7 @@ export async function setTenantContext(req: Request, res: Response, next: NextFu
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
     client.release();
-    req.log?.warn({ error, orgId }, "Failed to set tenant context");
+    req.log?.error({ error, orgId }, "Failed to set tenant context");
     return next(ApiError.internal("Failed to set tenant context"));
   }
 

@@ -170,9 +170,13 @@ app.get("/health", (_req, res) => {
 });
 
 import { csrfProtection } from "./middleware/csrf";
+import { attachUser } from "./middleware/attachUser";
 import { setTenantContext } from "./middleware/tenantContext";
 
 app.use(csrfProtection);
+// attachUser MUST precede setTenantContext: the tenant middleware reads
+// req.user.organizationId, and requireAuth only runs later, inside the routers.
+app.use(attachUser);
 app.use(setTenantContext);
 app.use(API_PREFIX, apiRouter);
 

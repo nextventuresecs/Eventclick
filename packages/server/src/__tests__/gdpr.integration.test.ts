@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { AsyncLocalStorage } from "async_hooks";
 import request from "supertest";
 import { app } from "../index";
 import { verifyAccessToken } from "../services/jwt.service";
@@ -44,12 +45,21 @@ function makeChain(limitReturn?: any) {
 
 vi.mock("../db", () => {
   const db = makeChain();
-  const pool = { query: vi.fn() };
+  // setTenantContext checks out a dedicated client per authenticated request
+  // (BEGIN + SET LOCAL app.current_tenant), so the pool mock must support
+  // connect() and hand back a client, not just query().
+  const client = {
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+    release: vi.fn(),
+    on: vi.fn(),
+  };
+  const pool = { query: vi.fn(), connect: vi.fn().mockResolvedValue(client) };
   return {
     db,
     pool,
     authDb: db,
     authPool: pool,
+    tenantContextStorage: new AsyncLocalStorage(),
   };
 });
 
