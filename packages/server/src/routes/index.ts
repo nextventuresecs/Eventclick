@@ -13,6 +13,7 @@ import { s3 } from "../services/storage.service";
 import { HeadBucketCommand } from "@aws-sdk/client-s3";
 import { metricsRegistry, metricsMiddleware } from "../services/metrics.service";
 import { logger } from "../utils/logger";
+import { checkSchemaInvariants } from "../services/schema-health.service";
 
 export const apiRouter = Router();
 
@@ -154,6 +155,7 @@ apiRouter.get("/health/deep", async (_req, res) => {
     database: await checkDatabase(),
     redis: await checkRedis(),
     jwt: await checkJwt(),
+    schema: await checkSchemaInvariants(),
     storage: await checkStorage(),
     gotenberg: await checkGotenberg(),
     livekit: await checkLivekit(),
