@@ -1,10 +1,22 @@
 name: CI
 
 on:
+  # Deliberately unfiltered: every commit that lands on main or develop gets a
+  # full run, and deploy.yml chains off this workflow completing on main. A
+  # paths filter here would skip CI for a docs-only merge and, with it, deploy.
   push:
     branches: [main, develop]
+
+  # Documentation-only PRs can't affect lint, unit tests or Playwright, so skip
+  # the run rather than spend an E2E job on a typo fix. Safe to do here because
+  # main has no required status checks — a skipped required check never reports
+  # and would leave PRs permanently unmergeable. Revisit this if that changes.
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
 
 permissions:
   contents: read
