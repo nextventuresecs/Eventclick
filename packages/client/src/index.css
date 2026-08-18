@@ -162,6 +162,31 @@ h1, h2, h3, h4 {
   outline: none;
 }
 
+/* iOS Safari zooms the whole viewport when a focused control's font-size is
+   under 16px, which on a phone shifts the layout mid-typing and can't be undone
+   without a pinch. The :not() selectors also raise specificity above Tailwind's
+   .text-sm / .text-xs so this actually wins on the auth and form inputs. */
+@media (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select:not([hidden]),
+  textarea:not([hidden]) {
+    font-size: 16px;
+  }
+}
+
+/* Respect the iOS notch and home indicator in the installed (standalone) app. */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+  padding-top: max(0px, env(safe-area-inset-top));
+}
+
+.bottom-safe {
+  bottom: max(1rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+}
+
 .nav-item-active {
   background: rgba(64, 34, 145, 0.08);
   color: var(--color-primary);

@@ -12,7 +12,16 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "Android/playstore-icon.png", "only_icon.png"],
+      // Without this the manifest and service worker are absent under `npm run dev`,
+      // so `beforeinstallprompt` never fires and install always looks unsupported.
+      devOptions: { enabled: true },
+      includeAssets: [
+        "favicon.svg",
+        "Android/playstore-icon.png",
+        "only_icon.png",
+        "iOS/Icon-60@3x.png",
+        "iOS/Icon-76@2x.png",
+      ],
       manifest: {
         name: "Eventclick",
         short_name: "Eventclick",
@@ -20,6 +29,9 @@ export default defineConfig({
         theme_color: "#ffffff",
         background_color: "#ffffff",
         display: "standalone",
+        orientation: "portrait",
+        start_url: "/",
+        scope: "/",
         icons: [
           {
             src: "/Android/playstore-icon.png",
