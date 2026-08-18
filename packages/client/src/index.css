@@ -162,6 +162,55 @@ h1, h2, h3, h4 {
   outline: none;
 }
 
+/* iOS Safari zooms the whole viewport when a focused control's font-size is
+   under 16px, which on a phone shifts the layout mid-typing and can't be undone
+   without a pinch. The :not() selectors also raise specificity above Tailwind's
+   .text-sm / .text-xs so this actually wins on the auth and form inputs. */
+@media (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select:not([hidden]),
+  textarea:not([hidden]) {
+    font-size: 16px;
+  }
+}
+
+/* Honour the OS "reduce motion" setting — the app leans on slide/zoom entrances
+   for drawers, dropdowns and banners, which are exactly the ones that trigger
+   motion sensitivity. Opacity changes are kept so state changes stay visible. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Respect the iOS notch and home indicator in the installed (standalone) app. */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Floored, for surfaces that want top padding regardless of the inset. Without
+   the floor this class silently zeroes the padding of whatever it's paired with
+   on devices that have no notch. */
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+/* Pure inset, for bars that are already vertically centred and must not gain
+   padding on non-notched devices. Pair with min-height, never a fixed height:
+   with border-box sizing the inset would otherwise eat the content box. */
+.pt-safe-inset {
+  padding-top: env(safe-area-inset-top);
+}
+
+.bottom-safe {
+  bottom: max(1rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+}
+
 .nav-item-active {
   background: rgba(64, 34, 145, 0.08);
   color: var(--color-primary);

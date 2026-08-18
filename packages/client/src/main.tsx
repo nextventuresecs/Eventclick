@@ -7,6 +7,9 @@ import { App } from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { installGlobalErrorHandlers } from "./lib/log";
 import { initClientSentry } from "./lib/sentry";
+// Side-effect import: registers the `beforeinstallprompt` listener before React
+// mounts, since the event fires once per page load (usually on /login).
+import "./lib/pwaInstall";
 import "./index.css";
 
 initClientSentry();

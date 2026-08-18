@@ -33,6 +33,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNetwork } from "@/hooks/useNetwork";
+import { usePwaInstall } from "@/hooks/usePwaInstall";
 import { Button } from "@/components/ui/button";
 
 const HelpDropdown = () => {
@@ -133,40 +134,10 @@ export const DashboardLayout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
   const { isOnline, isSyncing } = useNetwork();
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showIosInstruction, setShowIosInstruction] = useState(false);
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-  }, []);
+  const { install, instructions, dismissInstructions } = usePwaInstall();
 
   const handleDownloadApp = () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choiceResult: any) => {
-        if (choiceResult.outcome === "accepted") {
-          console.log("User accepted the install prompt");
-        }
-        setDeferredPrompt(null);
-      });
-    } else {
-      // Check if iOS
-      const isIos = () => {
-        const userAgent = window.navigator.userAgent.toLowerCase();
-        return /iphone|ipad|ipod/.test(userAgent);
-      };
-      if (isIos()) {
-        setShowIosInstruction(true);
-        setTimeout(() => setShowIosInstruction(false), 5000);
-      } else {
-        alert("App is already installed or not supported by your browser.");
-      }
-    }
+    void install();
     setProfileOpen(false);
     setMobileMenuOpen(false);
   };
@@ -209,6 +180,12 @@ export const DashboardLayout = () => {
     ...(canViewForms ? [TOOLS_ITEMS[0]] : []),
     ...(canViewReports ? [TOOLS_ITEMS[1]] : []),
   ] as typeof TOOLS_ITEMS;
+
+  // A bottom tab bar holds at most 5 targets before they stop being tappable at
+  // 375px. Four primary tabs plus Account; everything else moves into the drawer.
+  const allNavItems = [...navItems, ...toolsItems];
+  const primaryNavItems = allNavItems.slice(0, 4);
+  const overflowNavItems = allNavItems.slice(4);
 
   const initials = user?.fullName
     ?.split(" ")
@@ -453,14 +430,8 @@ export const DashboardLayout = () => {
             Syncing offline data...
           </div>
         )}
-        {showIosInstruction && (
-          <div className="absolute top-8 left-0 right-0 p-3 bg-purple-600 text-white flex items-center justify-center text-xs font-medium z-50 animate-in slide-in-from-top shadow-md">
-            To install on iOS: tap the Share button at the bottom of Safari, then select "Add to Home Screen".
-          </div>
-        )}
-
         {/* Modern SaaS Header */}
-        <header className={`h-16 border-b border-gray-200/80 bg-white/95 backdrop-blur-md flex items-center justify-between px-4 md:px-8 shrink-0 z-30 shadow-xs transition-all ${!isOnline || isSyncing ? "mt-8" : ""}`}>
+        <header className={`min-h-16 pt-safe-inset border-b border-gray-200/80 bg-white/95 backdrop-blur-md flex items-center justify-between px-4 md:px-8 shrink-0 z-30 shadow-xs transition-all ${!isOnline || isSyncing ? "mt-8" : ""}`}>
           {/* Left Title & Breadcrumbs */}
           <div className="min-w-0 flex items-center gap-3">
             <div>
@@ -635,10 +606,10 @@ export const DashboardLayout = () => {
               </Link>
             )}
 
-            {/* Profile Avatar Quick Pill */}
+            {/* Profile Avatar Quick Pill — mobile reaches this via the bottom nav's Account tab */}
             <Link
               to="/profile"
-              className="flex items-center gap-2 p-1 rounded-xl hover:bg-gray-100 transition-colors"
+              className="hidden md:flex items-center gap-2 p-1 rounded-xl hover:bg-gray-100 transition-colors"
               title="User Profile"
             >
               <div className="h-8 w-8 rounded-lg bg-brand-gradient text-white flex items-center justify-center font-bold text-xs shadow-xs">
@@ -648,56 +619,75 @@ export const DashboardLayout = () => {
           </div>
         </header>
 
+        {/* Install instructions sit in normal flow below the header — as an
+            absolutely positioned bar they overlapped it whenever no offline or
+            syncing banner was pushing the header down. */}
+        {instructions && (
+          <div
+            role="status"
+            className="shrink-0 px-4 py-3 bg-purple-600 text-white flex items-start gap-3 text-xs font-medium shadow-md animate-in slide-in-from-top"
+          >
+            <Download className="w-4 h-4 shrink-0 mt-px" />
+            <p className="flex-1 min-w-0 leading-relaxed">{instructions}</p>
+            <button
+              onClick={dismissInstructions}
+              className="shrink-0 h-5 w-5 flex items-center justify-center rounded hover:bg-white/20 transition-colors cursor-pointer"
+              aria-label="Dismiss install instructions"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto p-4 md:p-8">
+          {/* pb-28 keeps content clear of the fixed mobile bottom nav */}
+          <div className="max-w-7xl mx-auto p-4 pb-28 md:p-8 md:pb-8">
             <Outlet />
           </div>
         </div>
 
-        <div className="fixed bottom-4 left-4 right-4 h-14 bg-(--color-surface)/95 backdrop-blur-md border border-(--color-gray-200) rounded-2xl shadow-lg flex items-center justify-around px-1 md:hidden z-40">
-          {navItems.map((item) => {
+        {/* Mobile bottom nav. Labelled rather than icon-only, and each target is a
+            full 56px-tall tap area so it clears the 44px touch-target minimum. */}
+        <nav
+          aria-label="Primary"
+          className="fixed bottom-safe left-3 right-3 bg-(--color-surface)/95 backdrop-blur-md border border-(--color-gray-200) rounded-2xl shadow-lg flex items-stretch justify-around px-1 py-1 md:hidden z-40"
+        >
+          {primaryNavItems.map((item) => {
             const active = isActive(item.path);
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex flex-col items-center justify-center p-2 rounded-full transition-colors ${
-                  active ? "nav-item-active" : "text-gray-400 hover:text-(--color-gray-900)"
+                aria-current={active ? "page" : undefined}
+                className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-xl transition-colors ${
+                  active ? "nav-item-active" : "text-gray-400 active:bg-gray-100"
                 }`}
-                title={item.name}
               >
-                <item.icon className="w-5 h-5" />
-              </Link>
-            );
-          })}
-          {toolsItems.map((item) => {
-            const active = isActive(item.path);
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex flex-col items-center justify-center p-2 rounded-full transition-colors ${
-                  active ? "nav-item-active" : "text-gray-400 hover:text-(--color-gray-900)"
-                }`}
-                title={item.name}
-              >
-                <item.icon className="w-5 h-5" />
+                <item.icon className="w-5 h-5 shrink-0" />
+                <span className="text-[10px] font-semibold leading-none truncate max-w-full">
+                  {item.name}
+                </span>
               </Link>
             );
           })}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="flex flex-col items-center justify-center p-1 rounded-full text-gray-400 hover:text-(--color-gray-900) transition-colors cursor-pointer"
-            title="Account menu"
-            aria-label="Open account menu"
+            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-xl transition-colors cursor-pointer ${
+              overflowNavItems.some((item) => isActive(item.path))
+                ? "nav-item-active"
+                : "text-gray-400 active:bg-gray-100"
+            }`}
+            aria-label="Open account and more menu"
+            aria-expanded={mobileMenuOpen}
           >
             {user?.photoUrl ? (
-              <img src={user.photoUrl} alt={user.fullName} className="w-7 h-7 rounded-full object-cover border-2 border-purple-200" />
+              <img src={user.photoUrl} alt="" className="w-5 h-5 rounded-full object-cover border border-purple-200 shrink-0" />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-[10px]">{initials}</div>
+              <div className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-[8px] shrink-0">{initials}</div>
             )}
+            <span className="text-[10px] font-semibold leading-none">More</span>
           </button>
-        </div>
+        </nav>
 
         {/* Mobile Account Drawer */}
         {mobileMenuOpen && (
@@ -707,7 +697,7 @@ export const DashboardLayout = () => {
               onClick={() => setMobileMenuOpen(false)}
             />
             <div className="absolute right-0 top-0 h-full w-72 max-w-[85vw] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
-              <div className="px-4 py-4 border-b border-gray-100 bg-purple-50/60 flex items-start justify-between shrink-0">
+              <div className="px-4 py-4 pt-safe border-b border-gray-100 bg-purple-50/60 flex items-start justify-between shrink-0">
                 <div className="min-w-0">
                   <p className="text-sm font-bold font-display text-gray-900 truncate">{user?.fullName || "User"}</p>
                   <p className="text-xs text-gray-400 font-mono truncate">{user?.email || ""}</p>
@@ -722,6 +712,32 @@ export const DashboardLayout = () => {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto py-2">
+                {/* Nav items that didn't fit in the bottom tab bar */}
+                {overflowNavItems.length > 0 && (
+                  <div className="pb-2 mb-1 border-b border-gray-100">
+                    <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                      Navigate
+                    </p>
+                    {overflowNavItems.map((item) => {
+                      const active = isActive(item.path);
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setMobileMenuOpen(false)}
+                          aria-current={active ? "page" : undefined}
+                          className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${
+                            active
+                              ? "text-purple-900 bg-purple-50"
+                              : "text-gray-700 hover:bg-purple-50 hover:text-purple-900"
+                          }`}
+                        >
+                          <item.icon className="w-4.5 h-4.5 text-purple-600" /> {item.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
                 <Link
                   to="/profile"
                   onClick={() => setMobileMenuOpen(false)}
@@ -757,7 +773,7 @@ export const DashboardLayout = () => {
                   <AlertTriangle className="w-4.5 h-4.5 text-red-500" /> Report a Bug
                 </Link>
               </div>
-              <div className="border-t border-gray-100 p-2 shrink-0">
+              <div className="border-t border-gray-100 p-2 pb-safe shrink-0">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

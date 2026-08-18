@@ -7,30 +7,39 @@ interface AuthLayoutProps {
 
 export const AuthLayout = ({ children }: AuthLayoutProps) => {
   return (
-    <div className="flex min-h-screen w-full bg-slate-50/50 relative overflow-hidden flex-col lg:flex-row font-sans selection:bg-purple-500/20 selection:text-purple-900">
-      {/* Left / Top Section */}
-      <div className="relative w-full lg:w-1/2 bg-brand-gradient text-white flex flex-col justify-between p-8 lg:p-14 z-0 lg:min-h-screen overflow-hidden">
-        
+    <div className="flex min-h-screen w-full bg-slate-50/50 relative overflow-x-hidden flex-col lg:flex-row font-sans selection:bg-purple-500/20 selection:text-purple-900">
+      {/* Left (desktop) / Top (mobile) Section.
+          On mobile this is a compact band rather than a half-screen hero, so the
+          form stays above the fold on a ~667px-tall phone without scrolling. */}
+      <div className="relative w-full lg:w-1/2 bg-brand-gradient text-white flex flex-col justify-between px-6 pt-safe pb-10 lg:p-14 z-0 lg:min-h-screen overflow-hidden">
+
         {/* Ambient Decorative Lighting */}
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-400/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="hidden lg:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-400/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Brand Content Container */}
-        <div className="relative z-10 flex flex-col items-center justify-center flex-1 text-center h-full max-w-md mx-auto py-6">
-          
+        {/* Brand Content Container — row on mobile, stacked and centered on desktop */}
+        <div className="relative z-10 flex flex-row lg:flex-col items-center justify-center lg:flex-1 gap-4 lg:gap-0 text-left lg:text-center max-w-md mx-auto pt-5 lg:py-6">
+
           {/* Logo Badge */}
-          <div className="group bg-white rounded-3xl p-4 mb-5 shadow-2xl shadow-purple-950/20 ring-4 ring-white/20 w-24 h-24 lg:w-28 lg:h-28 flex items-center justify-center relative z-20 backdrop-blur-sm transition-all duration-300 hover:scale-105 hover:rotate-1">
-            <img src="/only_icon.png" alt="EventClick Logo" className="w-14 h-14 lg:w-16 lg:h-16 object-contain transition-transform duration-300 group-hover:scale-110" />
+          <div className="group bg-white rounded-2xl lg:rounded-3xl p-2.5 lg:p-4 lg:mb-5 shadow-xl lg:shadow-2xl shadow-purple-950/20 ring-2 lg:ring-4 ring-white/20 w-14 h-14 lg:w-28 lg:h-28 shrink-0 flex items-center justify-center relative z-20 backdrop-blur-sm transition-all duration-300 lg:hover:scale-105 lg:hover:rotate-1">
+            <img src="/only_icon.png" alt="EventClick Logo" className="w-9 h-9 lg:w-16 lg:h-16 object-contain transition-transform duration-300 lg:group-hover:scale-110" />
           </div>
-          
-          <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight mb-4 font-display drop-shadow-sm">
-            EventClick
-          </h1>
-          
-          <p className="hidden lg:block max-w-md text-xs lg:text-sm leading-relaxed text-blue-100/90 font-normal">
-            Streamline your organization's events with real-time attendance verification, transparent activity reporting, and seamless member coordination.
-          </p>
+
+          <div className="min-w-0 lg:contents">
+            <h1 className="text-xl lg:text-4xl font-extrabold tracking-tight lg:mb-4 font-display drop-shadow-sm leading-tight">
+              EventClick
+            </h1>
+
+            {/* Mobile tagline — one line, replaces the desktop paragraph + chip */}
+            <p className="lg:hidden text-[11px] text-blue-100/85 font-medium leading-snug">
+              Real-time attendance & live audit trail
+            </p>
+
+            <p className="hidden lg:block max-w-md text-xs lg:text-sm leading-relaxed text-blue-100/90 font-normal">
+              Streamline your organization's events with real-time attendance verification, transparent activity reporting, and seamless member coordination.
+            </p>
+          </div>
 
           {/* Desktop Feature Chip */}
           <div className="hidden lg:inline-flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/15 px-4 py-2.5 rounded-2xl mt-8 text-left shadow-lg">
@@ -44,8 +53,8 @@ export const AuthLayout = ({ children }: AuthLayoutProps) => {
           </div>
         </div>
 
-        {/* Footer Text */}
-        <div className="relative z-10 text-center mt-6 lg:mt-8 pb-2">
+        {/* Footer Text — desktop only; on mobile it competes with the form for space */}
+        <div className="relative z-10 text-center mt-6 lg:mt-8 pb-2 hidden lg:block">
           <span className="inline-block px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 text-[10px] lg:text-xs font-semibold tracking-widest text-blue-100 uppercase">
             TRUST | TRANSPARENCY | VISIBILITY MORE
           </span>
@@ -61,7 +70,7 @@ export const AuthLayout = ({ children }: AuthLayoutProps) => {
         </div>
         
         {/* Wavy Cloud Separator (Mobile) */}
-        <div className="block lg:hidden absolute -bottom-0.5 left-0 right-0 w-full h-16 z-0 pointer-events-none">
+        <div className="block lg:hidden absolute -bottom-0.5 left-0 right-0 w-full h-10 z-0 pointer-events-none">
           <svg viewBox="0 0 1000 80" preserveAspectRatio="none" className="w-full h-full absolute inset-0">
              <path fill="rgba(255,255,255,0.15)" d="M0,80 L1000,80 L1000,40 C950,10 900,60 850,40 C800,20 750,60 700,40 C650,20 600,60 550,40 C500,20 450,60 400,40 C350,20 300,60 250,40 C200,20 150,60 100,40 C50,20 0,60 0,80 Z" />
              <path fill="rgba(255,255,255,0.4)" d="M0,80 L1000,80 L1000,55 C950,35 900,70 850,55 C800,40 750,70 700,55 C650,40 600,70 550,55 C500,40 450,70 400,55 C350,40 300,70 250,55 C200,40 150,70 100,55 C50,40 0,70 0,80 Z" />
@@ -70,8 +79,8 @@ export const AuthLayout = ({ children }: AuthLayoutProps) => {
         </div>
       </div>
 
-      {/* Right / Bottom Section */}
-      <div className="flex-1 flex flex-col justify-center items-center p-6 lg:p-14 z-10 bg-white min-h-[50vh]">
+      {/* Right (desktop) / Bottom (mobile) Section */}
+      <div className="flex-1 flex flex-col justify-center items-center px-5 pt-7 pb-safe lg:p-14 z-10 bg-white">
         <div className="w-full max-w-md mx-auto">
           {children}
         </div>

@@ -12,7 +12,18 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "Android/playstore-icon.png", "only_icon.png"],
+      // Off by default: it runs a service worker in front of the /api proxy during
+      // normal development. Set VITE_PWA_DEV=true to test the install flow locally —
+      // without it there's no manifest or SW under `npm run dev`, so
+      // `beforeinstallprompt` never fires and install always looks unsupported.
+      devOptions: { enabled: process.env.VITE_PWA_DEV === "true" },
+      includeAssets: [
+        "favicon.svg",
+        "Android/playstore-icon.png",
+        "only_icon.png",
+        "iOS/Icon-60@3x.png",
+        "iOS/Icon-76@2x.png",
+      ],
       manifest: {
         name: "Eventclick",
         short_name: "Eventclick",
@@ -20,6 +31,8 @@ export default defineConfig({
         theme_color: "#ffffff",
         background_color: "#ffffff",
         display: "standalone",
+        start_url: "/",
+        scope: "/",
         icons: [
           {
             src: "/Android/playstore-icon.png",
