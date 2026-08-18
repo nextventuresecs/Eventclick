@@ -193,8 +193,18 @@ h1, h2, h3, h4 {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
+/* Floored, for surfaces that want top padding regardless of the inset. Without
+   the floor this class silently zeroes the padding of whatever it's paired with
+   on devices that have no notch. */
 .pt-safe {
-  padding-top: max(0px, env(safe-area-inset-top));
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+/* Pure inset, for bars that are already vertically centred and must not gain
+   padding on non-notched devices. Pair with min-height, never a fixed height:
+   with border-box sizing the inset would otherwise eat the content box. */
+.pt-safe-inset {
+  padding-top: env(safe-area-inset-top);
 }
 
 .bottom-safe {

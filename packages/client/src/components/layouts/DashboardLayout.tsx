@@ -430,25 +430,8 @@ export const DashboardLayout = () => {
             Syncing offline data...
           </div>
         )}
-        {instructions && (
-          <div
-            role="status"
-            className="absolute top-8 left-0 right-0 px-4 py-3 bg-purple-600 text-white flex items-start gap-3 text-xs font-medium z-50 animate-in slide-in-from-top shadow-md"
-          >
-            <Download className="w-4 h-4 shrink-0 mt-px" />
-            <p className="flex-1 min-w-0 leading-relaxed">{instructions}</p>
-            <button
-              onClick={dismissInstructions}
-              className="shrink-0 h-5 w-5 flex items-center justify-center rounded hover:bg-white/20 transition-colors cursor-pointer"
-              aria-label="Dismiss install instructions"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
         {/* Modern SaaS Header */}
-        <header className={`h-16 pt-safe border-b border-gray-200/80 bg-white/95 backdrop-blur-md flex items-center justify-between px-4 md:px-8 shrink-0 z-30 shadow-xs transition-all ${!isOnline || isSyncing ? "mt-8" : ""}`}>
+        <header className={`min-h-16 pt-safe-inset border-b border-gray-200/80 bg-white/95 backdrop-blur-md flex items-center justify-between px-4 md:px-8 shrink-0 z-30 shadow-xs transition-all ${!isOnline || isSyncing ? "mt-8" : ""}`}>
           {/* Left Title & Breadcrumbs */}
           <div className="min-w-0 flex items-center gap-3">
             <div>
@@ -635,6 +618,26 @@ export const DashboardLayout = () => {
             </Link>
           </div>
         </header>
+
+        {/* Install instructions sit in normal flow below the header — as an
+            absolutely positioned bar they overlapped it whenever no offline or
+            syncing banner was pushing the header down. */}
+        {instructions && (
+          <div
+            role="status"
+            className="shrink-0 px-4 py-3 bg-purple-600 text-white flex items-start gap-3 text-xs font-medium shadow-md animate-in slide-in-from-top"
+          >
+            <Download className="w-4 h-4 shrink-0 mt-px" />
+            <p className="flex-1 min-w-0 leading-relaxed">{instructions}</p>
+            <button
+              onClick={dismissInstructions}
+              className="shrink-0 h-5 w-5 flex items-center justify-center rounded hover:bg-white/20 transition-colors cursor-pointer"
+              aria-label="Dismiss install instructions"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto">
           {/* pb-28 keeps content clear of the fixed mobile bottom nav */}
