@@ -28,6 +28,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Command,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -129,6 +130,7 @@ export const DashboardLayout = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [addonsOpen, setAddonsOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
   const { isOnline, isSyncing } = useNetwork();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -166,11 +168,16 @@ export const DashboardLayout = () => {
       }
     }
     setProfileOpen(false);
+    setMobileMenuOpen(false);
   };
 
   useEffect(() => {
     localStorage.setItem("sidebar_collapsed", String(isCollapsed));
   }, [isCollapsed]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -678,7 +685,92 @@ export const DashboardLayout = () => {
               </Link>
             );
           })}
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex flex-col items-center justify-center p-1 rounded-full text-gray-400 hover:text-(--color-gray-900) transition-colors cursor-pointer"
+            title="Account menu"
+            aria-label="Open account menu"
+          >
+            {user?.photoUrl ? (
+              <img src={user.photoUrl} alt={user.fullName} className="w-7 h-7 rounded-full object-cover border-2 border-purple-200" />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-[10px]">{initials}</div>
+            )}
+          </button>
         </div>
+
+        {/* Mobile Account Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-50">
+            <div
+              className="absolute inset-0 bg-black/40 animate-in fade-in"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <div className="absolute right-0 top-0 h-full w-72 max-w-[85vw] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+              <div className="px-4 py-4 border-b border-gray-100 bg-purple-50/60 flex items-start justify-between shrink-0">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold font-display text-gray-900 truncate">{user?.fullName || "User"}</p>
+                  <p className="text-xs text-gray-400 font-mono truncate">{user?.email || ""}</p>
+                  <p className="text-[11px] text-purple-600 font-semibold mt-0.5">{user ? ROLE_LABELS[user.role] : "Member"}</p>
+                </div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-900 hover:bg-white transition-colors cursor-pointer"
+                  aria-label="Close menu"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto py-2">
+                <Link
+                  to="/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors"
+                >
+                  <UserCircle className="w-4.5 h-4.5 text-purple-600" /> Account Profile
+                </Link>
+                <Link
+                  to="/help"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors"
+                >
+                  <HelpCircle className="w-4.5 h-4.5 text-purple-600" /> Help Center
+                </Link>
+                <button
+                  onClick={handleDownloadApp}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors cursor-pointer"
+                >
+                  <Download className="w-4.5 h-4.5 text-purple-600" /> Download App
+                </button>
+                <Link
+                  to="/feedback"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors"
+                >
+                  <MessageSquare className="w-4.5 h-4.5 text-purple-600" /> Give Feedback
+                </Link>
+                <Link
+                  to="/report-bug"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors"
+                >
+                  <AlertTriangle className="w-4.5 h-4.5 text-red-500" /> Report a Bug
+                </Link>
+              </div>
+              <div className="border-t border-gray-100 p-2 shrink-0">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-xl font-semibold transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4.5 h-4.5" /> Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Legal Footer */}
         <footer className="border-t border-gray-200 bg-gray-50 py-3 px-4 md:px-8">
