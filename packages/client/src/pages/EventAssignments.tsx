@@ -126,7 +126,7 @@ export const EventAssignments = () => {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-purple-900 font-display">Assign Team Member To Event</h3>
           <div className="grid gap-3 md:grid-cols-3">
             <select
-              className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:ring-2 focus:ring-purple-600 focus:outline-none"
+              className="w-full min-w-0 h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:ring-2 focus:ring-purple-600 focus:outline-none"
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
             >
@@ -138,7 +138,7 @@ export const EventAssignments = () => {
               ))}
             </select>
             <select
-              className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:ring-2 focus:ring-purple-600 focus:outline-none"
+              className="w-full min-w-0 h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:ring-2 focus:ring-purple-600 focus:outline-none"
               value={selectedRoomId}
               onChange={(e) => setSelectedRoomId(e.target.value)}
             >
@@ -165,28 +165,28 @@ export const EventAssignments = () => {
               <p className="text-sm text-gray-400 py-6 text-center border border-dashed border-gray-200 rounded-xl">No active assignments configured.</p>
             ) : (
               assignments.map((assignment) => (
-                <div key={assignment.id} className="p-4 rounded-xl border border-gray-200 bg-white hover:border-purple-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-900 font-display text-sm">{assignment.user.fullName}</span>
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+                <div key={assignment.id} className="p-4 rounded-xl border border-gray-200 bg-white hover:border-purple-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-gray-900 font-display text-sm truncate">{assignment.user.fullName}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-100 shrink-0">
                         {assignment.user.role}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400">{assignment.user.email}</p>
-                    <div className="flex items-center gap-2 text-xs pt-1">
-                      <span className="text-gray-500 font-medium">Assigned Event:</span>
-                      <span className="font-semibold text-purple-900 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100">{assignment.room.title}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                    <p className="text-xs text-gray-400 truncate">{assignment.user.email}</p>
+                    <div className="flex items-center gap-2 text-xs pt-1 flex-wrap">
+                      <span className="text-gray-500 font-medium shrink-0">Assigned Event:</span>
+                      <span className="font-semibold text-purple-900 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 truncate max-w-full">{assignment.room.title}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ${
                         assignment.revokedAt ? "bg-red-50 text-red-600 border border-red-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100"
                       }`}>
                         {assignment.revokedAt ? "Revoked" : "Active"}
                       </span>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                     <select
-                      className="h-9 rounded-xl border border-gray-200 bg-white px-2.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-600"
+                      className="w-full sm:w-44 min-w-0 h-9 rounded-xl border border-gray-200 bg-white px-2.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-purple-600"
                       value={assignmentRoomDrafts[assignment.id] ?? assignment.roomId}
                       onChange={(e) =>
                         setAssignmentRoomDrafts((prev) => ({ ...prev, [assignment.id]: e.target.value }))
