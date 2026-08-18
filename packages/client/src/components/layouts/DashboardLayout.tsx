@@ -181,6 +181,12 @@ export const DashboardLayout = () => {
     ...(canViewReports ? [TOOLS_ITEMS[1]] : []),
   ] as typeof TOOLS_ITEMS;
 
+  // A bottom tab bar holds at most 5 targets before they stop being tappable at
+  // 375px. Four primary tabs plus Account; everything else moves into the drawer.
+  const allNavItems = [...navItems, ...toolsItems];
+  const primaryNavItems = allNavItems.slice(0, 4);
+  const overflowNavItems = allNavItems.slice(4);
+
   const initials = user?.fullName
     ?.split(" ")
     .map((n) => n.charAt(0))
@@ -643,7 +649,7 @@ export const DashboardLayout = () => {
           aria-label="Primary"
           className="fixed bottom-safe left-3 right-3 bg-(--color-surface)/95 backdrop-blur-md border border-(--color-gray-200) rounded-2xl shadow-lg flex items-stretch justify-around px-1 py-1 md:hidden z-40"
         >
-          {[...navItems, ...toolsItems].map((item) => {
+          {primaryNavItems.map((item) => {
             const active = isActive(item.path);
             return (
               <Link
@@ -663,8 +669,12 @@ export const DashboardLayout = () => {
           })}
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-xl text-gray-400 active:bg-gray-100 transition-colors cursor-pointer"
-            aria-label="Open account menu"
+            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-2 px-1 rounded-xl transition-colors cursor-pointer ${
+              overflowNavItems.some((item) => isActive(item.path))
+                ? "nav-item-active"
+                : "text-gray-400 active:bg-gray-100"
+            }`}
+            aria-label="Open account and more menu"
             aria-expanded={mobileMenuOpen}
           >
             {user?.photoUrl ? (
@@ -672,7 +682,7 @@ export const DashboardLayout = () => {
             ) : (
               <div className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-[8px] shrink-0">{initials}</div>
             )}
-            <span className="text-[10px] font-semibold leading-none">Account</span>
+            <span className="text-[10px] font-semibold leading-none">More</span>
           </button>
         </nav>
 
@@ -699,6 +709,32 @@ export const DashboardLayout = () => {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto py-2">
+                {/* Nav items that didn't fit in the bottom tab bar */}
+                {overflowNavItems.length > 0 && (
+                  <div className="pb-2 mb-1 border-b border-gray-100">
+                    <p className="px-4 pb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                      Navigate
+                    </p>
+                    {overflowNavItems.map((item) => {
+                      const active = isActive(item.path);
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setMobileMenuOpen(false)}
+                          aria-current={active ? "page" : undefined}
+                          className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${
+                            active
+                              ? "text-purple-900 bg-purple-50"
+                              : "text-gray-700 hover:bg-purple-50 hover:text-purple-900"
+                          }`}
+                        >
+                          <item.icon className="w-4.5 h-4.5 text-purple-600" /> {item.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
                 <Link
                   to="/profile"
                   onClick={() => setMobileMenuOpen(false)}

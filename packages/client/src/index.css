@@ -174,6 +174,20 @@ h1, h2, h3, h4 {
   }
 }
 
+/* Honour the OS "reduce motion" setting — the app leans on slide/zoom entrances
+   for drawers, dropdowns and banners, which are exactly the ones that trigger
+   motion sensitivity. Opacity changes are kept so state changes stay visible. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Respect the iOS notch and home indicator in the installed (standalone) app. */
 .pb-safe {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
