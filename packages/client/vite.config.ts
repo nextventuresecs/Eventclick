@@ -25,8 +25,8 @@ export default defineConfig({
         "iOS/Icon-76@2x.png",
       ],
       manifest: {
-        name: "Eventclick",
-        short_name: "Eventclick",
+        name: "EventClick",
+        short_name: "EventClick",
         description: "Event Management SaaS",
         theme_color: "#ffffff",
         background_color: "#ffffff",
