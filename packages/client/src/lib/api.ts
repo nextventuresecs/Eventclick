@@ -273,7 +273,8 @@ export const eventAssignmentsApi = {
 };
 
 export const settingsApi = {
-  updateOrganization: (body: UpdateOrganizationInput) => api.patch("/organizations", body),
+  updateOrganization: (body: UpdateOrganizationInput) =>
+    api.patch<{ organization: { logoUrl: string | null } }>("/organizations", body),
   presignOrganizationLogo: (body: BrandingUploadRequestInput) =>
     api.post<PhotoUploadResponse>("/organizations/logo-upload", body),
   presignAvatar: (body: BrandingUploadRequestInput) =>

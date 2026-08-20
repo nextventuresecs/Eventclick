@@ -3,3 +3,8 @@ export const CACHE_TTL_USER = 120; // seconds
 export const CACHE_TTL_NULL_USER = 30; // seconds
 export const TOKEN_EXPIRY_24H_MS = 24 * 60 * 60 * 1000; // 24 hours in ms
 export const TOKEN_EXPIRY_1H_MS = 60 * 60 * 1000; // 1 hour in ms
+
+// "Room starting soon" notification job (jobs/eventStartNotifier.ts)
+export const EVENT_START_NOTIFIER_LOOKAHEAD_MIN = 10; // notify when a room starts within this many minutes
+export const EVENT_START_NOTIFIER_POLL_MS = 2 * 60 * 1000; // 2 minutes — must stay well under the lock TTL below
+export const EVENT_START_NOTIFIER_LOCK_TTL_SEC = 90; // multi-instance guard so overlapping replicas don't double-run a poll

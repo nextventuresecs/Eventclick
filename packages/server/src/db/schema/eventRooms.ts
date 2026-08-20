@@ -31,6 +31,9 @@ export const eventRooms = pgTable(
     longitude: doublePrecision("longitude"),
     activityDefinitions: jsonb("activity_definitions").$type<ActivityDefinition[]>().notNull().default([]),
     cancellationReason: text("cancellation_reason"),
+    // Idempotency marker for the "room starting soon" notification job — set
+    // once notified so an overlapping/repeated poll never double-sends.
+    startNotifiedAt: timestamp("start_notified_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

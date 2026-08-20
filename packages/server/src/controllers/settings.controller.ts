@@ -38,11 +38,16 @@ export const updatePreferences: RequestHandler = async (req, res, next) => {
   try {
     if (!req.user) throw ApiError.unauthorized();
     const userId = req.user.id;
-    
+
+    // Body only carries the toggles the client changed (validate() strips the
+    // rest), so a plain .set() would blow away every other saved preference.
+    const [existingUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!existingUser) throw ApiError.notFound("User not found");
+
     const [updatedUser] = await db
       .update(users)
       .set({
-        preferences: req.body,
+        preferences: { ...(existingUser.preferences as object | null), ...req.body },
         updatedAt: new Date(),
       })
       .where(eq(users.id, userId))

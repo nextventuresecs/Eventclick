@@ -13,6 +13,8 @@ interface AuthContextValue {
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (body: ResetPasswordInput) => Promise<void>;
   completeOnboarding: (body: OnboardingInput) => Promise<void>;
+  /** Merge a patch (e.g. the response of a profile/org update) into the in-memory user, so the UI reflects a save immediately instead of waiting for the next /auth/me refresh. */
+  updateUser: (patch: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -76,6 +78,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setStatus("authenticated");
   }, []);
 
+  const updateUser = useCallback((patch: Partial<AuthUser>) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+  }, []);
+
   const value: AuthContextValue = useMemo(
     () => ({
       user,
@@ -101,8 +107,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const result = await authApi.completeOnboarding(body);
         applyAuth(result);
       },
+      updateUser,
     }),
-    [user, status, applyAuth, handleUnauthorized, retryAuth],
+    [user, status, applyAuth, handleUnauthorized, retryAuth, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

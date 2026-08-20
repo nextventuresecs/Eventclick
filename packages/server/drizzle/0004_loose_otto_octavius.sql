@@ -1,0 +1,1 @@
+ALTER TABLE "event_rooms" ADD COLUMN "start_notified_at" timestamp with time zone;

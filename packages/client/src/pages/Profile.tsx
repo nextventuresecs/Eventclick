@@ -47,7 +47,7 @@ const INPUT_ADORNMENT =
   "absolute right-2 top-1/2 z-10 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer";
 
 export const Profile = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { toast } = useToast();
 
   const [fullName, setFullName] = useState(user?.fullName || "");
@@ -151,7 +151,8 @@ export const Profile = () => {
     }
     setSavingDetails(true);
     try {
-      await authApi.updateProfile({ fullName, photoUrl });
+      const { user: updated } = await authApi.updateProfile({ fullName, photoUrl });
+      updateUser(updated);
       toast("Profile details updated successfully", "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Failed to update profile", "error");
@@ -211,7 +212,8 @@ export const Profile = () => {
     }
     setSavingLogo(true);
     try {
-      await settingsApi.updateOrganization({ logoUrl });
+      const { organization } = await settingsApi.updateOrganization({ logoUrl });
+      updateUser({ organizationLogoUrl: organization.logoUrl });
       toast("Organization logo updated", "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Failed to update logo", "error");

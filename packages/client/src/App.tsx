@@ -14,7 +14,6 @@ import React, { Suspense } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { RouteErrorFallback } from "./components/RouteErrorFallback";
 import { CookieBanner } from "./components/CookieBanner";
-import { PwaWelcomeSplash } from "./components/PwaWelcomeSplash";
 
 const lazyLoad = (importFunc: () => Promise<any>, exportName: string) => {
   const LazyComponent = React.lazy(() => importFunc().then((m) => ({ default: m[exportName] })));
@@ -306,7 +305,6 @@ export function App() {
     <ErrorBoundary>
       <RouterProvider router={router} />
       <CookieBanner/>
-      <PwaWelcomeSplash />
     </ErrorBoundary>
   );
 }
