@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../db";
+import { runInBackgroundTenantContext } from "../db/backgroundTenantContext";
 import { eventRooms, eventAdminAssignments, users } from "../db/schema";
 import { notificationService } from "./notification.service";
 import { debounceByKey } from "../utils/debounce";
@@ -26,45 +27,53 @@ export const fanOutEventStreamStateChanged = async (
   organizationId: string,
   state: EventStreamState,
 ): Promise<void> => {
-  const [room] = await db
-    .select({ id: eventRooms.id, title: eventRooms.title, createdBy: eventRooms.createdBy })
-    .from(eventRooms)
-    .where(and(eq(eventRooms.id, roomId), isNull(eventRooms.deletedAt)))
-    .limit(1);
+  // This runs off a debounce timer, well after the HTTP request that
+  // scheduled it has finished (its tenant-scoped connection already
+  // committed and released back to the pool) — every RLS-scoped query below
+  // needs its own fresh tenant context, not whatever the ambient
+  // AsyncLocalStorage store happens to still reference. See
+  // db/backgroundTenantContext.ts.
+  await runInBackgroundTenantContext(organizationId, "", async () => {
+    const [room] = await db
+      .select({ id: eventRooms.id, title: eventRooms.title, createdBy: eventRooms.createdBy })
+      .from(eventRooms)
+      .where(and(eq(eventRooms.id, roomId), isNull(eventRooms.deletedAt)))
+      .limit(1);
 
-  if (!room) {
-    logger.warn({ roomId }, "EVENT_STREAM_STATE_CHANGED: room not found — skipping notification fan-out");
-    return;
-  }
+    if (!room) {
+      logger.warn({ roomId }, "EVENT_STREAM_STATE_CHANGED: room not found — skipping notification fan-out");
+      return;
+    }
 
-  const assignments = await db
-    .select({ userId: eventAdminAssignments.userId })
-    .from(eventAdminAssignments)
-    .where(and(eq(eventAdminAssignments.roomId, roomId), isNull(eventAdminAssignments.revokedAt)));
+    const assignments = await db
+      .select({ userId: eventAdminAssignments.userId })
+      .from(eventAdminAssignments)
+      .where(and(eq(eventAdminAssignments.roomId, roomId), isNull(eventAdminAssignments.revokedAt)));
 
-  const recipientIds = [...new Set([room.createdBy, ...assignments.map((a) => a.userId)])];
+    const recipientIds = [...new Set([room.createdBy, ...assignments.map((a) => a.userId)])];
 
-  const recipients = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(and(inArray(users.id, recipientIds), isNull(users.deletedAt), eq(users.isActive, true)));
+    const recipients = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(inArray(users.id, recipientIds), isNull(users.deletedAt), eq(users.isActive, true)));
 
-  await Promise.all(
-    recipients.map((u) =>
-      notificationService
-        .createNotification({
-          userId: u.id,
-          organizationId,
-          type: "EVENT_STREAM_STATE_CHANGED",
-          title: room.title,
-          message: `"${room.title}" ${STATE_LABEL[state]}`,
-          metadata: { roomId, state },
-        })
-        .catch((err) => {
-          logger.error({ err, roomId, userId: u.id, state }, "Failed to notify recipient of stream state change");
-        }),
-    ),
-  );
+    await Promise.all(
+      recipients.map((u) =>
+        notificationService
+          .createNotification({
+            userId: u.id,
+            organizationId,
+            type: "EVENT_STREAM_STATE_CHANGED",
+            title: room.title,
+            message: `"${room.title}" ${STATE_LABEL[state]}`,
+            metadata: { roomId, state },
+          })
+          .catch((err) => {
+            logger.error({ err, roomId, userId: u.id, state }, "Failed to notify recipient of stream state change");
+          }),
+      ),
+    );
+  });
 };
 
 /**

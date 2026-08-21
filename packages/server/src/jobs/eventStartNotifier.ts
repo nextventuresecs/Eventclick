@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { NotificationPreferencesSchema } from "@application/shared";
-import { db } from "../db";
+import { db, authDb } from "../db";
+import { runInBackgroundTenantContext } from "../db/backgroundTenantContext";
 import { eventRooms, eventAdminAssignments, users } from "../db/schema";
 import { notificationService } from "../services/notification.service";
 import { redisClient } from "../config/redis";
@@ -55,55 +56,63 @@ const notifyRoomRecipients = async (room: {
   organizationId: string;
   createdBy: string;
   scheduledStart: Date;
-}): Promise<NotifyResult> => {
-  const assignments = await db
-    .select({ userId: eventAdminAssignments.userId })
-    .from(eventAdminAssignments)
-    .where(and(eq(eventAdminAssignments.roomId, room.id), isNull(eventAdminAssignments.revokedAt)));
+}): Promise<NotifyResult> =>
+  // Runs from a poll loop with no ambient request — every RLS-scoped query
+  // below needs a tenant context opened for this specific room's org. See
+  // db/backgroundTenantContext.ts.
+  runInBackgroundTenantContext(room.organizationId, "", async () => {
+    const assignments = await db
+      .select({ userId: eventAdminAssignments.userId })
+      .from(eventAdminAssignments)
+      .where(and(eq(eventAdminAssignments.roomId, room.id), isNull(eventAdminAssignments.revokedAt)));
 
-  const recipientIds = [...new Set([room.createdBy, ...assignments.map((a) => a.userId)])];
+    const recipientIds = [...new Set([room.createdBy, ...assignments.map((a) => a.userId)])];
 
-  const recipients = await db
-    .select()
-    .from(users)
-    .where(and(inArray(users.id, recipientIds), isNull(users.deletedAt)));
+    const recipients = await db
+      .select()
+      .from(users)
+      .where(and(inArray(users.id, recipientIds), isNull(users.deletedAt)));
 
-  const targets = recipients.filter((u) => {
-    if (!u.isActive) return false;
-    // jsonb has no schema enforcement at the DB layer, so a malformed
-    // preferences blob falls back to defaults (notifyLiveStart: true) rather
-    // than throwing and dropping every recipient on the floor.
-    const parsed = NotificationPreferencesSchema.safeParse(u.preferences ?? {});
-    return parsed.success ? parsed.data.notifyLiveStart : true;
+    const targets = recipients.filter((u) => {
+      if (!u.isActive) return false;
+      // jsonb has no schema enforcement at the DB layer, so a malformed
+      // preferences blob falls back to defaults (notifyLiveStart: true) rather
+      // than throwing and dropping every recipient on the floor.
+      const parsed = NotificationPreferencesSchema.safeParse(u.preferences ?? {});
+      return parsed.success ? parsed.data.notifyLiveStart : true;
+    });
+
+    const outcomes = await Promise.all(
+      targets.map((u) =>
+        notificationService
+          .createNotification({
+            userId: u.id,
+            organizationId: room.organizationId,
+            type: "room_starting_soon",
+            title: `"${room.title}" starts soon`,
+            message: `Starts at ${room.scheduledStart.toLocaleString()}`,
+            metadata: { roomId: room.id },
+          })
+          .then(() => true)
+          .catch((err) => {
+            logger.error({ err, roomId: room.id, userId: u.id }, "Failed to notify recipient");
+            return false;
+          }),
+      ),
+    );
+
+    return { attempted: targets.length, succeeded: outcomes.filter(Boolean).length };
   });
-
-  const outcomes = await Promise.all(
-    targets.map((u) =>
-      notificationService
-        .createNotification({
-          userId: u.id,
-          organizationId: room.organizationId,
-          type: "room_starting_soon",
-          title: `"${room.title}" starts soon`,
-          message: `Starts at ${room.scheduledStart.toLocaleString()}`,
-          metadata: { roomId: room.id },
-        })
-        .then(() => true)
-        .catch((err) => {
-          logger.error({ err, roomId: room.id, userId: u.id }, "Failed to notify recipient");
-          return false;
-        }),
-    ),
-  );
-
-  return { attempted: targets.length, succeeded: outcomes.filter(Boolean).length };
-};
 
 export const runEventStartNotifications = async (): Promise<void> => {
   const now = new Date();
   const horizon = new Date(now.getTime() + EVENT_START_NOTIFIER_LOOKAHEAD_MIN * 60_000);
 
-  const candidates = await db
+  // Cross-tenant by design (every org's due rooms in one poll) — authDb
+  // (auth_svc_role, BYPASSRLS) is required here since db (app_user_login)
+  // enforces RLS by organization_id and this poll has no single tenant to
+  // scope to. Per-room writes below open their own tenant context instead.
+  const candidates = await authDb
     .select()
     .from(eventRooms)
     .where(
@@ -130,7 +139,8 @@ export const runEventStartNotifications = async (): Promise<void> => {
       }
       // Guard against a still-in-flight overlapping run (belt-and-suspenders
       // alongside the Redis lock below, which may be absent/unconfigured).
-      await db
+      // authDb again — same cross-tenant reasoning as the candidate select.
+      await authDb
         .update(eventRooms)
         .set({ startNotifiedAt: new Date() })
         .where(and(eq(eventRooms.id, room.id), isNull(eventRooms.startNotifiedAt)));

@@ -35,6 +35,13 @@ vi.mock("../notification.service", () => ({
   },
 }));
 
+// Unit-tests dispatch logic only — the real per-room tenant-context wiring
+// (open connection, BEGIN, SET LOCAL, COMMIT/release) is exercised for real
+// against Postgres in the manual verification pass, not here.
+vi.mock("../../db/backgroundTenantContext", () => ({
+  runInBackgroundTenantContext: (_orgId: string, _userId: string, fn: () => Promise<unknown>) => fn(),
+}));
+
 import { fanOutEventStreamStateChanged, notifyEventStreamStateChanged } from "../event-stream-notification.service";
 
 describe("event-stream-notification.service", () => {
