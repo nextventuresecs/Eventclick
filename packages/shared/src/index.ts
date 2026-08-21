@@ -149,6 +149,67 @@ export const UpdatePreferencesSchema = z.object({
 });
 export type UpdatePreferencesInput = z.infer<typeof UpdatePreferencesSchema>;
 
+// ─── Notification Preferences (full stored shape) ──────────
+// Superset of UpdatePreferencesSchema's partial PATCH body — this is what's
+// actually persisted to users.preferences, with defaults for every known key
+// so readers never have to guess what an absent key means.
+export const NotificationPreferencesSchema = z.object({
+  notifyRoomCreated: z.boolean().default(true),
+  notifyLiveStart: z.boolean().default(true),
+  notifyAttendance: z.boolean().default(false),
+});
+export type NotificationPreferences = z.infer<typeof NotificationPreferencesSchema>;
+
+// ─── Notification Types ─────────────────────────────────────
+// Legacy values already written by existing code paths (report generation,
+// room-start polling) plus the typed event kinds the notification engine
+// introduces. The DB enum (see server schema/enums.ts) must stay a superset
+// of every value ever written here — never remove a legacy value without a
+// data migration first.
+export const NOTIFICATION_TYPES = [
+  // legacy / already in production use
+  "room_starting_soon",
+  "report_ready",
+  "report_failed",
+  // safety net for the type-widening migration: any pre-existing row whose
+  // free-text type doesn't match a known value casts to this instead of
+  // failing the migration outright
+  "legacy_unspecified",
+  // typed notification-engine event kinds
+  "USER_INVITED",
+  "ATTENDANCE_WINDOW_OPENED",
+  "EVENT_STARTED",
+  "EVENT_ENDED",
+  "REPORT_GENERATED",
+  "ORG_BROADCAST",
+  "ATTENDANCE_WINDOW_CLOSING",
+  "EVENT_STREAM_STATE_CHANGED",
+  "USER_LEFT_EVENT",
+  "EVENT_CANCELLED_OR_EXPIRED",
+] as const;
+export const NotificationTypeSchema = z.enum(NOTIFICATION_TYPES);
+export type NotificationType = z.infer<typeof NotificationTypeSchema>;
+
+// The subset of NOTIFICATION_TYPES application code may actually write.
+// Excludes "legacy_unspecified", which exists solely as the fallback target
+// for the type-widening migration's defensive cast — it should never appear
+// as a value a running server chooses to write.
+export const WRITABLE_NOTIFICATION_TYPES = NOTIFICATION_TYPES.filter(
+  (t) => t !== "legacy_unspecified",
+);
+export const WritableNotificationTypeSchema = z.enum(
+  WRITABLE_NOTIFICATION_TYPES as [string, ...string[]],
+);
+export type WritableNotificationType = Exclude<NotificationType, "legacy_unspecified">;
+
+export const NOTIFICATION_CHANNELS = ["in_app", "web_push", "email"] as const;
+export const NotificationChannelSchema = z.enum(NOTIFICATION_CHANNELS);
+export type NotificationChannel = z.infer<typeof NotificationChannelSchema>;
+
+export const NOTIFICATION_DELIVERY_STATUSES = ["PENDING", "SENT", "DELIVERED", "FAILED"] as const;
+export const NotificationDeliveryStatusSchema = z.enum(NOTIFICATION_DELIVERY_STATUSES);
+export type NotificationDeliveryStatus = z.infer<typeof NotificationDeliveryStatusSchema>;
+
 export const SubmitFeedbackSchema = z.object({
   category: z.string().min(1).max(100),
   rating: z.number().int().min(1).max(5),

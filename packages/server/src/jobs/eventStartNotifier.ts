@@ -1,4 +1,5 @@
 import { and, eq, gte, inArray, isNull, lte } from "drizzle-orm";
+import { NotificationPreferencesSchema } from "@application/shared";
 import { db } from "../db";
 import { eventRooms, eventAdminAssignments, users } from "../db/schema";
 import { notificationService } from "../services/notification.service";
@@ -67,9 +68,14 @@ const notifyRoomRecipients = async (room: {
     .from(users)
     .where(and(inArray(users.id, recipientIds), isNull(users.deletedAt)));
 
-  const targets = recipients.filter(
-    (u) => u.isActive && (u.preferences as { notifyLiveStart?: boolean } | null)?.notifyLiveStart !== false,
-  );
+  const targets = recipients.filter((u) => {
+    if (!u.isActive) return false;
+    // jsonb has no schema enforcement at the DB layer, so a malformed
+    // preferences blob falls back to defaults (notifyLiveStart: true) rather
+    // than throwing and dropping every recipient on the floor.
+    const parsed = NotificationPreferencesSchema.safeParse(u.preferences ?? {});
+    return parsed.success ? parsed.data.notifyLiveStart : true;
+  });
 
   const outcomes = await Promise.all(
     targets.map((u) =>

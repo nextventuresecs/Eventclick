@@ -10,6 +10,9 @@ import {
   getRolePermissions,
   hasRolePermission,
   extractYouTubeVideoId,
+  NOTIFICATION_TYPES,
+  NotificationTypeSchema,
+  NotificationPreferencesSchema,
 } from "../src/index";
 
 describe("Zod schema validation", () => {
@@ -193,5 +196,60 @@ describe("extractYouTubeVideoId", () => {
 
   it("returns null for invalid URL", () => {
     expect(extractYouTubeVideoId("https://example.com")).toBe(null);
+  });
+});
+
+describe("NotificationTypeSchema", () => {
+  // Regression guard: every value a running server has ever written to
+  // notifications.type must stay accepted here, or the DB enum migration
+  // (drizzle/0005_notification_engine_schema_widening.sql) will reject
+  // those rows outright instead of falling back to legacy_unspecified.
+  it("still accepts every legacy value written by existing code paths", () => {
+    for (const legacyValue of ["room_starting_soon", "report_ready", "report_failed"]) {
+      expect(NOTIFICATION_TYPES).toContain(legacyValue);
+    }
+  });
+
+  it("includes the safety-net fallback used by the type-widening migration", () => {
+    expect(NOTIFICATION_TYPES).toContain("legacy_unspecified");
+  });
+
+  it("accepts all ten typed notification-engine event kinds", () => {
+    const eventKinds = [
+      "USER_INVITED",
+      "ATTENDANCE_WINDOW_OPENED",
+      "EVENT_STARTED",
+      "EVENT_ENDED",
+      "REPORT_GENERATED",
+      "ORG_BROADCAST",
+      "ATTENDANCE_WINDOW_CLOSING",
+      "EVENT_STREAM_STATE_CHANGED",
+      "USER_LEFT_EVENT",
+      "EVENT_CANCELLED_OR_EXPIRED",
+    ];
+    for (const kind of eventKinds) {
+      expect(NotificationTypeSchema.safeParse(kind).success).toBe(true);
+    }
+  });
+
+  it("rejects an unknown type string", () => {
+    expect(NotificationTypeSchema.safeParse("not_a_real_type").success).toBe(false);
+  });
+});
+
+describe("NotificationPreferencesSchema", () => {
+  it("defaults every known preference when given an empty object", () => {
+    const result = NotificationPreferencesSchema.parse({});
+    expect(result).toEqual({
+      notifyRoomCreated: true,
+      notifyLiveStart: true,
+      notifyAttendance: false,
+    });
+  });
+
+  it("preserves explicit values over defaults", () => {
+    const result = NotificationPreferencesSchema.parse({ notifyRoomCreated: false });
+    expect(result.notifyRoomCreated).toBe(false);
+    expect(result.notifyLiveStart).toBe(true);
   });
 });

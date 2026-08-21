@@ -1,4 +1,5 @@
 import { eq, and, desc } from "drizzle-orm";
+import type { WritableNotificationType } from "@application/shared";
 import { db } from "../db";
 import { notifications } from "../db/schema/notifications";
 import { pubsub } from "./pubsub.service";
@@ -8,7 +9,7 @@ import { logger } from "../utils/logger";
 export interface CreateNotificationParams {
   userId: string;
   organizationId: string;
-  type: string;
+  type: WritableNotificationType;
   title: string;
   message: string;
   metadata?: Record<string, any>;
@@ -27,7 +28,7 @@ export class NotificationService {
         type: params.type,
         title: params.title,
         message: params.message,
-        metadata: params.metadata ? JSON.stringify(params.metadata) : null,
+        metadata: params.metadata ?? null,
       })
       .returning();
 
