@@ -13,7 +13,7 @@ import { users, organizations, orgMembers, emailVerifications } from "../../db/s
 import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
 import argon2 from "argon2";
-import { enqueueEmail } from "../../queues/sqs.client";
+import { dispatchEmail } from "../email-delivery.service";
 import { type SessionMeta } from "../session.service";
 import { TOKEN_EXPIRY_24H_MS } from "../../config/constants";
 import {
@@ -113,11 +113,19 @@ export const registerUser = async (input: RegisterInput, meta: SessionMeta): Pro
     "user registered",
   );
   await invalidateUserCache(created.id, created.email);
-  
-  await enqueueEmail({
+
+  // The user row (and the delivery-tracking row dispatchEmail creates) are
+  // already durable at this point. An SQS enqueue failure here must not fail
+  // registration — the delivery row sits PENDING and can be re-driven later;
+  // failing the request would tell the client "registration failed" for a
+  // user that was, in fact, created.
+  await dispatchEmail({
+    userId: created.id,
+    recipientEmail: created.email,
     type: "verification",
-    email: created.email,
-    token: verificationToken,
+    payload: { token: verificationToken },
+  }).catch((err) => {
+    logger.error({ err, userId: created.id, event: "email.dispatch_failed" }, "Failed to dispatch verification email");
   });
 
   const userWithOrg = await findUserById(created.id);
@@ -236,10 +244,13 @@ export const resendVerificationToken = async (email: string): Promise<void> => {
     expiresAt,
   });
 
-  await enqueueEmail({
+  await dispatchEmail({
+    userId: user.id,
+    recipientEmail: email,
     type: "verification",
-    email,
-    token,
+    payload: { token },
+  }).catch((err) => {
+    logger.error({ err, userId: user.id, event: "email.dispatch_failed" }, "Failed to dispatch verification email");
   });
   logger.info({ userId: user.id, event: "email_verification.resent" }, "email verification resent");
 };

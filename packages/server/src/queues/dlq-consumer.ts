@@ -4,6 +4,7 @@ import {
   DeleteMessageCommand,
 } from "@aws-sdk/client-sqs";
 import { logger } from "../utils/logger";
+import { markEmailDeliveryFailed } from "../services/email-delivery.service";
 
 const sqsClient = new SQSClient({
   region: process.env.AWS_REGION || "ap-south-1",
@@ -62,6 +63,8 @@ async function drainDlq(): Promise<void> {
 
         if (payload.type === "generate_pdf") {
           await handleFailedPdfJob(payload, msg.MessageId);
+        } else if (payload.deliveryId) {
+          await handleFailedEmailDelivery(payload, msg.MessageId);
         }
 
         await sqsClient.send(
@@ -75,6 +78,19 @@ async function drainDlq(): Promise<void> {
       }
     }
   }
+}
+
+async function handleFailedEmailDelivery(payload: any, messageId?: string): Promise<void> {
+  const { deliveryId } = payload;
+
+  logger.error(
+    { event: "dlq.email_failed_permanently", deliveryId, messageId },
+    "Email delivery permanently failed after exceeding the queue's redrive policy",
+  );
+
+  await markEmailDeliveryFailed(deliveryId, "Exceeded max receive count — moved to DLQ").catch((err) => {
+    logger.error({ err, deliveryId }, "Failed to mark email delivery as FAILED after DLQ handling");
+  });
 }
 
 async function handleFailedPdfJob(payload: any, messageId?: string): Promise<void> {

@@ -6,7 +6,7 @@ import { users, passwordResets } from "../../db/schema";
 import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
 import argon2 from "argon2";
-import { enqueueEmail } from "../../queues/sqs.client";
+import { dispatchEmail } from "../email-delivery.service";
 import { revokeAllUserSessions } from "../session.service";
 import { findUserByEmail, invalidateUserCache } from "./auth-helpers";
 import { TOKEN_EXPIRY_1H_MS } from "../../config/constants";
@@ -30,10 +30,16 @@ export const forgotPassword = async (email: string): Promise<void> => {
     expiresAt,
   });
 
-  await enqueueEmail({
+  // Unknown-email requests return early with 200 above (enumeration-safe) —
+  // a dispatch failure here must not surface as a 500, or the two paths
+  // become distinguishable by status code, defeating that protection.
+  await dispatchEmail({
+    userId: user.id,
+    recipientEmail: email,
     type: "reset-password",
-    email,
-    token,
+    payload: { token },
+  }).catch((err) => {
+    logger.error({ err, userId: user.id, event: "email.dispatch_failed" }, "Failed to dispatch password reset email");
   });
   logger.info({ userId: user.id, email, event: "password_reset.requested" }, "password reset token generated and email queued");
 };

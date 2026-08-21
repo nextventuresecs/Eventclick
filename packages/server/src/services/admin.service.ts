@@ -7,8 +7,9 @@ import { invalidateUserCache } from "./auth";
 import { db } from "../db";
 import { users, orgMembers, emailVerifications } from "../db/schema";
 import { ApiError } from "../utils/errors";
-import { enqueueEmail } from "../queues/sqs.client";
+import { dispatchEmail } from "./email-delivery.service";
 import { recordAudit } from "./audit.service";
+import { logger } from "../utils/logger";
 
 export type { CreateOrgUserInput };
 
@@ -95,10 +96,15 @@ export const createOrgUser = async (
     return { user, token: verificationToken };
   });
 
-  await enqueueEmail({
+  // The user is already committed; a dispatch failure must not fail the
+  // admin's create-user request — the delivery row can be re-driven later.
+  await dispatchEmail({
+    userId: newUser.id,
+    recipientEmail: newUser.email,
     type: "verification",
-    email: newUser.email,
-    token: token,
+    payload: { token },
+  }).catch((err) => {
+    logger.error({ err, userId: newUser.id, event: "email.dispatch_failed" }, "Failed to dispatch verification email");
   });
 
   await invalidateUserCache(newUser.id, newUser.email);

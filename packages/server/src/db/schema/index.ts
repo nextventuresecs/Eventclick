@@ -12,6 +12,7 @@ export * from "./activitySubmissions";
 export * from "./activityPhotos";
 export * from "./passwordResets";
 export * from "./emailVerifications";
+export * from "./emailDeliveries";
 export * from "./feedback";
 export * from "./bugReports";
 export * from "./notifications";

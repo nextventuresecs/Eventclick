@@ -13,7 +13,7 @@ import { pdfJobs } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { notificationService } from "../services/notification.service";
 import { s3, buildPublicUrl } from "../services/storage.service";
-import { sendReportReadyEmail } from "../services/email.service";
+import { dispatchEmail, attemptEmailDelivery } from "../services/email-delivery.service";
 import { sqsClient } from "./sqs.client";
 
 // SQS client is now the single shared instance from sqs.client.ts.
@@ -298,7 +298,12 @@ async function deliverReportToUser(
     return;
   }
 
-  await sendReportReadyEmail(userEmail, s3Url, roomId);
+  await dispatchEmail({
+    userId,
+    recipientEmail: userEmail,
+    type: "report-ready",
+    payload: { s3Url, roomLabel: roomId },
+  });
 }
 
 async function deleteMessage(receiptHandle: string): Promise<void> {
@@ -311,5 +316,87 @@ async function deleteMessage(receiptHandle: string): Promise<void> {
     );
   } catch (err) {
     logger.error({ err, receiptHandle }, "Failed to delete SQS message");
+  }
+}
+
+// ─── Email delivery queue ───────────────────────────────────────────────
+// Separate polling loop from the PDF worker above — different queue, no PDF
+// job-style visibility heartbeat needed (email sends are seconds, not
+// minutes). Retry/backoff authority is SQS's own redelivery + redrive
+// policy: on failure the message is simply left undeleted so it becomes
+// visible again after the queue's visibility timeout; after the queue's
+// maxReceiveCount is exceeded, SQS's redrive policy moves it to the DLQ,
+// which dlq-consumer.ts drains and marks FAILED.
+//
+// IMPORTANT (deployment note): src/workers/email.lambda.ts is an older,
+// Lambda-based consumer for this same queue with a different message shape
+// ({type,email,token} vs this loop's {deliveryId}) and no DB access, so it
+// cannot honor the idempotency/delivery-tracking this ticket requires. If
+// that Lambda's SQS trigger is still wired to SQS_QUEUE_URL in AWS infra, it
+// must be detached — otherwise both consumers race the same queue and a
+// message can be double-processed.
+const EMAIL_MAX_MESSAGES = 5;
+const EMAIL_RECEIVE_WAIT_SECONDS = 20;
+const EMAIL_VISIBILITY_TIMEOUT_SECONDS = 60;
+
+export async function startEmailSqsWorker(): Promise<void> {
+  if (!env.SQS_QUEUE_URL) {
+    logger.info("SQS_QUEUE_URL not provided, email worker will not start");
+    return;
+  }
+
+  logger.info({ queue: env.SQS_QUEUE_URL }, "Starting email SQS worker loop");
+
+  while (true) {
+    try {
+      const data = await sqsClient.send(
+        new ReceiveMessageCommand({
+          QueueUrl: env.SQS_QUEUE_URL,
+          MaxNumberOfMessages: EMAIL_MAX_MESSAGES,
+          WaitTimeSeconds: EMAIL_RECEIVE_WAIT_SECONDS,
+          VisibilityTimeout: EMAIL_VISIBILITY_TIMEOUT_SECONDS,
+        }),
+      );
+
+      if (!data.Messages || data.Messages.length === 0) continue;
+
+      await Promise.allSettled(data.Messages.map((msg) => processEmailMessage(msg)));
+    } catch (err) {
+      logger.error({ err }, "Error in email SQS worker receive loop");
+      await sleep(5000);
+    }
+  }
+}
+
+async function processEmailMessage(msg: { Body?: string; ReceiptHandle?: string; MessageId?: string }): Promise<void> {
+  if (!msg.Body || !msg.ReceiptHandle) return;
+
+  try {
+    const payload = JSON.parse(msg.Body);
+    if (!payload.deliveryId) {
+      logger.warn({ messageId: msg.MessageId, payload, event: "email_sqs.malformed_message" }, "Email message missing deliveryId — dropping");
+      await deleteEmailMessage(msg.ReceiptHandle);
+      return;
+    }
+
+    await attemptEmailDelivery(payload.deliveryId);
+    // Only delete on success — a thrown error above leaves the message for
+    // SQS to redeliver per the queue's own visibility timeout/redrive policy.
+    await deleteEmailMessage(msg.ReceiptHandle);
+  } catch (err) {
+    logger.error({ err, messageId: msg.MessageId, event: "email_sqs.process_failed" }, "Email delivery attempt failed — leaving message for retry");
+  }
+}
+
+async function deleteEmailMessage(receiptHandle: string): Promise<void> {
+  try {
+    await sqsClient.send(
+      new DeleteMessageCommand({
+        QueueUrl: env.SQS_QUEUE_URL,
+        ReceiptHandle: receiptHandle,
+      }),
+    );
+  } catch (err) {
+    logger.error({ err, receiptHandle }, "Failed to delete email SQS message");
   }
 }

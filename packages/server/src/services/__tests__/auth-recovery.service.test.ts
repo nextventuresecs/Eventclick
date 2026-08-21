@@ -6,10 +6,10 @@ let mockResetResult: any[] = [];
 let mockInsertResetResult: any[] = [];
 let mockUpdateResult: any[] = [];
 
-// Mock SQS client
-const mockEnqueueEmail = vi.fn().mockResolvedValue(undefined);
-vi.mock("../../queues/sqs.client", () => ({
-  enqueueEmail: (...args: any[]) => mockEnqueueEmail(...args),
+// Mock the email dispatcher
+const mockDispatchEmail = vi.fn().mockResolvedValue(undefined);
+vi.mock("../email-delivery.service", () => ({
+  dispatchEmail: (...args: any[]) => mockDispatchEmail(...args),
 }));
 
 // Mock argon2
@@ -92,10 +92,10 @@ describe("auth.service - Password Recovery Flow", () => {
       mockUserResult = [];
 
       await expect(forgotPassword("nonexistent@example.com")).resolves.toBeUndefined();
-      expect(mockEnqueueEmail).not.toHaveBeenCalled();
+      expect(mockDispatchEmail).not.toHaveBeenCalled();
     });
 
-    it("successfully creates a password reset token and enqueues to SQS", async () => {
+    it("successfully creates a password reset token and dispatches the email", async () => {
       mockUserResult = [
         {
           user: {
@@ -110,11 +110,12 @@ describe("auth.service - Password Recovery Flow", () => {
 
       await forgotPassword("test@example.com");
 
-      expect(mockEnqueueEmail).toHaveBeenCalled();
-      const calls = mockEnqueueEmail.mock.calls;
-      expect(calls[0]?.[0]?.email).toBe("test@example.com");
+      expect(mockDispatchEmail).toHaveBeenCalled();
+      const calls = mockDispatchEmail.mock.calls;
+      expect(calls[0]?.[0]?.userId).toBe("user-123");
+      expect(calls[0]?.[0]?.recipientEmail).toBe("test@example.com");
       expect(calls[0]?.[0]?.type).toBe("reset-password");
-      expect(typeof calls[0]?.[0]?.token).toBe("string");
+      expect(typeof calls[0]?.[0]?.payload?.token).toBe("string");
     });
   });
 

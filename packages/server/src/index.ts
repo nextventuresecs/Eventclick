@@ -183,7 +183,7 @@ app.use(API_PREFIX, apiRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-import { startSqsWorker } from "./queues/worker";
+import { startSqsWorker, startEmailSqsWorker } from "./queues/worker";
 import { startSessionCleanupJob } from "./jobs/sessionCleanup";
 import { startEventStartNotifierJob } from "./jobs/eventStartNotifier";
 
@@ -197,6 +197,9 @@ async function startServer() {
     startEventStartNotifierJob();
     startSqsWorker().catch((err) => {
       logger.error({ err }, "SQS worker crashed");
+    });
+    startEmailSqsWorker().catch((err) => {
+      logger.error({ err }, "Email SQS worker crashed");
     });
   } else {
     logger.info("SQS worker disabled via SQS_WORKER_ENABLED=false");

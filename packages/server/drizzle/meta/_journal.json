@@ -50,6 +50,13 @@
       "when": 1787328080847,
       "tag": "0006_web_push_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787332028684,
+      "tag": "0007_email_dispatcher",
+      "breakpoints": true
     }
   ]
 }
