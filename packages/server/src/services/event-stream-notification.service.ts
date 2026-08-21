@@ -1,8 +1,9 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../db";
 import { runInBackgroundTenantContext } from "../db/backgroundTenantContext";
-import { eventRooms, eventAdminAssignments, users } from "../db/schema";
+import { eventRooms } from "../db/schema";
 import { notificationService } from "./notification.service";
+import { resolveRoomStaffRecipients } from "./room-recipients.service";
 import { debounceByKey } from "../utils/debounce";
 import { logger } from "../utils/logger";
 import { EVENT_STREAM_STATE_DEBOUNCE_MS } from "../config/constants";
@@ -17,10 +18,10 @@ const STATE_LABEL: Record<EventStreamState, string> = {
 };
 
 /**
- * Recipients mirror jobs/eventStartNotifier.ts's notifyRoomRecipients: the
- * room's creator plus non-revoked event_admin_assignments. There is no
- * general room-attendee table today, so "eventMembers" for this event kind
- * resolves to assigned staff, not every attendee.
+ * Recipients resolved via room-recipients.service.ts: the room's creator
+ * plus non-revoked event_admin_assignments. There is no general
+ * room-attendee table today, so "eventMembers" for this event kind resolves
+ * to assigned staff, not every attendee.
  */
 export const fanOutEventStreamStateChanged = async (
   roomId: string,
@@ -45,17 +46,7 @@ export const fanOutEventStreamStateChanged = async (
       return;
     }
 
-    const assignments = await db
-      .select({ userId: eventAdminAssignments.userId })
-      .from(eventAdminAssignments)
-      .where(and(eq(eventAdminAssignments.roomId, roomId), isNull(eventAdminAssignments.revokedAt)));
-
-    const recipientIds = [...new Set([room.createdBy, ...assignments.map((a) => a.userId)])];
-
-    const recipients = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(and(inArray(users.id, recipientIds), isNull(users.deletedAt), eq(users.isActive, true)));
+    const recipients = await resolveRoomStaffRecipients(roomId, room.createdBy);
 
     await Promise.all(
       recipients.map((u) =>

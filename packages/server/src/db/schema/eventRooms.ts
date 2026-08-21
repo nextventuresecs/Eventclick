@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, integer, index, jsonb, doublePrecision , pgPolicy } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, integer, boolean, index, jsonb, doublePrecision , pgPolicy } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { roomStatusEnum, streamProviderEnum } from "./enums";
 import { users } from "./users";
@@ -31,13 +31,29 @@ export const eventRooms = pgTable(
     longitude: doublePrecision("longitude"),
     activityDefinitions: jsonb("activity_definitions").$type<ActivityDefinition[]>().notNull().default([]),
     cancellationReason: text("cancellation_reason"),
-    // Idempotency marker for the "room starting soon" notification job — set
-    // once notified so an overlapping/repeated poll never double-sends.
+    // Deprecated: was the idempotency marker for the poll-based "room
+    // starting soon" notification job, retired in favor of the
+    // EVENT_STARTED event fired synchronously from room-live.controller.ts's
+    // startLive (see eventStartedNotifiedAt below). No code writes this
+    // column anymore; kept rather than dropped to avoid an unnecessary
+    // destructive migration for a column with no meaningful runtime effect.
     startNotifiedAt: timestamp("start_notified_at", { withTimezone: true }),
     // Idempotency markers for the attendance-window notification job (same
     // pattern as startNotifiedAt above) — see jobs/attendanceWindowNotifier.ts.
     attendanceWindowOpenedNotifiedAt: timestamp("attendance_window_opened_notified_at", { withTimezone: true }),
     attendanceWindowClosingNotifiedAt: timestamp("attendance_window_closing_notified_at", { withTimezone: true }),
+    // Per-room opt-in: EVENT_STARTED emails every event-associated member
+    // only when this is true (push + in-app always go out regardless). See
+    // NOTIFICATION_EVENT_CHANNELS's EVENT_STARTED comment in
+    // @application/shared — email is spec'd as flag-gated, not a per-user
+    // preference ChannelRouter can decide alone.
+    notifyEmailOnStart: boolean("notify_email_on_start").notNull().default(false),
+    // Idempotency markers for EVENT_STARTED / EVENT_ENDED — set by an atomic
+    // claim in room-live.controller.ts's startLive/stopLive so a retried or
+    // double-clicked request never double-sends. See
+    // services/event-lifecycle-notification.service.ts.
+    eventStartedNotifiedAt: timestamp("event_started_notified_at", { withTimezone: true }),
+    eventEndedNotifiedAt: timestamp("event_ended_notified_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

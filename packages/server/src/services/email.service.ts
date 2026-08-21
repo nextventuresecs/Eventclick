@@ -154,3 +154,73 @@ export const sendInviteEmail = async (
     );
   }
 };
+
+export const sendEventStartedEmail = async (
+  email: string,
+  roomTitle: string,
+  watchUrl: string,
+): Promise<void> => {
+  if (resend) {
+    const { error } = await resend.emails.send({
+      from: env.RESEND_FROM_EMAIL,
+      to: email,
+      subject: `"${roomTitle}" is now live`,
+      html: `
+          <h1>Your event has started</h1>
+          <p><strong>${roomTitle}</strong> is now live.</p>
+          <p><a href="${watchUrl}">Join the stream</a></p>
+        `,
+    });
+
+    if (error) {
+      logger.error({ email, roomTitle, error, event: "email.event_started_failed" }, "Failed to send event-started email");
+      throw error;
+    }
+    logger.info({ email, roomTitle, event: "email.event_started_sent" }, "Event-started email sent via Resend");
+  } else {
+    logger.info(
+      { email, roomTitle, watchUrl, event: "email.event_started" },
+      `[EMAIL MOCK] Event Started Sent\nTo: ${email}\nRoom: ${roomTitle}\nWatch Link: ${watchUrl}`,
+    );
+  }
+};
+
+export const sendEventEndedEmail = async (
+  email: string,
+  roomTitle: string,
+  recordingUrl?: string,
+  summaryUrl?: string,
+): Promise<void> => {
+  // recordingUrl/summaryUrl are omitted, not stubbed, when not yet available
+  // (e.g. egress upload still processing at stopLive time) — see
+  // services/event-lifecycle-notification.service.ts::notifyEventEnded.
+  const links = [
+    recordingUrl ? `<p><a href="${recordingUrl}">Watch the recording</a></p>` : "",
+    summaryUrl ? `<p><a href="${summaryUrl}">View the event summary</a></p>` : "",
+  ].join("");
+  const linksFallback = links || "<p>The recording will be available soon — check back later.</p>";
+
+  if (resend) {
+    const { error } = await resend.emails.send({
+      from: env.RESEND_FROM_EMAIL,
+      to: email,
+      subject: `"${roomTitle}" has ended`,
+      html: `
+          <h1>Your event has ended</h1>
+          <p><strong>${roomTitle}</strong> has finished.</p>
+          ${linksFallback}
+        `,
+    });
+
+    if (error) {
+      logger.error({ email, roomTitle, error, event: "email.event_ended_failed" }, "Failed to send event-ended email");
+      throw error;
+    }
+    logger.info({ email, roomTitle, event: "email.event_ended_sent" }, "Event-ended email sent via Resend");
+  } else {
+    logger.info(
+      { email, roomTitle, recordingUrl, summaryUrl, event: "email.event_ended" },
+      `[EMAIL MOCK] Event Ended Sent\nTo: ${email}\nRoom: ${roomTitle}\nRecording: ${recordingUrl ?? "(not yet available)"}`,
+    );
+  }
+};

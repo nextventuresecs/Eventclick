@@ -98,6 +98,7 @@ export const createRoom: RequestHandler = async (req, res, next) => {
         shareToken: nanoid(32),
         attendanceWindowBefore: input.attendanceWindowBefore !== undefined ? input.attendanceWindowBefore : undefined,
         attendanceWindowAfter: input.attendanceWindowAfter !== undefined ? input.attendanceWindowAfter : undefined,
+        notifyEmailOnStart: input.notifyEmailOnStart !== undefined ? input.notifyEmailOnStart : undefined,
         location: input.location,
         latitude: input.latitude,
         longitude: input.longitude,
@@ -175,6 +176,7 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
     if (input.maxParticipants !== undefined) patch.maxParticipants = input.maxParticipants;
     if (input.attendanceWindowBefore !== undefined) patch.attendanceWindowBefore = input.attendanceWindowBefore;
     if (input.attendanceWindowAfter !== undefined) patch.attendanceWindowAfter = input.attendanceWindowAfter;
+    if (input.notifyEmailOnStart !== undefined) patch.notifyEmailOnStart = input.notifyEmailOnStart;
     if (input.activityDefinitions !== undefined) patch.activityDefinitions = input.activityDefinitions;
     if (input.status !== undefined) {
       if (input.status === "ended") {

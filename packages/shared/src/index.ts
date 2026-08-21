@@ -486,6 +486,10 @@ const CreateRoomBase = z.object({
   maxParticipants: z.number().int().positive().max(10000).optional(),
   attendanceWindowBefore: z.number().int().nonnegative().optional(),
   attendanceWindowAfter: z.number().int().nonnegative().optional(),
+  // Per-room opt-in: EVENT_STARTED also emails every event-associated member
+  // when true, on top of the always-on in-app + push. See
+  // NOTIFICATION_EVENT_CHANNELS's EVENT_STARTED comment below.
+  notifyEmailOnStart: z.boolean().optional(),
   location: z.string().max(300).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
@@ -537,6 +541,7 @@ export interface EventRoom {
   youtubeEmbedUrl: string | null;
   attendanceWindowBefore: number;
   attendanceWindowAfter: number;
+  notifyEmailOnStart: boolean;
   location?: string | null;
   latitude?: number | null;
   longitude?: number | null;

@@ -5,15 +5,26 @@ import { emailDeliveries, type EmailDelivery } from "../db/schema/emailDeliverie
 import { sqsClient } from "../queues/sqs.client";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
-import { sendVerificationEmail, sendPasswordResetEmail, sendReportReadyEmail, sendInviteEmail } from "./email.service";
+import {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendReportReadyEmail,
+  sendInviteEmail,
+  sendEventStartedEmail,
+  sendEventEndedEmail,
+} from "./email.service";
 
-export type EmailType = "verification" | "reset-password" | "report-ready" | "invite";
+export type EmailType = "verification" | "reset-password" | "report-ready" | "invite" | "event-started" | "event-ended";
 
 export interface DispatchEmailParams {
   userId: string;
   recipientEmail: string;
   type: EmailType;
-  /** { token } for verification/reset-password, { s3Url, roomLabel } for report-ready, { token, orgName } for invite. */
+  /**
+   * { token } for verification/reset-password, { s3Url, roomLabel } for
+   * report-ready, { token, orgName } for invite, { roomTitle, watchUrl } for
+   * event-started, { roomTitle, recordingUrl?, summaryUrl? } for event-ended.
+   */
   payload: Record<string, unknown>;
 }
 
@@ -27,6 +38,15 @@ const sendEmailByType = (type: string, email: string, payload: Record<string, un
       return sendReportReadyEmail(email, payload.s3Url as string, payload.roomLabel as string);
     case "invite":
       return sendInviteEmail(email, payload.token as string, payload.orgName as string);
+    case "event-started":
+      return sendEventStartedEmail(email, payload.roomTitle as string, payload.watchUrl as string);
+    case "event-ended":
+      return sendEventEndedEmail(
+        email,
+        payload.roomTitle as string,
+        payload.recordingUrl as string | undefined,
+        payload.summaryUrl as string | undefined,
+      );
     default:
       throw new Error(`Unknown email type: ${type}`);
   }

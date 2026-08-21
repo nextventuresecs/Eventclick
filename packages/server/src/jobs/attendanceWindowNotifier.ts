@@ -8,9 +8,10 @@ import {
 } from "@application/shared";
 import { db, authDb } from "../db";
 import { runInBackgroundTenantContext } from "../db/backgroundTenantContext";
-import { eventRooms, eventAdminAssignments, attendanceEntries, users } from "../db/schema";
+import { eventRooms, attendanceEntries } from "../db/schema";
 import { notificationService } from "../services/notification.service";
 import { sendToUser as sendPush } from "../services/push.service";
+import { resolveRoomStaffRecipients } from "../services/room-recipients.service";
 import { redisClient } from "../config/redis";
 import { logger } from "../utils/logger";
 import {
@@ -32,8 +33,7 @@ export interface RoomWindowOpenCandidate {
 
 /**
  * Pure selection logic — no DB, no timers — so it's cheap to pin with tests
- * independent of the poll loop. Mirrors
- * jobs/eventStartNotifier.ts::selectRoomsDueForStartNotification.
+ * independent of the poll loop.
  *
  * The window opens at scheduledStart - attendanceWindowBefore minutes (see
  * services/attendance-live-window.service.ts::isWithinAttendanceWindow,
@@ -84,27 +84,6 @@ interface NotifyResult {
   attempted: number;
   succeeded: number;
 }
-
-/**
- * Recipients mirror jobs/eventStartNotifier.ts's notifyRoomRecipients and
- * services/event-stream-notification.service.ts's fanOutEventStreamStateChanged:
- * the room's creator plus non-revoked event_admin_assignments. There is no
- * general room-attendee/roster table in this codebase — "members" for
- * attendance-window purposes is this same assigned-staff population.
- */
-const resolveRoomStaffRecipients = async (roomId: string, createdBy: string) => {
-  const assignments = await db
-    .select({ userId: eventAdminAssignments.userId })
-    .from(eventAdminAssignments)
-    .where(and(eq(eventAdminAssignments.roomId, roomId), isNull(eventAdminAssignments.revokedAt)));
-
-  const recipientIds = [...new Set([createdBy, ...assignments.map((a) => a.userId)])];
-
-  return db
-    .select()
-    .from(users)
-    .where(and(inArray(users.id, recipientIds), isNull(users.deletedAt), eq(users.isActive, true)));
-};
 
 const dispatchToRecipient = async (
   recipient: { id: string; organizationId: string | null; preferences: unknown },
@@ -233,9 +212,10 @@ export const runAttendanceWindowOpenedNotifications = async (): Promise<void> =>
   // Rooms use a per-room attendanceWindowBefore, so this can't be narrowed
   // further in SQL without duplicating that arithmetic in the query.
   const dayMs = 24 * 60 * 60 * 1000;
-  // Cross-tenant discovery — see the identical reasoning in
-  // eventStartNotifier.ts::runEventStartNotifications. Per-room writes
-  // inside notifyWindowOpened open their own tenant context.
+  // Cross-tenant by design (every org's due rooms in one poll) — authDb
+  // (auth_svc_role, BYPASSRLS) is required since db (app_user_login) enforces
+  // RLS by organization_id and this poll has no single tenant to scope to.
+  // Per-room writes inside notifyWindowOpened open their own tenant context.
   const candidates = await authDb
     .select()
     .from(eventRooms)

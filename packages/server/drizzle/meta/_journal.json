@@ -64,6 +64,13 @@
       "when": 1787338410650,
       "tag": "0008_attendance_window_notifier_markers",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787341173540,
+      "tag": "0009_event_started_ended_notifier_markers",
+      "breakpoints": true
     }
   ]
 }

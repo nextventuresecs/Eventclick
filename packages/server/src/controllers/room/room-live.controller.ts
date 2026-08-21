@@ -14,6 +14,8 @@ import {
 } from "../../services/event-assignment.service";
 import { findUserById } from "../../services/auth";
 import { notifyEventStreamStateChanged } from "../../services/event-stream-notification.service";
+import { notifyEventStarted, notifyEventEnded } from "../../services/event-lifecycle-notification.service";
+import { logger } from "../../utils/logger";
 import { requireOrgId, toEventRoom } from "./room-helpers";
 
 const roleForUser = (userRole: UserRole): LiveRole =>
@@ -63,6 +65,26 @@ export const startLive: RequestHandler = async (req, res, next) => {
 
     if (!row) throw ApiError.notFound("Room not found");
     notifyEventStreamStateChanged(id, orgId, "live");
+
+    // Atomic claim: guards EVENT_STARTED against a double-clicked/retried
+    // startLive request firing it twice. Fire-and-forget — the HTTP response
+    // shouldn't wait on notification fan-out.
+    const startedClaim = await db
+      .update(eventRooms)
+      .set({ eventStartedNotifiedAt: new Date() })
+      .where(and(eq(eventRooms.id, id), isNull(eventRooms.eventStartedNotifiedAt)))
+      .returning();
+    if (startedClaim[0]) {
+      notifyEventStarted({
+        id: row.id,
+        title: row.title,
+        organizationId: orgId,
+        createdBy: row.createdBy,
+        shareToken: row.shareToken,
+        notifyEmailOnStart: row.notifyEmailOnStart,
+      }).catch((err) => logger.error({ err, roomId: id }, "EVENT_STARTED fan-out failed"));
+    }
+
     res.json(toEventRoom(row));
   } catch (err) {
     next(err);
@@ -91,6 +113,21 @@ export const stopLive: RequestHandler = async (req, res, next) => {
 
     if (!row) throw ApiError.notFound("Room not found");
     notifyEventStreamStateChanged(id, orgId, "ended");
+
+    const endedClaim = await db
+      .update(eventRooms)
+      .set({ eventEndedNotifiedAt: new Date() })
+      .where(and(eq(eventRooms.id, id), isNull(eventRooms.eventEndedNotifiedAt)))
+      .returning();
+    if (endedClaim[0]) {
+      notifyEventEnded({
+        id: row.id,
+        title: row.title,
+        organizationId: orgId,
+        createdBy: row.createdBy,
+      }).catch((err) => logger.error({ err, roomId: id }, "EVENT_ENDED fan-out failed"));
+    }
+
     res.json(toEventRoom(row));
   } catch (err) {
     next(err);

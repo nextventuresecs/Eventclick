@@ -22,6 +22,7 @@ export const toEventRoom = (row: EventRoomRow): EventRoom => ({
   youtubeEmbedUrl: row.youtubeEmbedUrl,
   attendanceWindowBefore: row.attendanceWindowBefore,
   attendanceWindowAfter: row.attendanceWindowAfter,
+  notifyEmailOnStart: row.notifyEmailOnStart,
   location: row.location ?? null,
   latitude: row.latitude ?? null,
   longitude: row.longitude ?? null,

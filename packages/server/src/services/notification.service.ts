@@ -43,10 +43,10 @@ export class NotificationService {
     // was created. A publish failure (Redis blip) does NOT fail the whole
     // call: the notification row is already durable and visible via the
     // REST history endpoint on next fetch, so only the live-push side of it
-    // is degraded. Re-throwing here would make callers like
-    // eventStartNotifier's fan-out retry the whole notification next poll,
-    // creating a duplicate row for a recipient whose only problem was a
-    // momentarily-unavailable pub/sub channel.
+    // is degraded. Re-throwing here would make poll-loop callers (see
+    // jobs/attendanceWindowNotifier.ts) retry the whole notification next
+    // poll, creating a duplicate row for a recipient whose only problem was
+    // a momentarily-unavailable pub/sub channel.
     const channel = `notifications:${params.userId}`;
     try {
       await pubsub.publish(channel, notification);

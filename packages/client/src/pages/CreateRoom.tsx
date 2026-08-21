@@ -27,6 +27,7 @@ export const CreateRoom = () => {
   const [maxParticipants, setMaxParticipants] = useState("");
   const [attendanceWindowBefore, setAttendanceWindowBefore] = useState("15");
   const [attendanceWindowAfter, setAttendanceWindowAfter] = useState("30");
+  const [notifyEmailOnStart, setNotifyEmailOnStart] = useState(false);
 
   // Activities State
   const [activityDefinitions, setActivityDefinitions] = useState<{ id: string; title: string; description?: string; min_photos: number }[]>([]);
@@ -117,6 +118,7 @@ export const CreateRoom = () => {
       maxParticipants: maxParticipants ? parseInt(maxParticipants, 10) : undefined,
       attendanceWindowBefore: attendanceWindowBefore ? parseInt(attendanceWindowBefore, 10) : undefined,
       attendanceWindowAfter: attendanceWindowAfter ? parseInt(attendanceWindowAfter, 10) : undefined,
+      notifyEmailOnStart,
       activityDefinitions: activityDefinitions.length > 0 ? activityDefinitions.map(a => ({
         id: a.id,
         title: a.title,
@@ -309,6 +311,24 @@ export const CreateRoom = () => {
                   Minutes after event ends that attendance can still be taken (default 30).
                 </p>
               </div>
+            </div>
+
+            {/* Email on start opt-in */}
+            <div className="flex items-center justify-between rounded-lg border border-input p-4">
+              <div>
+                <Label htmlFor="notifyEmailOnStart">Email staff when this event goes live</Label>
+                <p className="text-xs text-muted-foreground">
+                  In-app and push notifications always go out on start — enable this to also email event staff.
+                </p>
+              </div>
+              <input
+                id="notifyEmailOnStart"
+                type="checkbox"
+                checked={notifyEmailOnStart}
+                onChange={(e) => setNotifyEmailOnStart(e.target.checked)}
+                disabled={submitting}
+                className="w-5 h-5 rounded accent-purple-600 cursor-pointer"
+              />
             </div>
 
             {/* Max Participants Configuration */}
