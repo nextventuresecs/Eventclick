@@ -5,6 +5,7 @@ import { roomRecordings } from "../../db/schema";
 import { ApiError } from "../../utils/errors";
 import { streamingService } from "../../services/streaming";
 import { assertRoomAccessForUser } from "../../services/event-assignment.service";
+import { notifyEventStreamStateChanged } from "../../services/event-stream-notification.service";
 import { requireOrgId } from "./room-helpers";
 
 export const startRoomRecording: RequestHandler = async (req, res, next) => {
@@ -14,6 +15,7 @@ export const startRoomRecording: RequestHandler = async (req, res, next) => {
     await assertRoomAccessForUser(req.user!, orgId, id);
 
     const recording = await streamingService.startRecording(id, orgId);
+    notifyEventStreamStateChanged(id, orgId, "recording_started");
     res.json(recording);
   } catch (err) {
     next(err);
@@ -30,6 +32,7 @@ export const stopRoomRecording: RequestHandler = async (req, res, next) => {
     if (!egressId) throw ApiError.badRequest("egressId is required to stop recording");
 
     const recording = await streamingService.stopRecording(egressId, orgId);
+    notifyEventStreamStateChanged(id, orgId, "recording_paused");
     res.json(recording);
   } catch (err) {
     next(err);

@@ -8,3 +8,6 @@ export const TOKEN_EXPIRY_1H_MS = 60 * 60 * 1000; // 1 hour in ms
 export const EVENT_START_NOTIFIER_LOOKAHEAD_MIN = 10; // notify when a room starts within this many minutes
 export const EVENT_START_NOTIFIER_POLL_MS = 2 * 60 * 1000; // 2 minutes — must stay well under the lock TTL below
 export const EVENT_START_NOTIFIER_LOCK_TTL_SEC = 90; // multi-instance guard so overlapping replicas don't double-run a poll
+
+// EVENT_STREAM_STATE_CHANGED debounce (services/event-stream-notification.service.ts)
+export const EVENT_STREAM_STATE_DEBOUNCE_MS = 3000; // coalesce rapid live/pause/resume toggles on the same room into one notification

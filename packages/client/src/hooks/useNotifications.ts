@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api";
 import { useAuth } from "./useAuth";
+import { useToast } from "./useToast";
 
 export interface Notification {
   id: string;
@@ -13,8 +14,11 @@ export interface Notification {
 
 export function useNotifications() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const notificationsRef = useRef(notifications);
+  notificationsRef.current = notifications;
 
   // Fetch initial history
   useEffect(() => {
@@ -61,6 +65,11 @@ export function useNotifications() {
           if (old.some((n) => n.id === payload.id)) return old;
           return [payload, ...old];
         });
+
+        // Server-side debouncing (e.g. EVENT_STREAM_STATE_CHANGED) already
+        // collapses bursty state changes into one message per quiet window,
+        // so it's safe to toast on every message received here.
+        toast(payload.title ?? payload.message ?? "New notification", "info");
       } catch (err) {
         console.error("Failed to parse SSE message", err);
       }
@@ -73,26 +82,29 @@ export function useNotifications() {
     return () => {
       eventSource.close();
     };
-  }, [user]);
+  }, [user, toast]);
 
   const markAsRead = useCallback(async (id: string) => {
+    const previous = notificationsRef.current;
     // Optimistic update
     setNotifications((old) => old.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     try {
       await api.patch(`/notifications/${id}/read`);
     } catch (err) {
       console.error("Failed to mark notification as read", err);
-      // Revert optimistic update? For simplicity, we just leave it or refetch
+      setNotifications(previous);
     }
   }, []);
 
   const markAllAsRead = useCallback(async () => {
+    const previous = notificationsRef.current;
     // Optimistic update
     setNotifications((old) => old.map((n) => ({ ...n, isRead: true })));
     try {
       await api.post("/notifications/read-all");
     } catch (err) {
       console.error("Failed to mark all notifications as read", err);
+      setNotifications(previous);
     }
   }, []);
 

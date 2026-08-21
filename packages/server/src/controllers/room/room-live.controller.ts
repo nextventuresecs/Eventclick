@@ -13,6 +13,7 @@ import {
   assertRoomAccessWithRoom,
 } from "../../services/event-assignment.service";
 import { findUserById } from "../../services/auth";
+import { notifyEventStreamStateChanged } from "../../services/event-stream-notification.service";
 import { requireOrgId, toEventRoom } from "./room-helpers";
 
 const roleForUser = (userRole: UserRole): LiveRole =>
@@ -61,6 +62,7 @@ export const startLive: RequestHandler = async (req, res, next) => {
       .returning();
 
     if (!row) throw ApiError.notFound("Room not found");
+    notifyEventStreamStateChanged(id, orgId, "live");
     res.json(toEventRoom(row));
   } catch (err) {
     next(err);
@@ -88,6 +90,7 @@ export const stopLive: RequestHandler = async (req, res, next) => {
       .returning();
 
     if (!row) throw ApiError.notFound("Room not found");
+    notifyEventStreamStateChanged(id, orgId, "ended");
     res.json(toEventRoom(row));
   } catch (err) {
     next(err);
