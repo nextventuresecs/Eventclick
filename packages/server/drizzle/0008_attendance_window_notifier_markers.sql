@@ -1,0 +1,2 @@
+ALTER TABLE "event_rooms" ADD COLUMN "attendance_window_opened_notified_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "event_rooms" ADD COLUMN "attendance_window_closing_notified_at" timestamp with time zone;

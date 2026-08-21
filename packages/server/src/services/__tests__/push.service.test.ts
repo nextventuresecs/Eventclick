@@ -99,4 +99,43 @@ describe("push.service", () => {
 
     expect(result).toEqual({ attempted: 2, sent: 2 });
   });
+
+  // #71: ATTENDANCE_WINDOW_CLOSING must go out with high urgency + a short
+  // TTL — arriving after the window closed is worse than not arriving.
+  it("defaults to normal urgency with no explicit options", async () => {
+    mockSendNotification.mockResolvedValueOnce(undefined);
+
+    await sendToSubscription(fakeSubscription, { title: "Hi", body: "There" });
+
+    expect(mockSendNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ urgency: "normal" }),
+    );
+  });
+
+  it("passes high urgency and a TTL through to web-push when requested", async () => {
+    mockSendNotification.mockResolvedValueOnce(undefined);
+
+    await sendToSubscription(fakeSubscription, { title: "Hi", body: "There" }, { urgency: "high", ttlSeconds: 300 });
+
+    expect(mockSendNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ urgency: "high", TTL: 300 }),
+    );
+  });
+
+  it("sendToUser threads urgency options through to every subscription", async () => {
+    mockSelectResult = [fakeSubscription];
+    mockSendNotification.mockResolvedValueOnce(undefined);
+
+    await sendToUser("user-1", { title: "Hi", body: "There" }, { urgency: "high", ttlSeconds: 300 });
+
+    expect(mockSendNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ urgency: "high", TTL: 300 }),
+    );
+  });
 });

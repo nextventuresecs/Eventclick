@@ -34,6 +34,10 @@ export const eventRooms = pgTable(
     // Idempotency marker for the "room starting soon" notification job — set
     // once notified so an overlapping/repeated poll never double-sends.
     startNotifiedAt: timestamp("start_notified_at", { withTimezone: true }),
+    // Idempotency markers for the attendance-window notification job (same
+    // pattern as startNotifiedAt above) — see jobs/attendanceWindowNotifier.ts.
+    attendanceWindowOpenedNotifiedAt: timestamp("attendance_window_opened_notified_at", { withTimezone: true }),
+    attendanceWindowClosingNotifiedAt: timestamp("attendance_window_closing_notified_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

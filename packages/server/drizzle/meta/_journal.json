@@ -57,6 +57,13 @@
       "when": 1787332028684,
       "tag": "0007_email_dispatcher",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787338410650,
+      "tag": "0008_attendance_window_notifier_markers",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,18 @@ export interface PushPayload {
   url?: string;
 }
 
+export interface PushOptions {
+  /** web-push protocol Urgency header — "high" tells the push service (and
+   * the OS on the receiving device) to wake the device / bypass low-power
+   * batching for time-sensitive notifications like an attendance window
+   * closing in 5 minutes. Defaults to "normal". */
+  urgency?: "very-low" | "low" | "normal" | "high";
+  /** How long the push service should keep retrying delivery if the device
+   * is offline, in seconds. A short TTL for a "closing in 5 minutes" alert
+   * — arriving after the window has closed is worse than not arriving. */
+  ttlSeconds?: number;
+}
+
 export const saveSubscription = async (
   userId: string,
   organizationId: string,
@@ -68,6 +80,7 @@ const revokeByEndpoint = async (endpoint: string): Promise<void> => {
 export const sendToSubscription = async (
   subscription: PushSubscriptionRow,
   payload: PushPayload,
+  options?: PushOptions,
 ): Promise<{ ok: true } | { ok: false; revoked: boolean }> => {
   if (!vapidConfigured) return { ok: false, revoked: false };
 
@@ -78,6 +91,10 @@ export const sendToSubscription = async (
         keys: { p256dh: subscription.p256dh, auth: subscription.auth },
       },
       JSON.stringify(payload),
+      {
+        urgency: options?.urgency ?? "normal",
+        ...(options?.ttlSeconds !== undefined ? { TTL: options.ttlSeconds } : {}),
+      },
     );
     return { ok: true };
   } catch (err: any) {
@@ -98,6 +115,7 @@ export const sendToSubscription = async (
 export const sendToUser = async (
   userId: string,
   payload: PushPayload,
+  options?: PushOptions,
 ): Promise<{ attempted: number; sent: number }> => {
   const subscriptions = await db
     .select()
@@ -105,7 +123,7 @@ export const sendToUser = async (
     .where(eq(pushSubscriptions.userId, userId));
 
   const results = await Promise.all(
-    subscriptions.map((subscription) => sendToSubscription(subscription, payload)),
+    subscriptions.map((subscription) => sendToSubscription(subscription, payload, options)),
   );
 
   return {
