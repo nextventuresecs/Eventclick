@@ -13,6 +13,11 @@ import {
   NOTIFICATION_TYPES,
   NotificationTypeSchema,
   NotificationPreferencesSchema,
+  ChannelRouter,
+  isCriticalNotificationEvent,
+  NOTIFICATION_EVENT_CHANNELS,
+  type NotificationEvent,
+  type NotificationPreferences,
 } from "../src/index";
 
 describe("Zod schema validation", () => {
@@ -244,6 +249,7 @@ describe("NotificationPreferencesSchema", () => {
       notifyRoomCreated: true,
       notifyLiveStart: true,
       notifyAttendance: false,
+      mutedChannels: [],
     });
   });
 
@@ -251,5 +257,107 @@ describe("NotificationPreferencesSchema", () => {
     const result = NotificationPreferencesSchema.parse({ notifyRoomCreated: false });
     expect(result.notifyRoomCreated).toBe(false);
     expect(result.notifyLiveStart).toBe(true);
+  });
+});
+
+describe("ChannelRouter", () => {
+  const defaultPreferences: NotificationPreferences = {
+    notifyRoomCreated: true,
+    notifyLiveStart: true,
+    notifyAttendance: false,
+    mutedChannels: [],
+  };
+
+  const eventStarted: NotificationEvent = {
+    type: "EVENT_STARTED",
+    scope: { kind: "eventMembers", roomId: "room-1" },
+    payload: { roomId: "room-1", startedAt: "2026-01-01T00:00:00Z" },
+  };
+
+  const attendanceWindowClosing: NotificationEvent = {
+    type: "ATTENDANCE_WINDOW_CLOSING",
+    scope: { kind: "eventMembers", roomId: "room-1" },
+    payload: { roomId: "room-1", closesInMinutes: 5 },
+  };
+
+  const urgentBroadcast: NotificationEvent = {
+    type: "ORG_BROADCAST",
+    scope: { kind: "orgWide", organizationId: "org-1" },
+    payload: { organizationId: "org-1", title: "Heads up", body: "Something urgent", priority: "urgent" },
+  };
+
+  const normalBroadcast: NotificationEvent = {
+    type: "ORG_BROADCAST",
+    scope: { kind: "orgWide", organizationId: "org-1" },
+    payload: { organizationId: "org-1", title: "FYI", body: "Something routine", priority: "normal" },
+  };
+
+  it("returns the event kind's full declared channel set when nothing is muted", () => {
+    const result = ChannelRouter(eventStarted, defaultPreferences);
+    expect(result).toEqual(NOTIFICATION_EVENT_CHANNELS.EVENT_STARTED);
+  });
+
+  it("an ordinary event respects a channel mute", () => {
+    const result = ChannelRouter(eventStarted, { ...defaultPreferences, mutedChannels: ["web_push"] });
+    expect(result).toEqual(["in_app", "email"]);
+  });
+
+  it("a critical event (attendance window closing) ignores a channel mute", () => {
+    const result = ChannelRouter(attendanceWindowClosing, {
+      ...defaultPreferences,
+      mutedChannels: ["in_app", "web_push"],
+    });
+    expect(result).toEqual(NOTIFICATION_EVENT_CHANNELS.ATTENDANCE_WINDOW_CLOSING);
+  });
+
+  it("an urgent broadcast ignores a channel mute", () => {
+    const result = ChannelRouter(urgentBroadcast, { ...defaultPreferences, mutedChannels: ["email"] });
+    expect(result).toEqual(NOTIFICATION_EVENT_CHANNELS.ORG_BROADCAST);
+  });
+
+  it("a normal-priority broadcast respects a channel mute", () => {
+    const result = ChannelRouter(normalBroadcast, { ...defaultPreferences, mutedChannels: ["email"] });
+    expect(result).toEqual(["in_app", "web_push"]);
+  });
+
+  it("muting every declared channel returns an empty list for a non-critical event", () => {
+    const result = ChannelRouter(eventStarted, { ...defaultPreferences, mutedChannels: ["in_app", "web_push", "email"] });
+    expect(result).toEqual([]);
+  });
+
+  // Regression guard: AuthUser.preferences is `any | null` off an
+  // unvalidated jsonb column, and no row written before mutedChannels
+  // existed has that key — ChannelRouter must not crash when a caller
+  // passes preferences straight from the DB without running it through
+  // NotificationPreferencesSchema.parse() first.
+  it("does not throw when mutedChannels is missing from the preferences object", () => {
+    const legacyPreferences = { notifyRoomCreated: true, notifyLiveStart: true, notifyAttendance: false } as NotificationPreferences;
+    expect(() => ChannelRouter(eventStarted, legacyPreferences)).not.toThrow();
+    expect(ChannelRouter(eventStarted, legacyPreferences)).toEqual(NOTIFICATION_EVENT_CHANNELS.EVENT_STARTED);
+  });
+
+  describe("isCriticalNotificationEvent", () => {
+    it("is true for ATTENDANCE_WINDOW_CLOSING", () => {
+      expect(isCriticalNotificationEvent(attendanceWindowClosing)).toBe(true);
+    });
+
+    it("is true for EVENT_CANCELLED_OR_EXPIRED", () => {
+      expect(
+        isCriticalNotificationEvent({
+          type: "EVENT_CANCELLED_OR_EXPIRED",
+          scope: { kind: "eventMembers", roomId: "room-1" },
+          payload: { roomId: "room-1", reason: "cancelled" },
+        }),
+      ).toBe(true);
+    });
+
+    it("is true only for urgent ORG_BROADCAST, not normal", () => {
+      expect(isCriticalNotificationEvent(urgentBroadcast)).toBe(true);
+      expect(isCriticalNotificationEvent(normalBroadcast)).toBe(false);
+    });
+
+    it("is false for an ordinary event like EVENT_STARTED", () => {
+      expect(isCriticalNotificationEvent(eventStarted)).toBe(false);
+    });
   });
 });

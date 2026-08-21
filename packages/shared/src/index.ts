@@ -142,24 +142,6 @@ export const UpdateOrganizationSchema = z.object({
 });
 export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationSchema>;
 
-export const UpdatePreferencesSchema = z.object({
-  notifyRoomCreated: z.boolean().optional(),
-  notifyLiveStart: z.boolean().optional(),
-  notifyAttendance: z.boolean().optional(),
-});
-export type UpdatePreferencesInput = z.infer<typeof UpdatePreferencesSchema>;
-
-// ─── Notification Preferences (full stored shape) ──────────
-// Superset of UpdatePreferencesSchema's partial PATCH body — this is what's
-// actually persisted to users.preferences, with defaults for every known key
-// so readers never have to guess what an absent key means.
-export const NotificationPreferencesSchema = z.object({
-  notifyRoomCreated: z.boolean().default(true),
-  notifyLiveStart: z.boolean().default(true),
-  notifyAttendance: z.boolean().default(false),
-});
-export type NotificationPreferences = z.infer<typeof NotificationPreferencesSchema>;
-
 // ─── Notification Types ─────────────────────────────────────
 // Legacy values already written by existing code paths (report generation,
 // room-start polling) plus the typed event kinds the notification engine
@@ -206,9 +188,39 @@ export const NOTIFICATION_CHANNELS = ["in_app", "web_push", "email"] as const;
 export const NotificationChannelSchema = z.enum(NOTIFICATION_CHANNELS);
 export type NotificationChannel = z.infer<typeof NotificationChannelSchema>;
 
+// PATCH body for /auth/preferences — every field optional since a client
+// only ever sends the keys it changed; settings.controller.ts merges this
+// onto the existing stored preferences rather than overwriting them.
+export const UpdatePreferencesSchema = z.object({
+  notifyRoomCreated: z.boolean().optional(),
+  notifyLiveStart: z.boolean().optional(),
+  notifyAttendance: z.boolean().optional(),
+  mutedChannels: z.array(NotificationChannelSchema).optional(),
+});
+export type UpdatePreferencesInput = z.infer<typeof UpdatePreferencesSchema>;
+
 export const NOTIFICATION_DELIVERY_STATUSES = ["PENDING", "SENT", "DELIVERED", "FAILED"] as const;
 export const NotificationDeliveryStatusSchema = z.enum(NOTIFICATION_DELIVERY_STATUSES);
 export type NotificationDeliveryStatus = z.infer<typeof NotificationDeliveryStatusSchema>;
+
+// ─── Notification Preferences (full stored shape) ──────────
+// Superset of UpdatePreferencesSchema's partial PATCH body — this is what's
+// actually persisted to users.preferences, with defaults for every known key
+// so readers never have to guess what an absent key means.
+//
+// notifyRoomCreated/notifyLiveStart/notifyAttendance are per-event-category
+// toggles (used ad hoc today, e.g. eventStartNotifier's notifyLiveStart
+// check). mutedChannels is a separate, coarser axis: channels the user has
+// turned off entirely, consulted by ChannelRouter below. The two are
+// independent — a muted channel silences every event kind that channel
+// would otherwise carry, category toggles aside.
+export const NotificationPreferencesSchema = z.object({
+  notifyRoomCreated: z.boolean().default(true),
+  notifyLiveStart: z.boolean().default(true),
+  notifyAttendance: z.boolean().default(false),
+  mutedChannels: z.array(NotificationChannelSchema).default([]),
+});
+export type NotificationPreferences = z.infer<typeof NotificationPreferencesSchema>;
 
 // ─── Web Push ────────────────────────────────────────────────
 // Shape of the PushSubscription the browser's PushManager.subscribe() resolves
@@ -229,6 +241,112 @@ export const RevokePushSubscriptionSchema = z.object({
   endpoint: z.string().url(),
 });
 export type RevokePushSubscriptionInput = z.infer<typeof RevokePushSubscriptionSchema>;
+
+// ─── Notification Domain Events + Channel Routing ──────────────
+// Who an event targets. Resolving this to an actual recipient list (querying
+// event_admin_assignments, org membership, etc.) is a dispatcher concern —
+// this type only names the shape of the target, not how to reach it.
+export type RecipientScope =
+  | { kind: "user"; userId: string }
+  | { kind: "eventMembers"; roomId: string }
+  | { kind: "eventAdmins"; roomId: string }
+  | { kind: "orgWide"; organizationId: string };
+
+// One entry per typed notification-engine event kind (the NOTIFICATION_TYPES
+// values that aren't legacy/fallback). Each carries the payload shape unique
+// to that event — no loose `Record<string, any>` metadata bag.
+export interface NotificationPayloadMap {
+  USER_INVITED: { invitedEmail: string; inviteToken: string; invitedBy: string };
+  ATTENDANCE_WINDOW_OPENED: { roomId: string; windowClosesAt: string };
+  EVENT_STARTED: { roomId: string; startedAt: string };
+  EVENT_ENDED: { roomId: string; recordingUrl?: string; summaryUrl?: string };
+  REPORT_GENERATED: { roomId: string; reportId: string; generatedBy: string };
+  ORG_BROADCAST: { organizationId: string; title: string; body: string; priority: "normal" | "urgent" };
+  ATTENDANCE_WINDOW_CLOSING: { roomId: string; closesInMinutes: number };
+  EVENT_STREAM_STATE_CHANGED: {
+    roomId: string;
+    state: "live" | "recording_started" | "recording_paused" | "ended";
+  };
+  USER_LEFT_EVENT: { roomId: string; userId: string; reason: "left" | "logged_out" };
+  EVENT_CANCELLED_OR_EXPIRED: { roomId: string; reason: "cancelled" | "expired" };
+}
+
+export type NotificationEngineEventKind = keyof NotificationPayloadMap;
+
+// Compile-time guarantee that every NotificationPayloadMap key is also a
+// valid NOTIFICATION_TYPES value (the DB enum, see server schema/enums.ts).
+// The two are declared independently above; without this, adding a payload
+// map entry and forgetting the matching NOTIFICATION_TYPES entry typechecks
+// fine and only fails at runtime as an enum constraint violation on insert.
+type _EveryEventKindIsAWritableNotificationType = NotificationEngineEventKind extends WritableNotificationType
+  ? true
+  : ["NotificationPayloadMap key missing from NOTIFICATION_TYPES:", Exclude<NotificationEngineEventKind, WritableNotificationType>];
+const _assertEventKindsAreWritableNotificationTypes: _EveryEventKindIsAWritableNotificationType = true;
+void _assertEventKindsAreWritableNotificationTypes;
+
+// Discriminated on `type` — a switch/if-chain on event.type narrows
+// event.payload to the matching entry in NotificationPayloadMap.
+export type NotificationEvent = {
+  [K in NotificationEngineEventKind]: {
+    type: K;
+    scope: RecipientScope;
+    payload: NotificationPayloadMap[K];
+  };
+}[NotificationEngineEventKind];
+
+// The full set of channels a given event kind is allowed to use. ChannelRouter
+// only ever narrows this set (via mutes) — it never adds a channel an event
+// kind isn't declared for here.
+export const NOTIFICATION_EVENT_CHANNELS: Record<NotificationEngineEventKind, readonly NotificationChannel[]> = {
+  USER_INVITED: ["email", "in_app"],
+  ATTENDANCE_WINDOW_OPENED: ["in_app", "web_push"],
+  // Spec says email is conditional here ("+ Email if flagged" — a per-room/
+  // org opt-in, not a per-user preference this router knows about). Listed
+  // unconditionally for now; whoever wires EVENT_STARTED to a dispatcher
+  // must gate the email send on that flag before calling ChannelRouter, or
+  // every room start emails every member.
+  EVENT_STARTED: ["in_app", "web_push", "email"],
+  EVENT_ENDED: ["in_app", "email"],
+  REPORT_GENERATED: ["in_app"],
+  ORG_BROADCAST: ["in_app", "web_push", "email"],
+  ATTENDANCE_WINDOW_CLOSING: ["in_app", "web_push"],
+  EVENT_STREAM_STATE_CHANGED: ["in_app"],
+  USER_LEFT_EVENT: ["in_app"],
+  EVENT_CANCELLED_OR_EXPIRED: ["in_app", "email"],
+};
+
+// Event kinds (or, for ORG_BROADCAST, a priority within one) whose delivery
+// must never be suppressed by a user's channel mutes — attendance deadlines,
+// urgent broadcasts, and cancellations are need-to-know regardless of
+// preference.
+export const isCriticalNotificationEvent = (event: NotificationEvent): boolean => {
+  if (event.type === "ATTENDANCE_WINDOW_CLOSING") return true;
+  if (event.type === "EVENT_CANCELLED_OR_EXPIRED") return true;
+  if (event.type === "ORG_BROADCAST") return event.payload.priority === "urgent";
+  return false;
+};
+
+/**
+ * Pure — no I/O. Decides which channels a given event actually goes out on
+ * for a given user: the event kind's declared channel set, narrowed by the
+ * user's muted channels, unless the event is critical (see
+ * isCriticalNotificationEvent), in which case mutes are ignored entirely.
+ */
+export const ChannelRouter = (
+  event: NotificationEvent,
+  preferences: NotificationPreferences,
+): NotificationChannel[] => {
+  const allowed = NOTIFICATION_EVENT_CHANNELS[event.type];
+  if (isCriticalNotificationEvent(event)) return [...allowed];
+
+  // `preferences` is typed non-null/non-optional, but its real source is
+  // AuthUser.preferences (`any | null`) straight off an unvalidated jsonb
+  // column — no row written before mutedChannels existed has that key, and
+  // TS can't catch a caller skipping NotificationPreferencesSchema.parse()
+  // first. `?? []` keeps this function safe even when a caller doesn't.
+  const muted = preferences?.mutedChannels ?? [];
+  return allowed.filter((channel) => !muted.includes(channel));
+};
 
 export const SubmitFeedbackSchema = z.object({
   category: z.string().min(1).max(100),
