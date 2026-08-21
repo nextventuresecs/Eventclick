@@ -13,6 +13,14 @@ interface AuthContextValue {
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (body: ResetPasswordInput) => Promise<void>;
   completeOnboarding: (body: OnboardingInput) => Promise<void>;
+  /** Verifies an emailVerifications token and, on success, logs the user in
+   * with the tokens the server issues alongside verification — this is what
+   * makes the USER_INVITED magic link actually authenticate, not just mark
+   * the email verified. Returns whether the user still needs to set a
+   * password (an admin-invited user created without one). */
+  verifyEmail: (token: string) => Promise<{ passwordSetupRequired: boolean }>;
+  /** First-time password setup for a USER_INVITED user with no password yet. */
+  setPassword: (password: string) => Promise<void>;
   /** Merge a patch (e.g. the response of a profile/org update) into the in-memory user, so the UI reflects a save immediately instead of waiting for the next /auth/me refresh. */
   updateUser: (patch: Partial<AuthUser>) => void;
 }
@@ -106,6 +114,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       completeOnboarding: async (body) => {
         const result = await authApi.completeOnboarding(body);
         applyAuth(result);
+      },
+      verifyEmail: async (token) => {
+        const result = await authApi.verifyEmail(token);
+        applyAuth(result);
+        return { passwordSetupRequired: result.passwordSetupRequired };
+      },
+      setPassword: async (password) => {
+        await authApi.setPassword({ password });
       },
       updateUser,
     }),

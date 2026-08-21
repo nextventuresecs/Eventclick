@@ -64,9 +64,11 @@ vi.mock("../../queues/sqs.client", () => ({
 const mockSendVerificationEmail = vi.fn();
 const mockSendPasswordResetEmail = vi.fn();
 const mockSendReportReadyEmail = vi.fn();
+const mockSendInviteEmail = vi.fn();
 vi.mock("../email.service", () => ({
   sendVerificationEmail: (...args: unknown[]) => mockSendVerificationEmail(...args),
   sendPasswordResetEmail: (...args: unknown[]) => mockSendPasswordResetEmail(...args),
+  sendInviteEmail: (...args: unknown[]) => mockSendInviteEmail(...args),
   sendReportReadyEmail: (...args: unknown[]) => mockSendReportReadyEmail(...args),
 }));
 
@@ -178,6 +180,37 @@ describe("email-delivery.service", () => {
         "https://cdn.example/report.pdf",
         "room-42",
       );
+    });
+
+    it("dispatches invite emails with token/orgName from the payload (#70)", async () => {
+      mockDeliveryRow = freshRow({
+        emailType: "invite",
+        payload: { token: "tok-123", orgName: "Acme Org" },
+      });
+      mockSendInviteEmail.mockResolvedValueOnce(undefined);
+
+      await attemptEmailDelivery("delivery-1");
+
+      expect(mockSendInviteEmail).toHaveBeenCalledWith("user@example.com", "tok-123", "Acme Org");
+    });
+
+    // AC3 for #70 ("retried invite-send does not double-email"): the correct
+    // way to prove this is re-driving the SAME delivery row's id, exactly as
+    // a redelivered SQS message would — not calling the invite endpoint
+    // twice (which legitimately creates two separate rows/emails).
+    it("re-driving the same invite delivery id after SENT does not send a second invite email", async () => {
+      mockDeliveryRow = freshRow({
+        emailType: "invite",
+        payload: { token: "tok-123", orgName: "Acme Org" },
+      });
+      mockSendInviteEmail.mockResolvedValueOnce(undefined);
+
+      await attemptEmailDelivery("delivery-1");
+      expect(mockDeliveryRow.status).toBe("SENT");
+
+      await attemptEmailDelivery("delivery-1");
+
+      expect(mockSendInviteEmail).toHaveBeenCalledTimes(1);
     });
 
     it("does nothing and does not throw when the delivery row is missing", async () => {

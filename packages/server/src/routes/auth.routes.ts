@@ -9,6 +9,7 @@ import {
   OnboardingSchema,
   UpdateProfileSchema,
   ChangePasswordSchema,
+  SetPasswordSchema,
 } from "@application/shared";
 import RedisStore from "rate-limit-redis";
 import { redisClient } from "../config/redis";
@@ -65,6 +66,7 @@ authRouter.post("/logout", csrfProtection, authController.logout);
 authRouter.get("/me", requireAuth, authController.me);
 authRouter.patch("/profile", requireAuth, validate(UpdateProfileSchema), authController.updateProfile);
 authRouter.post("/change-password", requireAuth, validate(ChangePasswordSchema), authController.changePassword);
+authRouter.post("/set-password", requireAuth, validate(SetPasswordSchema), authController.setPassword);
 
 authRouter.post("/forgot-password", recoveryLimiter, validate(ForgotPasswordSchema), authController.forgot);
 authRouter.post("/reset-password", recoveryLimiter, validate(ResetPasswordSchema), authController.reset);

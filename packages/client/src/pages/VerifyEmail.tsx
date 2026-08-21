@@ -1,7 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, type FormEvent } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { authApi, ApiClientError } from "@/lib/api";
+import { SetPasswordSchema } from "@application/shared";
+import { ApiClientError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -16,12 +19,14 @@ import { CheckCircle2, AlertCircle, ArrowLeft, Mail } from "lucide-react";
 export const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { retryAuth, user } = useAuth();
+  const { user, verifyEmail, setPassword } = useAuth();
 
   const token = searchParams.get("token") || "";
 
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [error, setError] = useState<string | null>(null);
+  const [passwordSetupRequired, setPasswordSetupRequired] = useState(false);
+  const [passwordSetupDone, setPasswordSetupDone] = useState(false);
 
   const hasAttempted = useRef(false);
 
@@ -37,11 +42,9 @@ export const VerifyEmailPage = () => {
 
     const verify = async () => {
       try {
-        await authApi.verifyEmail(token);
+        const { passwordSetupRequired: needsPassword } = await verifyEmail(token);
+        setPasswordSetupRequired(needsPassword);
         setStatus("success");
-        if (user) {
-          retryAuth();
-        }
       } catch (err) {
         setStatus("error");
         setError(err instanceof ApiClientError ? err.message : "Failed to verify email. The link may be expired or invalid.");
@@ -49,7 +52,9 @@ export const VerifyEmailPage = () => {
     };
 
     verify();
-  }, [token, user, retryAuth]);
+  }, [token, verifyEmail]);
+
+  const showPasswordForm = status === "success" && passwordSetupRequired && !passwordSetupDone;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center p-6">
@@ -75,7 +80,16 @@ export const VerifyEmailPage = () => {
             </div>
           )}
 
-          {status === "success" && (
+          {showPasswordForm && (
+            <PasswordSetupForm
+              onSubmit={async (password) => {
+                await setPassword(password);
+                setPasswordSetupDone(true);
+              }}
+            />
+          )}
+
+          {status === "success" && (!passwordSetupRequired || passwordSetupDone) && (
             <div className="flex flex-col items-center gap-4 text-center py-2">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-status-live-bg text-status-live">
                 <CheckCircle2 className="w-6 h-6" />
@@ -121,5 +135,80 @@ export const VerifyEmailPage = () => {
         </CardFooter>
       </Card>
     </div>
+  );
+};
+
+/** Shown once, right after verifying, only for a USER_INVITED user an admin
+ * created without a password (see auth.controller.ts's passwordSetupRequired
+ * flag). Not a general change-password form. */
+const PasswordSetupForm = ({ onSubmit }: { onSubmit: (password: string) => Promise<void> }) => {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    const parsed = SetPasswordSchema.safeParse({ password });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Invalid password");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await onSubmit(password);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Failed to set password");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 py-2">
+      <div className="text-center">
+        <p className="text-sm font-medium text-(--color-gray-900)">Set up your password</p>
+        <p className="text-sm text-gray-400 mt-1">
+          Your email is verified. Choose a password to finish setting up your account.
+        </p>
+      </div>
+      {error && (
+        <p className="text-sm text-(--color-error) text-center" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="setup-password">Password</Label>
+        <Input
+          id="setup-password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoFocus
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="setup-confirm-password">Confirm password</Label>
+        <Input
+          id="setup-confirm-password"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+        />
+      </div>
+      <Button type="submit" disabled={submitting} className="w-full mt-1">
+        {submitting ? "Setting password…" : "Set password"}
+      </Button>
+    </form>
   );
 };

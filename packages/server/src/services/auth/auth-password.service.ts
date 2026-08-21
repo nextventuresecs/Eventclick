@@ -112,3 +112,31 @@ export const changeUserPassword = async (
 
   logger.info({ userId, event: "password_change.success" }, "User password changed successfully");
 };
+
+/**
+ * First-time password setup for a user an admin created without one (the
+ * USER_INVITED magic-link flow — see admin.service.ts's createOrgUser).
+ * Deliberately NOT a general "reset my password while logged in" endpoint:
+ * it only succeeds once, while passwordHash is still null. Once a password
+ * exists, this always 409s and the user must use forgotPassword/resetPassword
+ * or changeUserPassword instead — there is no unauthenticated overwrite path.
+ */
+export const setInitialPassword = async (userId: string, newPassword: string): Promise<void> => {
+  const [userRow] = await authDb.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!userRow) throw ApiError.notFound("User not found");
+  if (userRow.passwordHash) {
+    throw ApiError.conflict("Password already set — use change password instead");
+  }
+
+  const pwdScore = zxcvbn(newPassword);
+  if (pwdScore.score < 3) {
+    throw ApiError.badRequest(`Password is too weak. ${pwdScore.feedback.warning || "Please choose a stronger password."}`);
+  }
+
+  const passwordHash = await argon2.hash(newPassword);
+
+  await authDb.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, userId));
+  await invalidateUserCache(userId);
+
+  logger.info({ userId, event: "password_setup.success" }, "User completed first-time password setup");
+};

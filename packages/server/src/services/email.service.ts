@@ -115,3 +115,42 @@ export const sendVerificationEmail = async (
     );
   }
 };
+
+export const sendInviteEmail = async (
+  email: string,
+  token: string,
+  orgName: string,
+): Promise<void> => {
+  // Same underlying token/link as sendVerificationEmail — clicking it both
+  // verifies the email and logs the invitee in (see verifyEmailToken). If
+  // the admin didn't set a password for them, the verify-email page then
+  // prompts for one; this template stays generic rather than branching on
+  // that, since it has no way to know which case applies at send time.
+  const verifyLink = `${env.APP_URL}/verify-email?token=${token}`;
+
+  if (resend) {
+    const { error } = await resend.emails.send({
+      from: env.RESEND_FROM_EMAIL,
+      to: email,
+      subject: `You've been invited to join ${orgName} on Eventclick`,
+      html: `
+          <h1>You're invited</h1>
+          <p>You've been added to <strong>${orgName}</strong> on Eventclick.</p>
+          <p>Click the link below to verify your email and finish setting up your account:</p>
+          <p><a href="${verifyLink}">${verifyLink}</a></p>
+          <p>If you weren't expecting this, you can safely ignore this email.</p>
+        `,
+    });
+
+    if (error) {
+      logger.error({ email, orgName, error, event: "email.invite_failed" }, "Failed to send invite email");
+      throw error;
+    }
+    logger.info({ email, orgName, event: "email.invite_sent" }, "Invite email sent via Resend");
+  } else {
+    logger.info(
+      { email, token, orgName, verifyLink, event: "email.invite" },
+      `[EMAIL MOCK] Invite Sent\nTo: ${email}\nOrg: ${orgName}\nVerify Link: ${verifyLink}`,
+    );
+  }
+};

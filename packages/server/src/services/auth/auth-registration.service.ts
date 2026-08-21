@@ -191,7 +191,10 @@ export const completeOnboarding = async (
   return issueTokensFor(updatedUser, meta);
 };
 
-export const verifyEmailToken = async (token: string, meta: SessionMeta): Promise<AuthResult> => {
+export const verifyEmailToken = async (
+  token: string,
+  meta: SessionMeta,
+): Promise<AuthResult & { passwordSetupRequired: boolean }> => {
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
   // Atomic TOCTOU fix: check and mark used in a single query
@@ -223,7 +226,12 @@ export const verifyEmailToken = async (token: string, meta: SessionMeta): Promis
   if (!user) throw ApiError.internal("User not found after verification");
   
   logger.info({ userId: verifyReq.userId, event: "email_verification.success" }, "email verified successfully");
-  return issueTokensFor(user, meta);
+  const result = await issueTokensFor(user, meta);
+  // Set for a USER_INVITED user created without an admin-chosen password
+  // (see admin.service.ts's createOrgUser) — the client prompts for one
+  // immediately after this response, using the session this call just
+  // issued (POST /auth/set-password).
+  return { ...result, passwordSetupRequired: user.passwordHash === null };
 };
 
 export const resendVerificationToken = async (email: string): Promise<void> => {

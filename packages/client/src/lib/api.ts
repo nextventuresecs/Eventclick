@@ -1,4 +1,4 @@
-import type { AuthUser, UpdateProfileInput, ChangePasswordInput, UpdateOrganizationInput, UpdatePreferencesInput, SubmitFeedbackInput, SubmitBugReportInput, SavePushSubscriptionInput } from "@application/shared";
+import type { AuthUser, UpdateProfileInput, ChangePasswordInput, SetPasswordInput, UpdateOrganizationInput, UpdatePreferencesInput, SubmitFeedbackInput, SubmitBugReportInput, SavePushSubscriptionInput } from "@application/shared";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
@@ -37,6 +37,10 @@ export class ApiClientError extends Error {
 interface AuthSuccess {
   user: AuthUser;
   accessToken: string;
+}
+
+interface VerifyEmailSuccess extends AuthSuccess {
+  passwordSetupRequired: boolean;
 }
 
 const doRefresh = async (): Promise<string | null> => {
@@ -159,10 +163,11 @@ export const authApi = {
   refresh: () => refreshOnce(),
   forgotPassword: (email: string) => api.post<void>("/auth/forgot-password", { email }),
   resetPassword: (body: ResetPasswordInput) => api.post<void>("/auth/reset-password", body),
-  verifyEmail: (token: string) => api.post<AuthSuccess>("/auth/verify-email", { token }),
+  verifyEmail: (token: string) => api.post<VerifyEmailSuccess>("/auth/verify-email", { token }),
   completeOnboarding: (body: OnboardingInput) => api.post<AuthSuccess>("/auth/onboarding", body),
   updateProfile: (body: UpdateProfileInput) => api.patch<{ user: AuthUser }>("/auth/profile", body),
   changePassword: (body: ChangePasswordInput) => api.post<{ message: string }>("/auth/change-password", body),
+  setPassword: (body: SetPasswordInput) => api.post<{ message: string }>("/auth/set-password", body),
 };
 
 import type {

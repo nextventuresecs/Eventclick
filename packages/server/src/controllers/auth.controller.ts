@@ -15,6 +15,7 @@ import {
   resendVerificationToken,
   updateUserProfile,
   changeUserPassword,
+  setInitialPassword,
   type AuthResult,
 } from "../services/auth";
 import { refreshTtlMs } from "../services/session.service";
@@ -74,7 +75,22 @@ export const verifyEmail: RequestHandler = async (req, res, next) => {
     const { token } = req.body;
     if (!token) throw ApiError.badRequest("Verification token is required");
     const result = await verifyEmailToken(token, extractMeta(req));
-    sendAuthResult(res, result);
+    setRefreshCookie(res, result.refreshToken);
+    res.status(200).json({
+      user: result.user,
+      accessToken: result.accessToken,
+      passwordSetupRequired: result.passwordSetupRequired,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const setPassword: RequestHandler = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+    await setInitialPassword(req.user!.id, password);
+    res.status(200).json({ message: "Password set successfully" });
   } catch (err) {
     next(err);
   }

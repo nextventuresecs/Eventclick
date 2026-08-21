@@ -70,7 +70,7 @@ export const RoomStatusSchema = z.enum(ROOM_STATUSES);
 export type RoomStatus = z.infer<typeof RoomStatusSchema>;
 
 // ─── Auth DTOs ──────────────────────────────────────
-const PasswordSchema = z
+export const PasswordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters")
   .max(128, "Password must be less than 128 characters")
@@ -108,6 +108,16 @@ export const ResetPasswordSchema = z.object({
   password: PasswordSchema,
 });
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+
+// First-time password setup for a user created by an admin without an
+// initial password (the USER_INVITED / magic-link flow — see #70). Distinct
+// from ChangePasswordSchema: this has no currentPassword because there
+// isn't one yet, and the server-side handler only accepts it once, before
+// any password has ever been set.
+export const SetPasswordSchema = z.object({
+  password: PasswordSchema,
+});
+export type SetPasswordInput = z.infer<typeof SetPasswordSchema>;
 
 export const OnboardingSchema = z.object({
   organizationName: z.string().min(1).max(160).optional(),
@@ -579,7 +589,10 @@ export type UpdateEventAdminAssignmentInput = z.infer<
 export const CreateOrgUserSchema = z.object({
   email: z.string().email(),
   fullName: z.string().min(1).max(120),
-  password: PasswordSchema,
+  // Optional: when omitted, the invited user has no usable password and
+  // must set one via the USER_INVITED magic-link flow (verify-email ->
+  // POST /auth/set-password) — see #70.
+  password: PasswordSchema.optional(),
   role: z.enum(["event_manager", "volunteer"]).optional(),
 });
 export type CreateOrgUserInput = z.infer<typeof CreateOrgUserSchema>;

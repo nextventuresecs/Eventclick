@@ -5,15 +5,15 @@ import { emailDeliveries, type EmailDelivery } from "../db/schema/emailDeliverie
 import { sqsClient } from "../queues/sqs.client";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
-import { sendVerificationEmail, sendPasswordResetEmail, sendReportReadyEmail } from "./email.service";
+import { sendVerificationEmail, sendPasswordResetEmail, sendReportReadyEmail, sendInviteEmail } from "./email.service";
 
-export type EmailType = "verification" | "reset-password" | "report-ready";
+export type EmailType = "verification" | "reset-password" | "report-ready" | "invite";
 
 export interface DispatchEmailParams {
   userId: string;
   recipientEmail: string;
   type: EmailType;
-  /** { token } for verification/reset-password, { s3Url, roomLabel } for report-ready. */
+  /** { token } for verification/reset-password, { s3Url, roomLabel } for report-ready, { token, orgName } for invite. */
   payload: Record<string, unknown>;
 }
 
@@ -25,6 +25,8 @@ const sendEmailByType = (type: string, email: string, payload: Record<string, un
       return sendPasswordResetEmail(email, payload.token as string);
     case "report-ready":
       return sendReportReadyEmail(email, payload.s3Url as string, payload.roomLabel as string);
+    case "invite":
+      return sendInviteEmail(email, payload.token as string, payload.orgName as string);
     default:
       throw new Error(`Unknown email type: ${type}`);
   }

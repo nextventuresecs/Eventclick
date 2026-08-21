@@ -1,13 +1,15 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { CreateOrgUserInput, OrgUserSummary, UserRole } from "@application/shared";
+import { ChannelRouter, NotificationPreferencesSchema } from "@application/shared";
 import type { Request } from "express";
 import crypto from "crypto";
 import argon2 from "argon2";
 import { invalidateUserCache } from "./auth";
-import { db } from "../db";
-import { users, orgMembers, emailVerifications } from "../db/schema";
+import { db, authDb } from "../db";
+import { users, orgMembers, emailVerifications, organizations } from "../db/schema";
 import { ApiError } from "../utils/errors";
 import { dispatchEmail } from "./email-delivery.service";
+import { notificationService } from "./notification.service";
 import { recordAudit } from "./audit.service";
 import { logger } from "../utils/logger";
 
@@ -57,9 +59,21 @@ export const createOrgUser = async (
     throw ApiError.conflict("A user with this email already exists");
   }
 
-  const passwordHash = await argon2.hash(password);
+  // Admin can optionally set the invited user's initial password. When
+  // omitted, the user has no usable password until they follow the
+  // USER_INVITED magic link and set one themselves (POST /auth/set-password
+  // — see verifyEmailToken's passwordSetupRequired flag).
+  const passwordHash = password ? await argon2.hash(password) : null;
 
-  const { user: newUser, token } = await db.transaction(async (tx) => {
+  // authDb (auth_svc_role, BYPASSRLS), not db: email_verifications is an
+  // auth-realm table with no RLS policy and no grant to app_user (same
+  // treatment as sessions/password_resets — see #69's email_deliveries for
+  // the same reasoning). Running this whole transaction on the tenant/RLS
+  // pool would 42501 on the emailVerifications insert; registerUser in
+  // auth-registration.service.ts uses the identical authDb.transaction
+  // pattern for the same reason. RLS bypass here is safe: organizationId is
+  // the server-trusted `orgId` param, not client input.
+  const { user: newUser, token } = await authDb.transaction(async (tx) => {
     const [user] = await tx
       .insert(users)
       .values({
@@ -96,16 +110,51 @@ export const createOrgUser = async (
     return { user, token: verificationToken };
   });
 
-  // The user is already committed; a dispatch failure must not fail the
-  // admin's create-user request — the delivery row can be re-driven later.
-  await dispatchEmail({
-    userId: newUser.id,
-    recipientEmail: newUser.email,
-    type: "verification",
-    payload: { token },
-  }).catch((err) => {
-    logger.error({ err, userId: newUser.id, event: "email.dispatch_failed" }, "Failed to dispatch verification email");
-  });
+  // The user is already committed — route the USER_INVITED event through
+  // ChannelRouter (respecting the invitee's notification preferences, which
+  // are the defaults for a brand-new user) and dispatch each channel
+  // independently. A failure in either must not fail the admin's
+  // create-user request — the email's delivery row can be re-driven later,
+  // and a missed in-app row just means the user sees history on next fetch.
+  const prefsResult = NotificationPreferencesSchema.safeParse(newUser.preferences ?? {});
+  const channels = ChannelRouter(
+    {
+      type: "USER_INVITED",
+      scope: { kind: "user", userId: newUser.id },
+      payload: { invitedEmail: newUser.email, inviteToken: token, invitedBy: createdBy },
+    },
+    prefsResult.success ? prefsResult.data : NotificationPreferencesSchema.parse({}),
+  );
+
+  if (channels.includes("email")) {
+    const [org] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, orgId)).limit(1);
+    await dispatchEmail({
+      userId: newUser.id,
+      recipientEmail: newUser.email,
+      type: "invite",
+      payload: { token, orgName: org?.name ?? "Eventclick" },
+    }).catch((err) => {
+      logger.error({ err, userId: newUser.id, event: "email.dispatch_failed" }, "Failed to dispatch invite email");
+    });
+  }
+
+  if (channels.includes("in_app")) {
+    // Deliberately does not include the raw verification token in metadata
+    // — it's a working login credential and shouldn't be persisted anywhere
+    // beyond the emailVerifications row and the one-time email that carries it.
+    await notificationService
+      .createNotification({
+        userId: newUser.id,
+        organizationId: orgId,
+        type: "USER_INVITED",
+        title: "You've been invited",
+        message: `You've been added as a ${role} to this organization on Eventclick.`,
+        metadata: { invitedBy: createdBy },
+      })
+      .catch((err) => {
+        logger.error({ err, userId: newUser.id, event: "notification.dispatch_failed" }, "Failed to create USER_INVITED notification");
+      });
+  }
 
   await invalidateUserCache(newUser.id, newUser.email);
 
