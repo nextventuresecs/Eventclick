@@ -81,7 +81,11 @@ React 19 + Vite + Tailwind v4 (`@tailwindcss/vite`) + `react-router-dom` v7. Pat
 
 ### Issue tracker
 
-Issues live as GitHub issues on `nextventuresecs/Veridian`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live as GitHub issues on `nextventuresecs/Eventclick`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default canonical label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
