@@ -16,6 +16,7 @@ import {
 import { ROLE_LABELS } from "@application/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
+import { useWebPush } from "@/hooks/useWebPush";
 import { adminApi, settingsApi, ApiClientError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
@@ -37,6 +38,16 @@ export const Settings = () => {
   const [notifyRoomCreated, setNotifyRoomCreated] = useState(user?.preferences?.notifyRoomCreated ?? true);
   const [notifyLiveStart, setNotifyLiveStart] = useState(user?.preferences?.notifyLiveStart ?? true);
   const [notifyAttendance, setNotifyAttendance] = useState(user?.preferences?.notifyAttendance ?? false);
+
+  const webPush = useWebPush();
+  const handleTogglePush = async (enabled: boolean) => {
+    const result = enabled ? await webPush.subscribe() : await webPush.unsubscribe();
+    if (result.ok) {
+      toast(enabled ? "Push notifications enabled" : "Push notifications disabled", enabled ? "success" : "info");
+    } else if (result.error) {
+      toast(result.error, "error");
+    }
+  };
 
   const handleTogglePreference = async (key: string, value: boolean) => {
     try {
@@ -262,6 +273,38 @@ export const Settings = () => {
                   className="w-5 h-5 rounded accent-purple-600 cursor-pointer"
                 />
               </div>
+
+              {webPush.supported && (
+                <div className="flex items-center justify-between pt-4">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Push Notifications</p>
+                    <p className="text-xs text-gray-500">
+                      Get notified on this device even when Eventclick isn't open in a tab.
+                    </p>
+                    {webPush.error && <p className="text-xs text-red-600 mt-1">{webPush.error}</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {webPush.subscribed && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={webPush.loading}
+                        onClick={() => webPush.sendTest()}
+                        className="rounded-xl text-xs h-8 px-3"
+                      >
+                        Send test
+                      </Button>
+                    )}
+                    <input
+                      type="checkbox"
+                      checked={webPush.subscribed}
+                      disabled={webPush.loading}
+                      onChange={(e) => handleTogglePush(e.target.checked)}
+                      className="w-5 h-5 rounded accent-purple-600 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

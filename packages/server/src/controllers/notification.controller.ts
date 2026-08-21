@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
+import type { SavePushSubscriptionInput, RevokePushSubscriptionInput } from "@application/shared";
 import { notificationService } from "../services/notification.service";
 import { pubsub } from "../services/pubsub.service";
+import * as pushService from "../services/push.service";
 import { logger } from "../utils/logger";
 import { ApiError } from "../utils/errors";
 
@@ -76,4 +78,55 @@ export const streamNotifications = async (req: Request, res: Response) => {
     clearInterval(keepAlive);
     unsubscribe();
   });
+};
+
+/**
+ * Save (or update, if the endpoint already exists) a push subscription for
+ * the current user.
+ */
+export const savePushSubscription = async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+  const organizationId = req.user!.organizationId;
+  if (!organizationId) throw ApiError.badRequest("Complete onboarding before enabling push notifications");
+  const input = req.body as SavePushSubscriptionInput;
+
+  const subscription = await pushService.saveSubscription(userId, organizationId, input);
+  res.status(201).json({ id: subscription.id });
+};
+
+/**
+ * Revoke a push subscription for the current user (e.g. user toggles push
+ * notifications off in Settings).
+ */
+export const revokePushSubscription = async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+  const { endpoint } = req.body as RevokePushSubscriptionInput;
+
+  await pushService.revokeSubscription(userId, endpoint);
+  res.status(204).end();
+};
+
+/**
+ * Send a test push to every subscription the current user has registered.
+ * Exists so the opt-in flow has something to verify against before any
+ * notification event kind is actually wired to the push channel.
+ */
+export const sendTestPush = async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  if (!pushService.isPushConfigured()) {
+    throw ApiError.badRequest("Push notifications are not configured on this server");
+  }
+
+  const result = await pushService.sendToUser(userId, {
+    title: "Eventclick",
+    body: "Push notifications are working.",
+    url: "/dashboard",
+  });
+
+  if (result.attempted === 0) {
+    throw ApiError.badRequest("No push subscription registered for this account");
+  }
+
+  res.json(result);
 };

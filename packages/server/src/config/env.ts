@@ -110,6 +110,11 @@ const EnvSchema = z.object({
 
   // ─── Observability (optional) ──────────────────────
   SENTRY_SERVER_DSN: z.string().optional(),
+
+  // ─── Web Push (optional — push is disabled if unset) ─────
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default("mailto:support@eventclick.live"),
 }).refine(
   (e) => {
     if (e.NODE_ENV === "production") {

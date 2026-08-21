@@ -12,11 +12,23 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      // injectManifest (not the default generateSW) so src/sw.ts can add its
+      // own push / notificationclick handlers alongside Workbox precaching —
+      // generateSW only lets you configure precaching, not add custom
+      // listeners to the generated service worker.
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+      injectManifest: {
+        // Web push payloads and their icons are small; no need to precache
+        // them and workbox-build would otherwise choke on non-precache assets.
+        globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
+      },
       // Off by default: it runs a service worker in front of the /api proxy during
       // normal development. Set VITE_PWA_DEV=true to test the install flow locally —
       // without it there's no manifest or SW under `npm run dev`, so
       // `beforeinstallprompt` never fires and install always looks unsupported.
-      devOptions: { enabled: process.env.VITE_PWA_DEV === "true" },
+      devOptions: { enabled: process.env.VITE_PWA_DEV === "true", type: "module" },
       includeAssets: [
         "favicon.svg",
         "Android/playstore-icon.png",

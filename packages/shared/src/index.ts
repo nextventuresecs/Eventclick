@@ -210,6 +210,26 @@ export const NOTIFICATION_DELIVERY_STATUSES = ["PENDING", "SENT", "DELIVERED", "
 export const NotificationDeliveryStatusSchema = z.enum(NOTIFICATION_DELIVERY_STATUSES);
 export type NotificationDeliveryStatus = z.infer<typeof NotificationDeliveryStatusSchema>;
 
+// ─── Web Push ────────────────────────────────────────────────
+// Shape of the PushSubscription the browser's PushManager.subscribe() resolves
+// to (via subscription.toJSON()) — endpoint plus the two keys needed to
+// encrypt a push payload for this specific subscription.
+export const PushSubscriptionKeysSchema = z.object({
+  p256dh: z.string().min(1),
+  auth: z.string().min(1),
+});
+
+export const SavePushSubscriptionSchema = z.object({
+  endpoint: z.string().url(),
+  keys: PushSubscriptionKeysSchema,
+});
+export type SavePushSubscriptionInput = z.infer<typeof SavePushSubscriptionSchema>;
+
+export const RevokePushSubscriptionSchema = z.object({
+  endpoint: z.string().url(),
+});
+export type RevokePushSubscriptionInput = z.infer<typeof RevokePushSubscriptionSchema>;
+
 export const SubmitFeedbackSchema = z.object({
   category: z.string().min(1).max(100),
   rating: z.number().int().min(1).max(5),

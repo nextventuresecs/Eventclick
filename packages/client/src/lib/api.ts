@@ -1,4 +1,4 @@
-import type { AuthUser, UpdateProfileInput, ChangePasswordInput, UpdateOrganizationInput, UpdatePreferencesInput, SubmitFeedbackInput, SubmitBugReportInput } from "@application/shared";
+import type { AuthUser, UpdateProfileInput, ChangePasswordInput, UpdateOrganizationInput, UpdatePreferencesInput, SubmitFeedbackInput, SubmitBugReportInput, SavePushSubscriptionInput } from "@application/shared";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
@@ -280,6 +280,14 @@ export const settingsApi = {
   presignAvatar: (body: BrandingUploadRequestInput) =>
     api.post<PhotoUploadResponse>("/auth/avatar-upload", body),
   updatePreferences: (body: UpdatePreferencesInput) => api.patch("/auth/preferences", body),
+};
+
+export const pushApi = {
+  subscribe: (body: SavePushSubscriptionInput) =>
+    api.post<{ id: string }>("/notifications/push-subscription", body),
+  unsubscribe: (endpoint: string) =>
+    api.delete<void>("/notifications/push-subscription", { endpoint }),
+  test: () => api.post<{ attempted: number; sent: number }>("/notifications/push-test"),
 };
 
 export const feedbackApi = {

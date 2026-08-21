@@ -43,6 +43,13 @@
       "when": 1787325538239,
       "tag": "0005_notification_engine_schema_widening",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787328080847,
+      "tag": "0006_web_push_foundation",
+      "breakpoints": true
     }
   ]
 }
