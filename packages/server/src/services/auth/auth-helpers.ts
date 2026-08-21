@@ -32,6 +32,7 @@ export const toAuthUser = (
   organizationDescription: orgDescription,
   organizationLogoUrl: orgLogoUrl,
   emailVerified: u.emailVerifiedAt !== null,
+  preferences: u.preferences,
 });
 
 export type UserWithOrg = User & {
@@ -159,5 +160,9 @@ export const issueTokensFor = async (user: UserWithOrg, meta: SessionMeta): Prom
   });
   const refresh = await issueRefreshToken(user.id, meta);
   await authDb.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
-  return { user: toAuthUser(user, user.organizationName), accessToken, refreshToken: refresh.raw };
+  return {
+    user: toAuthUser(user, user.organizationName, user.organizationDescription, user.organizationLogoUrl),
+    accessToken,
+    refreshToken: refresh.raw,
+  };
 };

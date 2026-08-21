@@ -8,7 +8,7 @@ import { findUserById, invalidateUserCache, toAuthUser } from "./auth-helpers";
 export const getCurrentUser = async (userId: string): Promise<AuthUser> => {
   const user = await findUserById(userId);
   if (!user || !user.isActive) throw ApiError.unauthorized("Account no longer active");
-  return toAuthUser(user, user.organizationName);
+  return toAuthUser(user, user.organizationName, user.organizationDescription, user.organizationLogoUrl);
 };
 
 export const updateUserProfile = async (
@@ -28,5 +28,7 @@ export const updateUserProfile = async (
   if (!updatedUser) throw ApiError.notFound("User not found");
 
   await invalidateUserCache(userId);
-  return toAuthUser(updatedUser);
+  const userWithOrg = await findUserById(userId);
+  if (!userWithOrg) throw ApiError.notFound("User not found");
+  return toAuthUser(userWithOrg, userWithOrg.organizationName, userWithOrg.organizationDescription, userWithOrg.organizationLogoUrl);
 };

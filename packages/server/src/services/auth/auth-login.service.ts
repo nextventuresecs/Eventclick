@@ -7,6 +7,7 @@ import { logger } from "../../utils/logger";
 import argon2 from "argon2";
 import { verifyGoogleIdToken } from "../google.service";
 import crypto from "crypto";
+import { signAccessToken } from "../jwt.service";
 import {
   findSessionByToken,
   revokeSession,
@@ -114,12 +115,18 @@ export const refreshSession = async (
   const session = await findSessionByToken(refreshToken);
   if (!session) throw ApiError.unauthorized("Invalid refresh token");
 
-  const next = await rotateSession(session, meta);
-
   const user = await findUserById(session.userId);
   if (!user || !user.isActive) throw ApiError.unauthorized("Account no longer active");
 
-  return issueTokensFor(user, meta);
+  const next = await rotateSession(session, meta);
+  const accessToken = signAccessToken({ sub: user.id, role: user.role, orgId: user.organizationId });
+  await authDb.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+
+  return {
+    user: toAuthUser(user, user.organizationName, user.organizationDescription, user.organizationLogoUrl),
+    accessToken,
+    refreshToken: next.raw,
+  };
 };
 
 export const logoutSession = async (refreshToken: string | undefined): Promise<void> => {
