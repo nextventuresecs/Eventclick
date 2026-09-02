@@ -6,6 +6,11 @@ import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
 import argon2 from "argon2";
 import { verifyGoogleIdToken } from "../google.service";
+import {
+  forgetActiveRoom,
+  notifyUserLeftEvent,
+  readActiveRoom,
+} from "../user-left-notification.service";
 import crypto from "crypto";
 import { signAccessToken } from "../jwt.service";
 import {
@@ -135,5 +140,16 @@ export const logoutSession = async (refreshToken: string | undefined): Promise<v
   if (session && !session.revokedAt) {
     await revokeSession(session.id);
     logger.info({ userId: session.userId, sessionId: session.id, event: "user.logout" }, "user logged out");
+
+    // POST /auth/logout is not requireAuth'd, so there is no req.user and no
+    // room in the request — the only record of what the user was watching is
+    // the active-room key written when their live token was issued. No key
+    // (never joined a room, already left, or Redis is down) means no event:
+    // that is the guard, not an error path.
+    const active = await readActiveRoom(session.userId);
+    if (active) {
+      await forgetActiveRoom(session.userId);
+      notifyUserLeftEvent(active.roomId, active.organizationId, session.userId, "logged_out");
+    }
   }
 };

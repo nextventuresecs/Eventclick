@@ -21,6 +21,7 @@ import {
   deleteRoom,
   getActiveRecording,
   getLiveToken,
+  leaveRoom,
   getPresence,
   getRoom,
   listRooms,
@@ -82,6 +83,7 @@ roomRouter.post(
 roomRouter.post("/:id/fallback/clear", canManageLiveSession, clearFallback);
 
 roomRouter.post("/:id/live-token", canViewLiveSession, getLiveToken);
+roomRouter.post("/:id/leave", canViewLiveSession, leaveRoom);
 roomRouter.post("/:id/start", canManageLiveSession, startLive);
 roomRouter.post("/:id/stop", canManageLiveSession, stopLive);
 roomRouter.post("/:id/recording/start", canManageLiveSession, startRoomRecording);

@@ -340,7 +340,14 @@ export const RoomLive = () => {
                     connect={true}
                     video={canPublish}
                     audio={canPublish}
-                    onDisconnected={() => setConnect(false)}
+                    onDisconnected={() => {
+                      setConnect(false);
+                      // Tells the server the user is gone so room staff get a
+                      // live in-app alert. Best-effort by nature — it cannot
+                      // fire on a hard tab close — so a failure here is
+                      // swallowed rather than surfaced to the user.
+                      if (id) void liveApi.leave(id).catch(() => {});
+                    }}
                   >
                     <VideoConference />
                     <RoomAudioRenderer />

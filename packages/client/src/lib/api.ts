@@ -239,6 +239,9 @@ export const presenceApi = {
 export const liveApi = {
   getToken: (roomId: string) =>
     api.post<LiveTokenResponse>(`/rooms/${roomId}/live-token`),
+  // Best-effort presence signal on disconnect — the server notifies room
+  // staff. Never blocks the UI, and a hard tab close simply skips it.
+  leave: (roomId: string) => api.post<void>(`/rooms/${roomId}/leave`),
   start: (roomId: string) => api.post<EventRoom>(`/rooms/${roomId}/start`),
   stop: (roomId: string) => api.post<EventRoom>(`/rooms/${roomId}/stop`),
   startRecording: (roomId: string) => api.post<{ egressId: string }>(`/rooms/${roomId}/recording/start`),

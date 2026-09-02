@@ -15,6 +15,11 @@ import {
 import { findUserById } from "../../services/auth";
 import { notifyEventStreamStateChanged } from "../../services/event-stream-notification.service";
 import { notifyEventStarted, notifyEventEnded } from "../../services/event-lifecycle-notification.service";
+import {
+  forgetActiveRoom,
+  notifyUserLeftEvent,
+  rememberActiveRoom,
+} from "../../services/user-left-notification.service";
 import { logger } from "../../utils/logger";
 import { requireOrgId, toEventRoom } from "./room-helpers";
 
@@ -39,7 +44,37 @@ export const getLiveToken: RequestHandler = async (req, res, next) => {
       role: roleForUser(req.user!.role),
     });
 
+    // Issuing a token is the only server-side signal that this user is
+    // entering this room. Remembered so that logout — which carries no room
+    // and no org — can still report which event the user vanished from.
+    // Best-effort and deliberately not awaited: nothing in this response
+    // depends on the write having landed, and a degraded-but-open Redis
+    // would otherwise add its latency to every room join. The helper
+    // swallows its own errors.
+    void rememberActiveRoom(req.user!.id, { roomId: id, organizationId: orgId });
+
     res.json(token);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Client-driven, and therefore best-effort: it fires from RoomLive's
+ * onDisconnected handler, so a hard tab close, a crash or a dropped network
+ * never reaches here. Acceptable for a live-presence signal — attendance is
+ * recorded separately and does not depend on this.
+ */
+export const leaveRoom: RequestHandler = async (req, res, next) => {
+  try {
+    const orgId = requireOrgId(req.user!.organizationId);
+    const id = req.params.id as string;
+    await assertRoomAccessForUser(req.user!, orgId, id);
+
+    await forgetActiveRoom(req.user!.id);
+    notifyUserLeftEvent(id, orgId, req.user!.id, "left");
+
+    res.status(204).end();
   } catch (err) {
     next(err);
   }
