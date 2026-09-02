@@ -7,10 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Run from the repo root — Turborepo fans out to workspaces. Use `--filter=<pkg>` to target one.
 
 - `npm run dev` — runs `dev` in every workspace (server on :4000, client on :3000). `turbo dev` is `persistent`, so expect it to stay running.
-- `npm run build` — `tsc` for server, `vite build` for client. Shared has no build step (see Architecture).
+- `npm run build` — `tsc` for server and shared, `vite build` for client.
 - `npm run typecheck` — `tsc --noEmit` across workspaces.
 - `npm run lint` — only `client` has ESLint wired up; server/shared `lint` scripts are no-ops.
-- No test runner is configured yet (root `test` script is a placeholder).
+- `npm run test` — Vitest in shared, client and server; Playwright in `e2e`. The `e2e` suite starts a real dev server, so it needs a working `.env` (all three database URLs, Redis) and will time out without one.
+
+`turbo.json` declares `dependsOn: ["^build"]` on `build`, `typecheck` and `test`, so any of those run from the root builds `@application/shared` first. Invoking a workspace's compiler or test runner **directly** (`npx tsc -p packages/server/tsconfig.json`, `npx vitest` inside `packages/server`) skips that, and anything importing a newly added shared export fails to resolve until you run `npm run build --workspace=@application/shared`.
 
 Single-workspace commands:
 - `npm run dev --workspace=server` / `--workspace=client`
@@ -37,9 +39,16 @@ Env: copy `.env.example` → `.env`. `packages/server/src/config/env.ts` validat
 
 Turborepo monorepo, npm workspaces under `packages/*`. Three packages: `server`, `client`, `shared`.
 
-### `@application/shared` is consumed as source, not built
+### `@application/shared` is compiled, and the server resolves its build output
 
-`packages/shared/package.json` sets `"main": "src/index.ts"` and `"types": "src/index.ts"` — both server and client import `.ts` directly via the workspace link. There is no build step. Consequence: **any type or zod schema used across the client/server boundary lives here**, and editing it is picked up by both `tsx watch` and Vite HMR without a rebuild. This is the source of truth for:
+`packages/shared/package.json` sets `"main": "dist/index.js"` and `"types": "dist/index.d.ts"`, and its `build` script is `tsc`. The server therefore resolves shared through `dist/`, **not** through the `.ts` sources.
+
+Two practical consequences:
+
+- **Add a shared export, then build shared**, or the server will not see it. Root-level `npm run typecheck` / `test` / `build` handle this via turbo's `^build`; a direct `npx tsc -p packages/server/tsconfig.json` does not, and fails with `has no exported member`. The fix is `npm run build --workspace=@application/shared`.
+- The client does **not** go through `dist/`. `packages/client/vite.config.ts` aliases `@application/shared` straight to `../shared/src`, so Vite HMR picks up shared edits immediately while the server needs the rebuild. The two halves of the monorepo genuinely resolve this package differently — do not assume behaviour in one applies to the other.
+
+**Any type or zod schema used across the client/server boundary lives here.** This is the source of truth for:
 - `USER_ROLES`, `ROOM_STATUSES` enums (mirrored in the DB as Postgres enums in `server/src/db/schema/enums.ts` — keep in sync).
 - Zod request schemas (`RegisterSchema`, `LoginSchema`, `CreateRoomSchema`, …) used by server `validate` middleware AND by the client for form validation / types.
 - `API_PREFIX` (`/api/v1`) — the server mounts all routes under this, and client `VITE_API_URL` points at it.
@@ -58,7 +67,7 @@ Layering is controller → service → db. Do not reach into `db` from controlle
 
 Auth model (read this before touching auth code):
 - **Access token**: short-lived JWT (`JWT_ACCESS_TTL`, default 15m), signed with `JWT_SECRET`. Returned in the JSON response body; client keeps it in memory only.
-- **Refresh token**: long-lived opaque random string (`JWT_REFRESH_TTL`, default 7d). Only the SHA-256 hash is stored in the `sessions` table; the raw token is sent as an httpOnly cookie `Evently_rt` scoped to `path=/api/v1/auth` (see `controllers/auth.controller.ts`).
+- **Refresh token**: long-lived opaque random string (`JWT_REFRESH_TTL`, default 7d). Only the SHA-256 hash is stored in the `sessions` table; the raw token is sent as an httpOnly cookie `Eventclick_rt` scoped to `path=/api/v1/auth` (see `controllers/auth.controller.ts`).
 - **Rotation + reuse detection**: `rotateSession` in `services/session.service.ts` revokes the current row and issues a new one sharing the same `familyId`. If a refresh token for an already-revoked row is presented, the entire `familyId` is revoked (`revokeSessionFamily`) and the client is forced to log in again. Preserve this behavior when editing session logic.
 - `requireAuth` reads the `Authorization: Bearer …` header and puts `{ id, role, organizationId }` on `req.user` (see `types/express.d.ts` for the declaration merge). `requireRole(...)` checks against `@application/shared`'s `UserRole`.
 
@@ -66,7 +75,9 @@ Database (Drizzle):
 - Schema modules in `src/db/schema/`, re-exported from `schema/index.ts`. `drizzle.config.ts` points `drizzle-kit` at that barrel. Every migration goes to `./drizzle`.
 - Enum columns (`userRoleEnum`, `roomStatusEnum`) must match `USER_ROLES` / `ROOM_STATUSES` in `@application/shared`.
 - Soft-delete convention: `deletedAt timestamp` on `users` and `event_rooms`. Queries that should exclude deleted rows must filter explicitly — there is no global filter.
-- `db` in `src/db/index.ts` is the singleton drizzle instance over a `pg.Pool`; use it everywhere rather than constructing a new client.
+- `db` in `src/db/index.ts` is **not** a plain drizzle instance — it is a `Proxy` that resolves, per call, to whatever tenant-scoped connection `tenantContextStorage` (an `AsyncLocalStorage`) currently holds, falling back to the bare pool when there is none. Use it everywhere rather than constructing a client, but understand what it resolves to (next point).
+
+- **Read this before writing any query that runs outside an HTTP request.** RLS policies match on `current_setting('app.current_tenant')`, which `middleware/tenantContext.ts` sets with `SET LOCAL` — transaction-scoped, on one pinned connection, for the life of the request. Code with no ambient request (SQS workers, `setInterval` jobs, debounced or `setTimeout`-deferred callbacks that outlive the request that scheduled them) has no such context, so `db` falls back to the bare pool with **no tenant set**: reads match zero rows and writes fail the row-security policy. Wrap that work in `runInBackgroundTenantContext(orgId, userId, fn)` from `src/db/backgroundTenantContext.ts`. Never reuse an ambient context across an `await` that outlives the response — the pinned connection is committed and released on `res.on("finish")` and may already be serving another request. `queues/worker.ts` and `services/org-broadcast.service.ts` show the two sides of this.
 
 ### Client (`packages/client`)
 
