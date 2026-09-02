@@ -1,8 +1,8 @@
 # SSE stream holds a database connection open forever
 
-**Status:** planned
+**Status:** shipped
 **Touches:** `packages/server/src/middleware/tenantContext.ts`, `packages/server/src/routes/notification.routes.ts`, `packages/server/src/controllers/notification.controller.ts`
-**Ships with:** `fix/sse-tenant-connection-leak`
+**Ships with:** `fix/sse-tenant-connection-leak` — closes #78
 
 ---
 
@@ -145,11 +145,31 @@ export async function setTenantContext(req, res, next) {
 }
 ```
 
-Matching on a path string is fragile if the route ever moves, so the safer
-version is to mount the SSE route on its own router *before* `setTenantContext`
-runs, or to set a flag on the request in the route definition and check for
-that. Either is fine; the important part is that the decision is **explicit and
-commented**, so the next person does not quietly undo it.
+**As shipped**, the check lives behind an exported list rather than an inline
+string:
+
+```ts
+// packages/server/src/middleware/tenantContext.ts
+export const TENANT_CONTEXT_EXEMPT_PATHS: readonly string[] = [
+  `${API_PREFIX}/notifications/stream`,
+];
+
+export async function setTenantContext(req, res, next) {
+  const orgId = req.user?.organizationId;
+  if (!orgId) return next();
+  if (isTenantContextExempt(req.path)) return next();
+  return runInTenantContext(req, res, next, orgId, req.user?.id ?? "");
+}
+```
+
+A per-request flag set in the route definition cannot work here: this
+middleware is app-level and runs *before* any router is reached, so the flag
+would not exist yet. Path matching is therefore the mechanism, and its one
+weakness — a renamed or moved route silently re-pinning a connection per tab —
+is covered by a test that walks the notification router's own stack and
+asserts every exempt path still resolves to a mounted route. Exact equality,
+not `startsWith`, so `/notifications/stream/anything` is not accidentally
+exempted too.
 
 Why this fix rather than "raise `DB_POOL_MAX`": raising the pool only moves the
 cliff. Twenty connections means twenty tabs. The pool is not the problem — a
