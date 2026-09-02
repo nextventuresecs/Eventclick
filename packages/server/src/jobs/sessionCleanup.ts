@@ -1,4 +1,4 @@
-import { authDb, authPool } from "../db";
+import { authDb, authPool, withJobStatementTimeout } from "../db";
 import { sessions } from "../db/schema";
 import { lt } from "drizzle-orm";
 import { logger } from "../utils/logger";
@@ -19,7 +19,12 @@ export const cleanupExpiredSessions = async () => {
     return;
   }
   try {
-    const result = await authDb.delete(sessions).where(lt(sessions.expiresAt, new Date()));
+    // Same reasoning as dataRetention: a backlog of expired sessions makes
+    // this delete outrun the pool's 15s request default, so the job raises
+    // the ceiling for its own transaction only.
+    const result = await withJobStatementTimeout(authDb, (tx) =>
+      tx.delete(sessions).where(lt(sessions.expiresAt, new Date())),
+    );
     logger.info({ count: result.rowCount || 0, event: "sessions.cleanup" }, "Expired sessions cleaned up");
   } catch (error) {
     logger.error({ err: error, event: "sessions.cleanup.error" }, "Failed to clean up expired sessions");

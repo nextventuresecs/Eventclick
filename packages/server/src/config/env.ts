@@ -37,6 +37,20 @@ const EnvSchema = z.object({
   AUTH_DATABASE_URL: urlSchema,
   APP_DATABASE_URL: urlSchema,
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
+  // How long a caller waits for a free pooled connection before failing. Left
+  // unset, `pg` waits forever, so tenantContext's "Failed to acquire tenant
+  // connection" error path never runs and the request just hangs until
+  // SERVER_REQUEST_TIMEOUT_MS kills it with nothing in the logs.
+  DB_ACQUIRE_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
+  // Applied per runtime connection (see db/index.ts), never to the migration
+  // connection — migrations legitimately run for minutes. Postgres interval
+  // strings, e.g. "15s", "2min".
+  DB_STATEMENT_TIMEOUT: z.string().default("15s"),
+  DB_IDLE_TX_TIMEOUT: z.string().default("30s"),
+  // Background jobs that legitimately outrun the request-shaped default raise
+  // it for their own transaction rather than the pool default being loosened
+  // for everyone. See jobs/dataRetention.ts.
+  DB_JOB_STATEMENT_TIMEOUT: z.string().default("5min"),
   REDIS_URL: urlSchema,
 
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 chars"),

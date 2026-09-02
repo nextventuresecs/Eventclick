@@ -1,8 +1,8 @@
 # The database pool has no timeouts, so failures look like hangs
 
-**Status:** planned
-**Touches:** `packages/server/src/db/index.ts`, `scripts/init-db.sql`
-**Ships with:** `fix/db-pool-timeouts`
+**Status:** shipped
+**Touches:** `packages/server/src/db/index.ts`, `packages/server/src/config/env.ts`, `packages/server/src/jobs/dataRetention.ts`, `packages/server/src/jobs/sessionCleanup.ts`, `.env.example`
+**Ships with:** `fix/db-pool-timeouts` — closes #80
 
 ---
 
@@ -101,17 +101,54 @@ export const pool = new Pool({
 
 The same setting goes on `authPool`.
 
-Then, on the database roles, in `scripts/init-db.sql`:
+**The statement timeouts moved off `ALTER ROLE`, and off `init-db.sql`.**
 
-```sql
--- Runtime roles only. A query that runs longer than 15s in a web request
--- is already a failure; make it fail loudly instead of holding a connection.
-ALTER ROLE app_user SET statement_timeout = '15s';
-ALTER ROLE app_user SET idle_in_transaction_session_timeout = '30s';
+This doc originally put them in `scripts/init-db.sql`. That file's own header
+argues against it, and it is right:
 
-ALTER ROLE auth_svc_role SET statement_timeout = '15s';
-ALTER ROLE auth_svc_role SET idle_in_transaction_session_timeout = '30s';
+> Docker runs everything in /docker-entrypoint-initdb.d exactly ONCE, when the
+> data directory is empty. [...] Table privileges for app_user live in
+> 0003_rls_privileges_converge.sql for exactly this reason — a production
+> cluster once ran for months without them because they were added here
+> instead.
+
+An existing cluster would never have received them. The obvious correction is
+a migration — but `ALTER ROLE <other role> SET ...` requires superuser in
+PG15+, and the migration credential (`DATABASE_URL`) is not guaranteed to hold
+that. A migration that silently cannot apply is no better than a bootstrap file
+that never runs.
+
+So the timeouts are set **per connection, on the runtime pools**:
+
+```ts
+// packages/server/src/db/index.ts
+const sessionOptions = [
+  `-c statement_timeout=${env.DB_STATEMENT_TIMEOUT}`,
+  `-c idle_in_transaction_session_timeout=${env.DB_IDLE_TX_TIMEOUT}`,
+].join(" ");
 ```
+
+passed as `options` to both `pool` and `authPool`. This is strictly better than
+the role approach on the requirement that matters most — *the migration
+connection must be excluded*. `db/migrate.ts` and `drizzle.config.ts` build
+their own connection from `DATABASE_URL` and never import this module, so the
+exclusion is structural: there is no role list to keep correct, and no way to
+cancel a migration mid-table-rewrite by editing the wrong line. It also needs
+no privilege, and it applies to existing clusters the moment the process
+restarts.
+
+All four values are env-validated (`DB_ACQUIRE_TIMEOUT_MS`,
+`DB_STATEMENT_TIMEOUT`, `DB_IDLE_TX_TIMEOUT`, `DB_JOB_STATEMENT_TIMEOUT`), so
+staging can retune them without a code change.
+
+**Background jobs raise the ceiling for themselves.** `dataRetention.ts` deletes
+a year of rows across four tables and `sessionCleanup.ts` clears an expired-
+session backlog; both would be cancelled with SQLSTATE 57014 under a 15s
+default on their first real run. Rather than loosen the default for every
+request in the process — which would defeat the point of having one — they run
+through `withJobStatementTimeout(db, fn)`, which opens a transaction and issues
+`SET LOCAL statement_timeout`. `SET LOCAL`, so the raised ceiling dies with the
+transaction and cannot leak back into the pool for the next borrower.
 
 **Why five seconds for the pool?** If a connection has not freed up in five
 seconds, the system is already in trouble and the user is already unhappy.
@@ -149,12 +186,12 @@ failure is something support can act on.
   timeout for their own session explicitly with `SET LOCAL statement_timeout`,
   rather than the whole role being loosened for their benefit.
 
-**Do not apply these to the migration role.** Migrations create indexes and
-rewrite tables; those legitimately take minutes. `DATABASE_URL` is the
-migration and tooling connection — the `ALTER ROLE` statements above target the
-runtime roles (`app_user`, `auth_svc_role`) only. Getting this wrong means a
-deploy fails halfway through a migration, which is a far worse day than the
-problem being solved.
+**The migration connection is excluded by construction**, not by remembering to
+exclude it: it is built from `DATABASE_URL` in `db/migrate.ts`, which does not
+import the pools these options are attached to. A test asserts every pool this
+module builds carries the options and that its connection string is a runtime
+one. Getting this wrong would mean a deploy failing halfway through a
+migration, which is a far worse day than the problem being solved.
 
 **`idle_in_transaction_session_timeout` interacts with the SSE fix.** Today a
 long-lived SSE connection holds a transaction open for hours; with a 30-second
@@ -181,6 +218,13 @@ this.
   it is a finding, not necessarily a mistake in this change.
 - Run the full report generation flow against the largest event in staging and
   confirm it completes.
+
+**Not verified locally.** The report-generation and pool-exhaustion checks
+above need a real Postgres and real data; neither was run as part of this
+change. What is covered by tests is the configuration itself — that both
+runtime pools carry an acquisition timeout and the session options, that no
+migration connection does, and that the job helper issues `SET LOCAL`. The
+behavioural claims remain staging verifications.
 
 ---
 
