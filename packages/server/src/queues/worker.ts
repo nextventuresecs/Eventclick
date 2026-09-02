@@ -9,11 +9,13 @@ import { logger } from "../utils/logger";
 import { generateVerificationReportPdf } from "../services/report.service";
 import { findUserById } from "../services/auth";
 import { db } from "../db";
+import { runInBackgroundTenantContext } from "../db/backgroundTenantContext";
 import { pdfJobs } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { notificationService } from "../services/notification.service";
 import { s3, buildPublicUrl } from "../services/storage.service";
 import { dispatchEmail, attemptEmailDelivery } from "../services/email-delivery.service";
+import { notifyReportGenerated } from "../services/report-notification.service";
 import { sqsClient } from "./sqs.client";
 
 // SQS client is now the single shared instance from sqs.client.ts.
@@ -131,52 +133,64 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
   const heartbeatCleanup = await startVisibilityHeartbeat(queueUrl!, receiptHandle, aborted);
 
   try {
-    // 1. Idempotency
-    const [existing] = await db
-      .select()
-      .from(pdfJobs)
-      .where(eq(pdfJobs.jobId, jobId))
-      .limit(1);
+    // pdf_jobs and notifications are RLS-scoped tables (`to: "app_user"`).
+    // The SQS worker has no ambient HTTP request to inherit a tenant context
+    // from, so every db.* call below needs its own — without it, RLS denies
+    // outright (organization_id = NULL matches nothing; an INSERT actually
+    // throws a row-security-policy violation rather than silently no-op'ing).
+    // Same bug class as jobs/eventStartNotifier.ts / attendanceWindowNotifier.ts
+    // before their fix — see db/backgroundTenantContext.ts.
+    const skip = await runInBackgroundTenantContext(orgId, userId, async () => {
+      // 1. Idempotency
+      const [existing] = await db
+        .select()
+        .from(pdfJobs)
+        .where(eq(pdfJobs.jobId, jobId))
+        .limit(1);
 
-    if (existing) {
-      if (existing.status === "completed") {
-        logger.info({ jobId, roomId, event: "sqs.pdf_already_completed" }, "PDF job already completed, skipping");
-        return;
-      }
-
-      if (existing.status === "failed") {
-        const attempts = existing.attempts || 0;
-        if (attempts >= (existing.maxAttempts || 3)) {
-          logger.warn({ jobId, roomId, attempts, event: "sqs.pdf_max_attempts_exceeded" }, "PDF job exceeded max attempts");
-          return;
+      if (existing) {
+        if (existing.status === "completed") {
+          logger.info({ jobId, roomId, event: "sqs.pdf_already_completed" }, "PDF job already completed, skipping");
+          return true;
         }
-        await db
-          .update(pdfJobs)
-          .set({ status: "pending", attempts: attempts + 1, updatedAt: new Date() })
-          .where(eq(pdfJobs.jobId, jobId));
+
+        if (existing.status === "failed") {
+          const attempts = existing.attempts || 0;
+          if (attempts >= (existing.maxAttempts || 3)) {
+            logger.warn({ jobId, roomId, attempts, event: "sqs.pdf_max_attempts_exceeded" }, "PDF job exceeded max attempts");
+            return true;
+          }
+          await db
+            .update(pdfJobs)
+            .set({ status: "pending", attempts: attempts + 1, updatedAt: new Date() })
+            .where(eq(pdfJobs.jobId, jobId));
+        }
+
+        if (existing.status === "processing") {
+          logger.info({ jobId, roomId, event: "sqs.pdf_already_processing" }, "PDF job already being processed, skipping duplicate");
+          return true;
+        }
+      } else {
+        await db.insert(pdfJobs).values({
+          jobId,
+          roomId,
+          orgId,
+          userId,
+          status: "pending",
+          attempts: 1,
+          maxAttempts: 3,
+        });
       }
 
-      if (existing.status === "processing") {
-        logger.info({ jobId, roomId, event: "sqs.pdf_already_processing" }, "PDF job already being processed, skipping duplicate");
-        return;
-      }
-    } else {
-      await db.insert(pdfJobs).values({
-        jobId,
-        roomId,
-        orgId,
-        userId,
-        status: "pending",
-        attempts: 1,
-        maxAttempts: 3,
-      });
-    }
+      // 2. Mark processing
+      await db
+        .update(pdfJobs)
+        .set({ status: "processing", updatedAt: new Date() })
+        .where(eq(pdfJobs.jobId, jobId));
 
-    // 2. Mark processing
-    await db
-      .update(pdfJobs)
-      .set({ status: "processing", updatedAt: new Date() })
-      .where(eq(pdfJobs.jobId, jobId));
+      return false;
+    });
+    if (skip) return;
 
     const user = await findUserById(userId);
     if (!user) {
@@ -215,58 +229,84 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
     logger.info({ s3Key, s3Url, jobId, durationMs: Date.now() - startedAt, event: "sqs.pdf_uploaded" }, "PDF uploaded to S3");
 
     // 5. Mark completed
-    await db
-      .update(pdfJobs)
-      .set({
-        status: "completed",
-        s3Key,
-        s3Url,
-        completedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(pdfJobs.jobId, jobId));
+    const [completedJob] = await runInBackgroundTenantContext(orgId, userId, async () =>
+      db
+        .update(pdfJobs)
+        .set({
+          status: "completed",
+          s3Key,
+          s3Url,
+          completedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(pdfJobs.jobId, jobId))
+        .returning(),
+    );
 
-    // 6. Deliver to user (non-blocking side effects)
-    deliverReportToUser(userId, orgId, roomId, jobId, s3Url, user).catch((deliverErr) => {
+    // 6. Deliver to user + fan out REPORT_GENERATED to room staff. Awaited
+    // (not fire-and-forget) so both run inside their own tenant context
+    // while it's still open — a detached .catch()-only call here would let
+    // this function return and release the wrapper's connection out from
+    // under an in-flight write, the same bug fixed in
+    // event-stream-notification.service.ts's debounced callback. A failure
+    // here is still logged and swallowed, not thrown — the PDF itself is
+    // already durable in S3 and pdf_jobs regardless of delivery outcome.
+    await runInBackgroundTenantContext(orgId, userId, async () => {
+      await deliverReportToUser(userId, orgId, roomId, jobId, s3Url, user);
+    }).catch((deliverErr) => {
       logger.error({ err: deliverErr, jobId, event: "sqs.pdf_delivery_failed" }, "Failed to deliver report to user, but PDF is ready");
     });
+
+    if (completedJob) {
+      await runInBackgroundTenantContext(orgId, userId, async () => {
+        await notifyReportGenerated(roomId, orgId, completedJob.id, userId, user.fullName ?? user.email ?? "A team member");
+      }).catch((fanOutErr) => {
+        logger.error({ err: fanOutErr, jobId, event: "sqs.report_generated_fanout_failed" }, "REPORT_GENERATED fan-out failed, but PDF is ready");
+      });
+    }
 
     logger.info({ jobId, durationMs: Date.now() - startedAt, event: "sqs.pdf_completed" }, "PDF job completed successfully");
   } catch (err) {
     logger.error({ err, roomId, jobId, durationMs: Date.now() - startedAt, event: "sqs.pdf_failed" }, "Error processing PDF job");
 
-    const [job] = await db
-      .select()
-      .from(pdfJobs)
-      .where(eq(pdfJobs.jobId, jobId))
-      .limit(1);
+    // Own tenant context, separate from whatever failed above — these writes
+    // must survive even if the failure happened mid-transaction elsewhere.
+    await runInBackgroundTenantContext(orgId, userId, async () => {
+      const [job] = await db
+        .select()
+        .from(pdfJobs)
+        .where(eq(pdfJobs.jobId, jobId))
+        .limit(1);
 
-    if (job) {
-      const newAttempts = (job.attempts || 0) + 1;
-      const newStatus = newAttempts >= (job.maxAttempts || 3) ? "failed" : "pending";
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      if (job) {
+        const newAttempts = (job.attempts || 0) + 1;
+        const newStatus = newAttempts >= (job.maxAttempts || 3) ? "failed" : "pending";
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
 
-      await db
-        .update(pdfJobs)
-        .set({
-          status: newStatus,
-          attempts: newAttempts,
-          errorMessage,
-          updatedAt: new Date(),
-        })
-        .where(eq(pdfJobs.jobId, jobId));
+        await db
+          .update(pdfJobs)
+          .set({
+            status: newStatus,
+            attempts: newAttempts,
+            errorMessage,
+            updatedAt: new Date(),
+          })
+          .where(eq(pdfJobs.jobId, jobId));
 
-      if (newStatus === "failed") {
-        await notificationService.createNotification({
-          userId,
-          organizationId: orgId,
-          type: "report_failed",
-          title: "Report Generation Failed",
-          message: `Your event report for room ${roomId} could not be generated after ${newAttempts} attempts. Please try again.`,
-          metadata: { roomId, error: errorMessage, jobId },
-        });
+        if (newStatus === "failed") {
+          await notificationService.createNotification({
+            userId,
+            organizationId: orgId,
+            type: "report_failed",
+            title: "Report Generation Failed",
+            message: `Your event report for room ${roomId} could not be generated after ${newAttempts} attempts. Please try again.`,
+            metadata: { roomId, error: errorMessage, jobId },
+          });
+        }
       }
-    }
+    }).catch((catchWriteErr) => {
+      logger.error({ err: catchWriteErr, jobId, event: "sqs.pdf_failure_tracking_failed" }, "Failed to record PDF job failure");
+    });
 
     throw err;
   } finally {

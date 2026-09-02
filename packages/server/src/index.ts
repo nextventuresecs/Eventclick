@@ -57,6 +57,11 @@ app.use(
         baseUri: ["'none'"],
         frameAncestors: ["'none'"],
         upgradeInsecureRequests: [],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "https://cdn.app.eventclick.live"
+        ],
       },
     },
   }),
@@ -185,7 +190,6 @@ app.use(errorHandler);
 
 import { startSqsWorker, startEmailSqsWorker } from "./queues/worker";
 import { startSessionCleanupJob } from "./jobs/sessionCleanup";
-import { startEventStartNotifierJob } from "./jobs/eventStartNotifier";
 import { startAttendanceWindowNotifierJob } from "./jobs/attendanceWindowNotifier";
 
 const shouldStartWorker = env.SQS_WORKER_ENABLED !== "false";
@@ -195,7 +199,6 @@ async function startServer() {
 
   if (shouldStartWorker) {
     startSessionCleanupJob();
-    startEventStartNotifierJob();
     startAttendanceWindowNotifierJob();
     startSqsWorker().catch((err) => {
       logger.error({ err }, "SQS worker crashed");
