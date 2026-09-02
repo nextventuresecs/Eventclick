@@ -46,9 +46,9 @@ describe("rate-limited responses reach the user readably (#79)", () => {
   it("still reports non-JSON errors of other kinds rather than throwing SyntaxError", async () => {
     respondWith(502, "<html>Bad Gateway</html>");
 
-    const err = await api.get("/rooms").catch((e) => e);
+    const err = await api.get("/rooms").catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiClientError);
-    expect(err.status).toBe(502);
-    expect(err.message).toContain("Bad Gateway");
+    expect((err as ApiClientError).status).toBe(502);
+    expect((err as ApiClientError).message).toContain("Bad Gateway");
   });
 });
