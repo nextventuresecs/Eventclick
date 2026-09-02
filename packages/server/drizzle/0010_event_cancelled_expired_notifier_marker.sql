@@ -1,0 +1,1 @@
+ALTER TABLE "event_rooms" ADD COLUMN "event_cancelled_or_expired_notified_at" timestamp with time zone;

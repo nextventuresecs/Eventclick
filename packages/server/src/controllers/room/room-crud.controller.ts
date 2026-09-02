@@ -11,6 +11,8 @@ import {
   assertRoomAccessWithRoom,
   listAssignedRoomIdsForUser,
 } from "../../services/event-assignment.service";
+import { notifyEventCancelledOrExpired } from "../../services/event-cancellation-notification.service";
+import { logger } from "../../utils/logger";
 import { requireOrgId, toEventRoom } from "./room-helpers";
 
 export const listRooms: RequestHandler = async (req, res, next) => {
@@ -203,6 +205,40 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
       .returning();
 
     if (!row) throw ApiError.notFound("Room not found");
+
+    if (input.status === "cancelled") {
+      // Atomic claim, same shape as startLive's EVENT_STARTED guard: only the
+      // caller whose UPDATE actually matched an unclaimed row notifies, so a
+      // retried or double-clicked cancel cannot email everyone twice.
+      const claim = await db
+        .update(eventRooms)
+        .set({ eventCancelledOrExpiredNotifiedAt: new Date() })
+        .where(and(eq(eventRooms.id, id), isNull(eventRooms.eventCancelledOrExpiredNotifiedAt)))
+        .returning();
+
+      if (claim[0]) {
+        // Awaited, not fire-and-forget. setTenantContext commits and releases
+        // this request's pinned connection on res.on("finish"), and the `db`
+        // proxy would still resolve to that released client for the rest of
+        // the fan-out — the bug fixed in fe831bb. A failure is logged and
+        // swallowed: the cancellation itself is already committed, and the
+        // caller should not see it fail because an email queue hiccuped.
+        await notifyEventCancelledOrExpired(
+          {
+            id: row.id,
+            title: row.title,
+            organizationId: orgId,
+            createdBy: row.createdBy,
+            scheduledStart: row.scheduledStart,
+            cancellationReason: row.cancellationReason,
+          },
+          "cancelled",
+        ).catch((err) =>
+          logger.error({ err, roomId: id }, "EVENT_CANCELLED_OR_EXPIRED fan-out failed"),
+        );
+      }
+    }
+
     res.json(toEventRoom(row));
   } catch (err) {
     next(err);

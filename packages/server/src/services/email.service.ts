@@ -279,3 +279,51 @@ export const sendOrgBroadcastEmail = async (
     );
   }
 };
+
+export const sendEventCancelledEmail = async (
+  email: string,
+  roomTitle: string,
+  reason: "cancelled" | "expired",
+  scheduledStart: string,
+  cancellationReason?: string | null,
+): Promise<void> => {
+  const safeTitle = escapeHtml(roomTitle);
+  const safeWhen = escapeHtml(scheduledStart);
+  // Organiser-entered free text, same treatment as a broadcast body.
+  const safeNote = cancellationReason ? escapeHtml(cancellationReason) : null;
+
+  const subject =
+    reason === "cancelled" ? `Cancelled: "${roomTitle}"` : `Did not take place: "${roomTitle}"`;
+  const lead =
+    reason === "cancelled"
+      ? `<strong>${safeTitle}</strong>, scheduled for ${safeWhen}, has been cancelled.`
+      : `<strong>${safeTitle}</strong> was scheduled for ${safeWhen} and did not take place.`;
+
+  if (resend) {
+    const { error } = await resend.emails.send({
+      from: env.RESEND_FROM_EMAIL,
+      to: email,
+      subject,
+      html: `
+          <h1>${reason === "cancelled" ? "Event cancelled" : "Event did not take place"}</h1>
+          <p>${lead}</p>
+          ${safeNote ? `<p><strong>Reason given:</strong> ${safeNote}</p>` : ""}
+          <p>No attendance is required. You do not need to do anything.</p>
+        `,
+    });
+
+    if (error) {
+      logger.error(
+        { email, roomTitle, reason, error, event: "email.event_cancelled_failed" },
+        "Failed to send event-cancelled email",
+      );
+      throw error;
+    }
+    logger.info({ email, roomTitle, reason, event: "email.event_cancelled_sent" }, "Event-cancelled email sent via Resend");
+  } else {
+    logger.info(
+      { email, roomTitle, reason, cancellationReason, event: "email.event_cancelled" },
+      `[EMAIL MOCK] Event ${reason} Sent\nTo: ${email}\nRoom: ${roomTitle}\nWhen: ${scheduledStart}\nNote: ${cancellationReason ?? "(none)"}`,
+    );
+  }
+};
