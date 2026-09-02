@@ -1,8 +1,8 @@
 # Auth rate limits cannot be lowered below 10,000 per minute
 
-**Status:** planned
-**Touches:** `packages/server/src/routes/auth.routes.ts`, `packages/server/src/config/env.ts`
-**Ships with:** `fix/auth-rate-limiting`
+**Status:** shipped
+**Touches:** `packages/server/src/routes/auth.routes.ts`, `packages/server/src/config/env.ts`, `packages/client/src/lib/api.ts`
+**Ships with:** `fix/auth-rate-limiting` — closes #79
 
 ---
 
@@ -152,9 +152,19 @@ the same `skip` to `authLimiter` and `recoveryLimiter` keeps CI green. Add it in
 the same commit as the limit change, not afterwards — otherwise the pipeline
 goes red and someone "fixes" it by raising the limit again.
 
-**Real users may now see 429 responses.** They could not before. Check that the
-client handles a 429 from `/auth/login` with a readable message rather than a
-generic failure — `packages/client/src/lib/api.ts` is where that decision lives.
+**Real users may now see 429 responses.** They could not before, and the client
+did not handle them. `request()` in `packages/client/src/lib/api.ts` called
+`JSON.parse` on every response body unconditionally; `express-rate-limit`
+answers with **plain text** unless a `message` object is configured, and the
+global limiter in `index.ts` does not configure one. So a 429 threw a
+`SyntaxError` inside the api layer and the login page showed "Login failed" —
+the one message that tells the user nothing about waiting a minute. That parse
+is now guarded, with a specific message for 429 and the raw text for other
+non-JSON errors. The auth limiters do send JSON, and their message is passed
+through unchanged.
+
+`Login.tsx` already renders `err.message` for an `ApiClientError`, so no page
+change was needed once the api layer stopped throwing on the body.
 
 **Shared IP addresses.** An office or school behind one NAT gateway shares an
 IP. Keying on `email|ip` mostly solves this: two different people signing in
@@ -174,11 +184,19 @@ and gets a fresh budget.
 - Authenticated routes (`/me`, `/profile`, `/change-password`) are behind
   `requireAuth`, so they were never the brute-force target.
 
+**IPv6 normalisation.** The key runs `req.ip` through the library's
+`ipKeyGenerator`, which buckets IPv6 into a /56 subnet. A bare `req.ip` would
+let a single IPv6 host rotate through addresses it already owns and buy a fresh
+budget with each one.
+
 **How we would know if it broke**
 
 - Send 11 failed logins for one email in a minute; the 11th returns 429.
 - Send 11 failed logins for *different* emails from one IP; none are blocked —
   proving the key is per-account, not just per-IP.
+- Both of those are unit-tested at the key level
+  (`__tests__/auth-rate-limit-key.test.ts`); the end-to-end 429 behaviour needs
+  a running server with Redis and was not exercised locally.
 - CI stays green, which proves the `skip` works.
 - Watch for a spike in 429s on `/auth/login` in the first days after deploy. A
   spike from many distinct emails is an attack being blocked, which is success.

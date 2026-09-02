@@ -62,7 +62,10 @@ const EnvSchema = z.object({
 
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
-  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10000),
+  // A real ceiling, not a formality: 10,000/min per client was high enough
+  // that nothing legitimate or otherwise ever reached it. Credential
+  // endpoints do not read this — see routes/auth.routes.ts.
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(600),
 
   ATTENDANCE_WINDOW_BEFORE_MINUTES: z.coerce
     .number()
