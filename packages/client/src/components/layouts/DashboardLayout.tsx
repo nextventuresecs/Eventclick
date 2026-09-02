@@ -7,6 +7,7 @@ import {
   PlusCircle,
   Users,
   UserCog,
+  Megaphone,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -101,6 +102,7 @@ const MENU_ITEMS = [
   { name: "Create Room", path: "/rooms/create", icon: PlusCircle },
   { name: "Users", path: "/admin/users", icon: Users, permission: "manage_users" },
   { name: "Event Assignments", path: "/admin/event-assignments", icon: UserCog, permission: "manage_users" },
+  { name: "Broadcast", path: "/admin/broadcast", icon: Megaphone, permission: "manage_users" },
 ];
 
 const TOOLS_ITEMS = [
@@ -210,6 +212,7 @@ export const DashboardLayout = () => {
     if (location.pathname === "/rooms/create") return "Create Room";
     if (location.pathname.startsWith("/rooms/")) return "Room Details";
     if (location.pathname.startsWith("/admin/event-assignments")) return "Event Assignments";
+    if (location.pathname.startsWith("/admin/broadcast")) return "Broadcast";
     return "Dashboard";
   })();
 

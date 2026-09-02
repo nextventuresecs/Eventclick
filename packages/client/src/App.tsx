@@ -42,6 +42,7 @@ const AttendanceRecords = lazyLoad(() => import("./pages/AttendanceRecords"), "A
 const RoomLive = lazyLoad(() => import("./pages/RoomLive"), "RoomLive");
 const RoomWatch = lazyLoad(() => import("./pages/RoomWatch"), "RoomWatch");
 const AdminUsers = lazyLoad(() => import("./pages/AdminUsers"), "AdminUsers");
+const AdminBroadcast = lazyLoad(() => import("./pages/AdminBroadcast"), "AdminBroadcast");
 const EventAssignments = lazyLoad(() => import("./pages/EventAssignments"), "EventAssignments");
 const Forms = lazyLoad(() => import("./pages/Forms"), "Forms");
 const Reports = lazyLoad(() => import("./pages/Reports"), "Reports");
@@ -287,6 +288,7 @@ const router = createBrowserRouter([
             element: <RoleRoute role="admin" />,
             children: [
               { path: "admin/users", element: <AdminUsers /> },
+              { path: "admin/broadcast", element: <AdminBroadcast /> },
               {
                 path: "admin/event-assignments",
                 element: <EventAssignments />,

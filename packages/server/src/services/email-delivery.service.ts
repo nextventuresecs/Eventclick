@@ -12,9 +12,17 @@ import {
   sendInviteEmail,
   sendEventStartedEmail,
   sendEventEndedEmail,
+  sendOrgBroadcastEmail,
 } from "./email.service";
 
-export type EmailType = "verification" | "reset-password" | "report-ready" | "invite" | "event-started" | "event-ended";
+export type EmailType =
+  | "verification"
+  | "reset-password"
+  | "report-ready"
+  | "invite"
+  | "event-started"
+  | "event-ended"
+  | "org-broadcast";
 
 export interface DispatchEmailParams {
   userId: string;
@@ -46,6 +54,14 @@ const sendEmailByType = (type: string, email: string, payload: Record<string, un
         payload.roomTitle as string,
         payload.recordingUrl as string | undefined,
         payload.summaryUrl as string | undefined,
+      );
+    case "org-broadcast":
+      return sendOrgBroadcastEmail(
+        email,
+        payload.title as string,
+        payload.body as string,
+        payload.orgName as string,
+        payload.priority as "normal" | "urgent",
       );
     default:
       throw new Error(`Unknown email type: ${type}`);
