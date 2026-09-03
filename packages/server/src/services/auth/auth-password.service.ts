@@ -1,5 +1,4 @@
 import { eq, and, gt, isNull } from "drizzle-orm";
-import zxcvbn from "zxcvbn";
 import crypto from "crypto";
 import { authDb } from "../../db";
 import { users, passwordResets } from "../../db/schema";
@@ -10,6 +9,7 @@ import { dispatchEmail } from "../email-delivery.service";
 import { revokeAllUserSessions } from "../session.service";
 import { findUserByEmail, invalidateUserCache } from "./auth-helpers";
 import { TOKEN_EXPIRY_1H_MS } from "../../config/constants";
+import { assertPasswordStrength } from "../../utils/passwordStrength";
 
 export const forgotPassword = async (email: string): Promise<void> => {
   const user = await findUserByEmail(email);
@@ -45,10 +45,7 @@ export const forgotPassword = async (email: string): Promise<void> => {
 };
 
 export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
-  const pwdScore = zxcvbn(newPassword);
-  if (pwdScore.score < 3) {
-    throw ApiError.badRequest(`Password is too weak. ${pwdScore.feedback.warning || "Please choose a stronger password."}`);
-  }
+  assertPasswordStrength(newPassword);
 
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
@@ -98,10 +95,7 @@ export const changeUserPassword = async (
   const isValid = await argon2.verify(userRow.passwordHash, currentPasswordPlain);
   if (!isValid) throw ApiError.unauthorized("Incorrect current password");
 
-  const pwdScore = zxcvbn(newPasswordPlain);
-  if (pwdScore.score < 3) {
-    throw ApiError.badRequest(`Password is too weak. ${pwdScore.feedback.warning || "Please choose a stronger password."}`);
-  }
+  assertPasswordStrength(newPasswordPlain);
 
   const newPasswordHash = await argon2.hash(newPasswordPlain);
 
@@ -128,10 +122,7 @@ export const setInitialPassword = async (userId: string, newPassword: string): P
     throw ApiError.conflict("Password already set — use change password instead");
   }
 
-  const pwdScore = zxcvbn(newPassword);
-  if (pwdScore.score < 3) {
-    throw ApiError.badRequest(`Password is too weak. ${pwdScore.feedback.warning || "Please choose a stronger password."}`);
-  }
+  assertPasswordStrength(newPassword);
 
   const passwordHash = await argon2.hash(newPassword);
 

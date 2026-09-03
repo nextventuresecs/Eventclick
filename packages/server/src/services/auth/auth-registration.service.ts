@@ -1,5 +1,4 @@
 import { eq, and, gt, isNull } from "drizzle-orm";
-import zxcvbn from "zxcvbn";
 import emailValidator from "deep-email-validator";
 import crypto from "crypto";
 import { nanoid } from "nanoid";
@@ -12,6 +11,7 @@ import { authDb } from "../../db";
 import { users, organizations, orgMembers, emailVerifications } from "../../db/schema";
 import { ApiError } from "../../utils/errors";
 import { logger } from "../../utils/logger";
+import { assertPasswordStrength } from "../../utils/passwordStrength";
 import argon2 from "argon2";
 import { dispatchEmail } from "../email-delivery.service";
 import { type SessionMeta } from "../session.service";
@@ -27,10 +27,7 @@ import {
 } from "./auth-helpers";
 
 export const registerUser = async (input: RegisterInput, meta: SessionMeta): Promise<{ message: string; user: AuthUser }> => {
-  const pwdScore = zxcvbn(input.password);
-  if (pwdScore.score < 3) {
-    throw ApiError.badRequest(`Password is too weak. ${pwdScore.feedback.warning || "Please choose a stronger password."}`);
-  }
+  assertPasswordStrength(input.password);
 
   const emailValResult = await Promise.race<{ valid: boolean; reason?: string }>([
     emailValidator({
