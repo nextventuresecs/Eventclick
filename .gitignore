@@ -6,7 +6,14 @@ node_modules/
 dist/
 .env
 *.log
-.env.*/
+# Every .env variant, not just directories. This line was `.env.*/` — the
+# trailing slash made it match DIRECTORIES only, so .env.local, .env.production
+# and every other real dotfile variant was stageable. The bare `.env` above was
+# the only thing standing between a local secrets file and a commit.
+# The negation keeps the committed placeholder templates tracked.
+.env.*
+!.env.example
+!.env.*.example
 Sprint*.md
 ~$*.md
 ROLE*.md

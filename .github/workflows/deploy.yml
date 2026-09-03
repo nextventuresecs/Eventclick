@@ -137,10 +137,55 @@ jobs:
           cache-to: type=gha,mode=max,scope=client
           provenance: false
 
-  # ── Job 3: Deploy to EC2 via SSM (no SSH / port 22 needed) ─────────────
+  # ── Job 3: Scan the published images ────────────────────────────────────
+  # The pipeline publishes images to a registry and deploys them unattended,
+  # with nothing ever looking inside them. This job is the gate: it runs
+  # between build and deploy, so a vulnerable image can be published but
+  # cannot reach production.
+  scan:
+    name: Scan Images
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # `ignore-unfixed` is deliberate. Base-image CVEs with no available patch
+      # would otherwise block every deploy indefinitely, and a gate that can
+      # never go green is a gate someone deletes. This fails on findings that
+      # are actually actionable — ones with a fixed version to move to.
+      - name: Scan server image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ needs.build.outputs.server_image }}:${{ needs.build.outputs.sha_short }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
+
+      - name: Scan client image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ needs.build.outputs.client_image }}:${{ needs.build.outputs.sha_short }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
+
+  # ── Job 4: Deploy to EC2 via SSM (no SSH / port 22 needed) ─────────────
   deploy:
     name: Deploy to EC2 (Production)
-    needs: build
+    needs: [build, scan]
     runs-on: ubuntu-latest
     environment:
       name: production
