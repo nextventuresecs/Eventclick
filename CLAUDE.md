@@ -9,7 +9,7 @@ Run from the repo root — Turborepo fans out to workspaces. Use `--filter=<pkg>
 - `npm run dev` — runs `dev` in every workspace (server on :4000, client on :3000). `turbo dev` is `persistent`, so expect it to stay running.
 - `npm run build` — `tsc` for server and shared, `vite build` for client.
 - `npm run typecheck` — `tsc --noEmit` across workspaces.
-- `npm run lint` — only `client` has ESLint wired up; server/shared `lint` scripts are no-ops.
+- `npm run lint` — ESLint across all three workspaces. `client` uses its own flat config; `server` and `shared` use `eslint.config.mjs` (the `.mjs` extension is required — both packages are `"type": "commonjs"`). Errors fail CI; `@typescript-eslint/no-explicit-any` is a warning against the existing backlog.
 - `npm run test` — Vitest in shared, client and server; Playwright in `e2e`. The `e2e` suite starts a real dev server, so it needs a working `.env` (all three database URLs, Redis) and will time out without one.
 
 `turbo.json` declares `dependsOn: ["^build"]` on `build`, `typecheck` and `test`, so any of those run from the root builds `@application/shared` first. Invoking a workspace's compiler or test runner **directly** (`npx tsc -p packages/server/tsconfig.json`, `npx vitest` inside `packages/server`) skips that, and anything importing a newly added shared export fails to resolve until you run `npm run build --workspace=@application/shared`.
@@ -61,7 +61,7 @@ Layering is controller → service → db. Do not reach into `db` from controlle
 - `routes/` — declares paths, stacks `validate(schema)` then `requireAuth` / `requireRole(...)`, then delegates to controllers.
 - `controllers/` — parse `req`, call service, shape response. Controllers throw `ApiError` or forward service errors via `next(err)`.
 - `services/` — business logic; own all DB calls via `db` from `src/db`.
-- `middleware/validate.ts` — runs `schema.safeParse(req[source])` and **replaces** `req.body`/`query`/`params` with the parsed value. Downstream handlers see the coerced/narrowed data, not the raw input.
+- `middleware/validate.ts` — runs `schema.safeParse(req[source])` and **replaces** `req.body`/`params` with the parsed value, so downstream handlers see coerced/narrowed data rather than raw input. **`source: "query"` does not work under Express 5**: `req.query` is exposed through a getter that re-derives the object, so both assignment and in-place mutation are silently discarded and the handler goes on reading raw strings. Parse query parameters in the handler instead (`MySchema.parse(req.query)`) — a `ZodError` thrown there reaches `errorHandler` as a 400 exactly as it would from the middleware. See `controllers/admin.controller.ts` (`listAuditLog`, `listOrgUsers`).
 - `middleware/errorHandler.ts` — maps `ZodError` → 400 `VALIDATION_ERROR`, `ApiError` → its `statusCode`/`code`, everything else → 500 (message hidden in production).
 - `utils/errors.ts` — `ApiError` with factories (`unauthorized`, `forbidden`, `conflict`, …). Prefer these over throwing generic `Error`s so the handler can respond correctly.
 
