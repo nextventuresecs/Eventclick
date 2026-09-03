@@ -26,7 +26,10 @@ import {
   type AuthResult,
 } from "./auth-helpers";
 
-export const registerUser = async (input: RegisterInput, meta: SessionMeta): Promise<{ message: string; user: AuthUser }> => {
+// `_meta` is unused: registration does not create a session (the user must
+// verify their email first), but the parameter stays to keep the signature
+// aligned with loginUser/googleLogin, which do.
+export const registerUser = async (input: RegisterInput, _meta: SessionMeta): Promise<{ message: string; user: AuthUser }> => {
   assertPasswordStrength(input.password);
 
   const emailValResult = await Promise.race<{ valid: boolean; reason?: string }>([

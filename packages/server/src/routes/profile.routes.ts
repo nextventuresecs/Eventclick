@@ -1,5 +1,4 @@
 import { Router } from "express";
-import type { Request } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { deleteUserAccount } from "../services/admin.service";
 import { recordAudit } from "../services/audit.service";

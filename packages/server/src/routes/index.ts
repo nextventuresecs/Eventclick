@@ -11,7 +11,8 @@ import { env } from "../config/env";
 import { signAccessToken, verifyAccessToken } from "../services/jwt.service";
 import { s3 } from "../services/storage.service";
 import { HeadBucketCommand } from "@aws-sdk/client-s3";
-import { metricsMiddleware, renderMetrics, metricsContentType } from "../services/metrics.service";
+// metricsMiddleware is applied app-wide in index.ts, not per-router.
+import { renderMetrics, metricsContentType } from "../services/metrics.service";
 import { logger } from "../utils/logger";
 import { checkSchemaInvariants } from "../services/schema-health.service";
 

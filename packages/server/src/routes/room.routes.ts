@@ -12,7 +12,6 @@ import {
 } from "@application/shared";
 import { requireAuth } from "../middleware/requireAuth";
 import { requirePermission } from "../middleware/requirePermission";
-import { requireRole } from "../middleware/requireRole";
 import { validate } from "../middleware/validate";
 import { ApiError } from "../utils/errors";
 import {
@@ -54,7 +53,6 @@ const canManageRooms = requirePermission("manage_rooms");
 const canManageLiveSession = requirePermission("manage_live_session");
 const canCreateAttendanceForm = requirePermission("create_attendance_form");
 const canTakeAttendance = requirePermission("take_attendance");
-const canViewReports = requirePermission("view_reports");
 const canViewLiveSession = requirePermission("view_live_session");
 
 const canViewAttendance = (req: any, res: any, next: any) => {

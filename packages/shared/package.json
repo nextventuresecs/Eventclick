@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "echo \"(lint not configured yet)\" && exit 0",
+    "lint": "eslint .",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -20,7 +20,11 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "globals": "^17.12.0",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.10"
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^4.1.10",
+    "eslint": "10.8.0"
   }
 }

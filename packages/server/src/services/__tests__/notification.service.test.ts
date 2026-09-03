@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const insertedNotifications: any[] = [];
 const insertedDeliveries: any[] = [];
-let mockNotificationReturn: any = { id: "notif-1", userId: "user-1", organizationId: "org-1" };
+const mockNotificationReturn: any = { id: "notif-1", userId: "user-1", organizationId: "org-1" };
 
 vi.mock("../../db", () => ({
   db: {
