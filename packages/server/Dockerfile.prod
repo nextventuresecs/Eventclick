@@ -29,6 +29,12 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Patch OS packages before anything else. The base tag is not rebuilt on every
+# Alpine security release, so a fresh `docker build` can still ship a known-
+# vulnerable libcrypto3 — which is exactly what the image scan (#95) caught.
+# This pulls the fixed package versions at build time.
+RUN apk --no-cache upgrade
+
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \
     adduser  --system --uid 1001 Eventclick
