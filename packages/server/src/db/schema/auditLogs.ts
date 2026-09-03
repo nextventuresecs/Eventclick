@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp , pgPolicy } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp, index, pgPolicy } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { organizations } from "./organizations";
 import { users } from "./users";
@@ -17,6 +17,10 @@ export const auditLogs = pgTable("audit_logs", {
   userAgent: text("user_agent"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
+  // The read path's exact query shape: one organisation's rows, newest first.
+  // Added in 0011 — the table shipped in 0000 with no index at all, so a
+  // listing would otherwise scan and sort every tenant's history.
+  index("audit_logs_org_created_idx").on(t.organizationId, t.createdAt.desc()),
   pgPolicy("audit_logs_tenant_isolation", {
     as: "permissive",
     for: "select",
