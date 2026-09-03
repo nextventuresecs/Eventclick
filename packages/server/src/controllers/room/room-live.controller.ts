@@ -102,15 +102,23 @@ export const startLive: RequestHandler = async (req, res, next) => {
     notifyEventStreamStateChanged(id, orgId, "live");
 
     // Atomic claim: guards EVENT_STARTED against a double-clicked/retried
-    // startLive request firing it twice. Fire-and-forget — the HTTP response
-    // shouldn't wait on notification fan-out.
+    // startLive request firing it twice.
     const startedClaim = await db
       .update(eventRooms)
       .set({ eventStartedNotifiedAt: new Date() })
       .where(and(eq(eventRooms.id, id), isNull(eventRooms.eventStartedNotifiedAt)))
       .returning();
     if (startedClaim[0]) {
-      notifyEventStarted({
+      // Awaited before the response ends, NOT fire-and-forget: tenantContext
+      // commits and releases this request's pinned connection on
+      // res.on("finish"), and the `db` proxy inside the fan-out would still be
+      // resolving to that released client — the writes then fail into the
+      // .catch() below, or land on a connection already reissued to another
+      // request. Same reasoning as the report controller in fe831bb.
+      //
+      // The .catch() stays: the room has started either way, so a notification
+      // failure must not fail the request.
+      await notifyEventStarted({
         id: row.id,
         title: row.title,
         organizationId: orgId,
@@ -155,7 +163,9 @@ export const stopLive: RequestHandler = async (req, res, next) => {
       .where(and(eq(eventRooms.id, id), isNull(eventRooms.eventEndedNotifiedAt)))
       .returning();
     if (endedClaim[0]) {
-      notifyEventEnded({
+      // Awaited for the same reason as EVENT_STARTED above: the pinned
+      // connection is released the moment this response finishes.
+      await notifyEventEnded({
         id: row.id,
         title: row.title,
         organizationId: orgId,
