@@ -15,6 +15,13 @@ import { apiRouter } from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { API_PREFIX } from "@application/shared";
 import { initSentry, setupSentryExpressErrorHandler } from "./services/sentry.service";
+import { registerProcessErrorHandlers } from "./utils/processErrors";
+
+// Registered before anything else starts: the background jobs and queue
+// workers below throw outside any request, where Express's error handler
+// cannot see them. Without these, such a throw kills the process with no log
+// line and no Sentry issue — a silent crash loop. See utils/processErrors.ts.
+registerProcessErrorHandlers();
 
 const app = express();
 

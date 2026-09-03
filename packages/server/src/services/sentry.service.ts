@@ -32,6 +32,26 @@ export function setupSentryExpressErrorHandler(app: any): void {
   }
 }
 
+/**
+ * Waits for buffered events to leave the process, bounded by `timeoutMs`.
+ * Sentry sends over HTTP, so an event captured immediately before
+ * `process.exit` never arrives without this — see utils/processErrors.ts.
+ *
+ * Resolves `true` when the queue drained, `false` on timeout or when Sentry
+ * is not configured. Never rejects: this is called on paths that are already
+ * failing, and a flush error must not become the visible error.
+ */
+export async function flushSentry(timeoutMs: number): Promise<boolean> {
+  if (!sentryModule) return false;
+
+  try {
+    return await sentryModule.flush(timeoutMs);
+  } catch (err) {
+    logger.warn({ err }, "Sentry flush failed");
+    return false;
+  }
+}
+
 export function captureSentryException(err: unknown, context?: Record<string, unknown>): void {
   if (!sentryModule) return;
 
