@@ -827,13 +827,38 @@ export interface PresenceSnapshot {
 export const ClientLogLevelSchema = z.enum(["error", "warn", "info"]);
 export type ClientLogLevel = z.infer<typeof ClientLogLevelSchema>;
 
+// The client-error endpoint is public (see server routes/log.routes.ts for
+// why), so every field here is an attacker-controlled string that ends up in
+// the log stream and the log-storage bill. message/stack/url/userAgent were
+// already capped; `context` was a free-form record with no bound at all —
+// one request could carry just under the 1 MB body limit of arbitrary JSON.
+export const MAX_CLIENT_LOG_CONTEXT_KEYS = 20;
+export const MAX_CLIENT_LOG_CONTEXT_BYTES = 4000;
+
 export const ClientLogSchema = z.object({
   level: ClientLogLevelSchema,
   message: z.string().min(1).max(2000),
   stack: z.string().max(8000).optional(),
   url: z.string().max(500).optional(),
   userAgent: z.string().max(500).optional(),
-  context: z.record(z.string(), z.unknown()).optional(),
+  context: z
+    .record(z.string().max(64), z.unknown())
+    .refine((ctx) => Object.keys(ctx).length <= MAX_CLIENT_LOG_CONTEXT_KEYS, {
+      message: `context may contain at most ${MAX_CLIENT_LOG_CONTEXT_KEYS} keys`,
+    })
+    .refine(
+      (ctx) => {
+        try {
+          return JSON.stringify(ctx).length <= MAX_CLIENT_LOG_CONTEXT_BYTES;
+        } catch {
+          // Unserialisable (a cycle, a BigInt) — reject rather than let it
+          // reach the logger and throw there.
+          return false;
+        }
+      },
+      { message: `context must serialise to at most ${MAX_CLIENT_LOG_CONTEXT_BYTES} bytes` },
+    )
+    .optional(),
   timestamp: z.iso.datetime().optional(),
 });
 export type ClientLogInput = z.infer<typeof ClientLogSchema>;
