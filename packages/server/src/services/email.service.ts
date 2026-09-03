@@ -224,3 +224,58 @@ export const sendEventEndedEmail = async (
     );
   }
 };
+
+/**
+ * Escapes text destined for an HTML email body. Every other sender in this
+ * file interpolates values the system itself produced (room titles, signed
+ * URLs, tokens); a broadcast interpolates free text an admin typed, which
+ * reaches every member of their organisation. Without escaping, an admin
+ * could put markup — or a link wearing someone else's name — into all of it.
+ */
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+export const sendOrgBroadcastEmail = async (
+  email: string,
+  title: string,
+  body: string,
+  orgName: string,
+  priority: "normal" | "urgent" = "normal",
+): Promise<void> => {
+  const safeTitle = escapeHtml(title);
+  // Author-entered newlines are the only formatting a broadcast carries, so
+  // they survive as <br>; everything else is escaped first.
+  const safeBody = escapeHtml(body).replace(/\n/g, "<br>");
+  const safeOrg = escapeHtml(orgName);
+  const subject = priority === "urgent" ? `[Urgent] ${title}` : title;
+
+  if (resend) {
+    const { error } = await resend.emails.send({
+      from: env.RESEND_FROM_EMAIL,
+      to: email,
+      subject,
+      html: `
+          <h1>${safeTitle}</h1>
+          <p>${safeBody}</p>
+          <hr>
+          <p style="color:#667085;font-size:12px">Sent to all members of ${safeOrg} on Eventclick.</p>
+        `,
+    });
+
+    if (error) {
+      logger.error({ email, priority, error, event: "email.org_broadcast_failed" }, "Failed to send org-broadcast email");
+      throw error;
+    }
+    logger.info({ email, priority, event: "email.org_broadcast_sent" }, "Org-broadcast email sent via Resend");
+  } else {
+    logger.info(
+      { email, title, priority, event: "email.org_broadcast" },
+      `[EMAIL MOCK] Org Broadcast Sent\nTo: ${email}\nOrg: ${orgName}\nPriority: ${priority}\nTitle: ${title}\n\n${body}`,
+    );
+  }
+};

@@ -182,6 +182,8 @@ import type {
   FormDefinitionInput,
   LiveTokenResponse,
   OrgUserSummary,
+  OrgBroadcastInput,
+  OrgBroadcastResult,
   ActivityDefinition,
   ActivityPhotoUploadRequestInput,
   SubmitActivityPhotoInput,
@@ -309,6 +311,8 @@ export const adminApi = {
     api.post<OrgUserSummary>("/admin/users", body),
   deleteUser: (userId: string, confirmEmail: string) =>
     api.delete<{ success: boolean; message: string }>(`/admin/users/${userId}`, { confirmEmail }),
+  sendBroadcast: (body: OrgBroadcastInput) =>
+    api.post<OrgBroadcastResult>("/admin/broadcasts", body),
 };
 
 export const uploadToPresignedUrl = async (

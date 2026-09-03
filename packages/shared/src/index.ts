@@ -358,6 +358,31 @@ export const ChannelRouter = (
   return allowed.filter((channel) => !muted.includes(channel));
 };
 
+// ─── Org broadcast (admin-composed, org-wide) ───────────────
+// `priority` is not cosmetic: "urgent" makes isCriticalNotificationEvent
+// return true, which makes ChannelRouter skip mute filtering entirely, so an
+// urgent broadcast reaches every declared channel regardless of what a
+// recipient has muted. Keep the default at "normal" — bypassing a user's
+// preferences has to be something an admin opts into deliberately.
+export const ORG_BROADCAST_PRIORITIES = ["normal", "urgent"] as const;
+export const OrgBroadcastPrioritySchema = z.enum(ORG_BROADCAST_PRIORITIES);
+export type OrgBroadcastPriority = z.infer<typeof OrgBroadcastPrioritySchema>;
+
+export const OrgBroadcastSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(200),
+  body: z.string().trim().min(1, "Message is required").max(2000),
+  priority: OrgBroadcastPrioritySchema.default("normal"),
+});
+export type OrgBroadcastInput = z.infer<typeof OrgBroadcastSchema>;
+
+export interface OrgBroadcastResult {
+  recipients: number;
+  inApp: number;
+  webPush: number;
+  email: number;
+  failed: number;
+}
+
 export const SubmitFeedbackSchema = z.object({
   category: z.string().min(1).max(100),
   rating: z.number().int().min(1).max(5),
