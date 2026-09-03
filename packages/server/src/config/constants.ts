@@ -7,6 +7,15 @@ export const TOKEN_EXPIRY_1H_MS = 60 * 60 * 1000; // 1 hour in ms
 // EVENT_STREAM_STATE_CHANGED debounce (services/event-stream-notification.service.ts)
 export const EVENT_STREAM_STATE_DEBOUNCE_MS = 3000; // coalesce rapid live/pause/resume toggles on the same room into one notification
 
+// USER_LEFT_EVENT debounce (services/user-left-notification.service.ts).
+// Keyed per (room, user), so this only coalesces one person's own churn —
+// leave/rejoin, or a disconnect immediately followed by a logout.
+export const USER_LEFT_EVENT_DEBOUNCE_MS = 3000;
+// How long we remember which room a user is in, for the logout variant of
+// USER_LEFT_EVENT. Matches the LiveKit token TTL (livekit.provider.ts), so
+// the memory cannot outlive the access it was recorded for.
+export const ACTIVE_ROOM_TTL_SEC = 2 * 60 * 60; // 2 hours
+
 // Attendance window notification job (jobs/attendanceWindowNotifier.ts)
 export const ATTENDANCE_WINDOW_CLOSING_LOOKAHEAD_MIN = 5; // warn this many minutes before the post-event grace window closes
 export const ATTENDANCE_WINDOW_NOTIFIER_POLL_MS = 60 * 1000; // 1 minute poll interval
