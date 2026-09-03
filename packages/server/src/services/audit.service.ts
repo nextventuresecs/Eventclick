@@ -34,6 +34,31 @@ export const recordAudit = async (input: {
 };
 
 /**
+ * Records an audit entry without letting a failure to record it change the
+ * outcome of the thing being recorded.
+ *
+ * The operation has already committed by the time this is called — a room is
+ * created, a user is deleted. Throwing here would turn a successful operation
+ * into a 500 the caller would retry, producing a second room. So the failure
+ * is logged loudly (an audit gap is a compliance problem worth investigating)
+ * and the operation's own result stands.
+ *
+ * Never use this for the write itself: `recordAudit` still throws, and a
+ * caller that genuinely needs the entry to be part of the transaction should
+ * use that.
+ */
+export const recordAuditSafely = async (input: Parameters<typeof recordAudit>[0]): Promise<void> => {
+  try {
+    await recordAudit(input);
+  } catch (err) {
+    logger.error(
+      { err, action: input.action, resourceType: input.resourceType, resourceId: input.resourceId },
+      "Failed to record audit entry — the audited operation itself succeeded",
+    );
+  }
+};
+
+/**
  * `old_values` / `new_values` are `text` holding `JSON.stringify` output, not
  * `jsonb`, so a row written by code that has since changed shape — or
  * truncated at the column boundary — is possible. Parsed per row rather than

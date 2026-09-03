@@ -10,6 +10,7 @@ import {
   buildUserAvatarKey,
   createPresignedPut,
 } from "../services/storage.service";
+import { recordAuditSafely } from "../services/audit.service";
 
 export const updateOrganization: RequestHandler = async (req, res, next) => {
   try {
@@ -28,6 +29,19 @@ export const updateOrganization: RequestHandler = async (req, res, next) => {
       .returning();
 
     if (!updatedOrg) throw ApiError.notFound("Organization not found");
+
+    await recordAuditSafely({
+      organizationId: orgId,
+      actorUserId: req.user.id,
+      actorEmail: req.user.email,
+      action: "settings.updated",
+      resourceType: "organization",
+      resourceId: orgId,
+      newValues: { name: updatedOrg.name, description: updatedOrg.description, logoUrl: updatedOrg.logoUrl },
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent") ?? undefined,
+    });
+
     res.json({ organization: updatedOrg });
   } catch (err) {
     next(err);
@@ -54,6 +68,26 @@ export const updatePreferences: RequestHandler = async (req, res, next) => {
       .returning();
 
     if (!updatedUser) throw ApiError.notFound("User not found");
+
+    // Only audited when the user belongs to an organisation: audit_logs is
+    // tenant-scoped by RLS, so an entry with no organisation cannot be
+    // written or read. A user editing their own notification toggles before
+    // onboarding has no tenant to record against.
+    if (req.user.organizationId) {
+      await recordAuditSafely({
+        organizationId: req.user.organizationId,
+        actorUserId: userId,
+        actorEmail: req.user.email,
+        action: "settings.updated",
+        resourceType: "user_preferences",
+        resourceId: userId,
+        oldValues: (existingUser.preferences as Record<string, unknown> | null) ?? undefined,
+        newValues: (updatedUser.preferences as Record<string, unknown> | null) ?? undefined,
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent") ?? undefined,
+      });
+    }
+
     res.json({ user: updatedUser });
   } catch (err) {
     next(err);
