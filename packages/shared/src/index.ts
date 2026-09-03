@@ -870,6 +870,25 @@ export const ClientLogSchema = z.object({
 });
 export type ClientLogInput = z.infer<typeof ClientLogSchema>;
 
+// ─── Organisation user listing ──────────────────────────────
+// Mirrors the audit-log page shape deliberately: the two admin listings
+// should page the same way, so the client handles them with one mental model.
+export const ORG_USER_PAGE_SIZE = 50;
+export const ORG_USER_MAX_PAGE_SIZE = 200;
+
+export const OrgUserQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(ORG_USER_MAX_PAGE_SIZE).default(ORG_USER_PAGE_SIZE),
+  offset: z.coerce.number().int().nonnegative().default(0),
+});
+export type OrgUserQuery = z.infer<typeof OrgUserQuerySchema>;
+
+export interface OrgUserPage {
+  items: OrgUserSummary[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 // ─── Audit log ──────────────────────────────────────────────
 // The actions audit.service.ts can record. Kept in shared because the admin
 // UI filters on them — a filter dropdown built from a hand-typed list drifts
