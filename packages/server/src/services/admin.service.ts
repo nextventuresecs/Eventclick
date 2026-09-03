@@ -1,5 +1,11 @@
-import { and, eq, isNull } from "drizzle-orm";
-import type { CreateOrgUserInput, OrgUserSummary, UserRole } from "@application/shared";
+import { and, count, eq, isNull } from "drizzle-orm";
+import type {
+  CreateOrgUserInput,
+  OrgUserPage,
+  OrgUserQuery,
+  OrgUserSummary,
+  UserRole,
+} from "@application/shared";
 import { ChannelRouter, NotificationPreferencesSchema } from "@application/shared";
 import type { Request } from "express";
 import crypto from "crypto";
@@ -26,13 +32,42 @@ const toOrgUser = (row: typeof users.$inferSelect): OrgUserSummary => ({
 /**
  * List all users belonging to an organization.
  */
-export const listOrgUsersForAdmin = async (orgId: string): Promise<OrgUserSummary[]> => {
+/**
+ * One page of an organisation's users.
+ *
+ * This was the last unbounded list query in the service: every non-deleted
+ * user, no limit, no offset — a slow query and a very large JSON response for
+ * a large tenant.
+ *
+ * **Ordering is `(fullName, id)`, not `fullName` alone.** Names are not
+ * unique, and with a non-unique sort key Postgres is free to return tied rows
+ * in a different order per query — so under `LIMIT`/`OFFSET` a user with a
+ * duplicate name can appear on two consecutive pages while another is never
+ * shown at all. The `id` tiebreaker makes the order total, which is what
+ * makes paging safe.
+ */
+export const listOrgUsersForAdmin = async (
+  orgId: string,
+  query: OrgUserQuery,
+): Promise<OrgUserPage> => {
+  const where = and(eq(users.organizationId, orgId), isNull(users.deletedAt));
+
   const rows = await db
     .select()
     .from(users)
-    .where(and(eq(users.organizationId, orgId), isNull(users.deletedAt)))
-    .orderBy(users.fullName);
-  return rows.map(toOrgUser);
+    .where(where)
+    .orderBy(users.fullName, users.id)
+    .limit(query.limit)
+    .offset(query.offset);
+
+  const [totals] = await db.select({ value: count() }).from(users).where(where);
+
+  return {
+    items: rows.map(toOrgUser),
+    total: totals?.value ?? 0,
+    limit: query.limit,
+    offset: query.offset,
+  };
 };
 
 /**

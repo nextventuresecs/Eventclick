@@ -1,4 +1,5 @@
 import type { AuthUser, UpdateProfileInput, ChangePasswordInput, SetPasswordInput, UpdateOrganizationInput, UpdatePreferencesInput, SubmitFeedbackInput, SubmitBugReportInput, SavePushSubscriptionInput } from "@application/shared";
+import { ORG_USER_MAX_PAGE_SIZE } from "@application/shared";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
@@ -201,6 +202,7 @@ import type {
   OrgBroadcastInput,
   OrgBroadcastResult,
   AuditLogPage,
+  OrgUserPage,
   ActivityDefinition,
   ActivityPhotoUploadRequestInput,
   SubmitActivityPhotoInput,
@@ -326,7 +328,37 @@ export const bugReportsApi = {
 };
 
 export const adminApi = {
-  listUsers: () => api.get<{ items: OrgUserSummary[] }>("/admin/users"),
+  listUsers: (params: { limit?: number; offset?: number } = {}) => {
+    const search = new URLSearchParams();
+    if (params.limit !== undefined) search.set("limit", String(params.limit));
+    if (params.offset !== undefined) search.set("offset", String(params.offset));
+    const query = search.toString();
+    return api.get<OrgUserPage>(`/admin/users${query ? `?${query}` : ""}`);
+  },
+  /**
+   * Walks every page of the organisation's users.
+   *
+   * The endpoint is paginated so one large tenant cannot produce a slow query
+   * and an enormous response. This screen still wants the whole set, because
+   * its search and role filters run client-side — capping it at one page would
+   * make an admin search for a real user, find nothing, and conclude the user
+   * does not exist. Moving search server-side is the change that would let
+   * this fetch one page, and it is not this one.
+   *
+   * The page cap bounds the walk: a tenant beyond it returns what was fetched
+   * rather than looping indefinitely.
+   */
+  listAllUsers: async (maxPages = 40): Promise<OrgUserSummary[]> => {
+    const all: OrgUserSummary[] = [];
+    let offset = 0;
+    for (let page = 0; page < maxPages; page++) {
+      const res = await adminApi.listUsers({ limit: ORG_USER_MAX_PAGE_SIZE, offset });
+      all.push(...res.items);
+      offset += res.limit;
+      if (all.length >= res.total || res.items.length === 0) break;
+    }
+    return all;
+  },
   createUser: (body: CreateOrgUserInput) =>
     api.post<OrgUserSummary>("/admin/users", body),
   deleteUser: (userId: string, confirmEmail: string) =>

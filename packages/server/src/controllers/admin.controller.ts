@@ -4,7 +4,7 @@ import { ApiError } from "../utils/errors";
 import { listOrgUsersForAdmin, createOrgUser, deleteUserAccount } from "../services/admin.service";
 import { listAuditLogs } from "../services/audit.service";
 import { sendOrgBroadcast } from "../services/org-broadcast.service";
-import { AuditLogQuerySchema, type OrgBroadcastInput } from "@application/shared";
+import { AuditLogQuerySchema, OrgUserQuerySchema, type OrgBroadcastInput } from "@application/shared";
 
 const requireOrgId = (organizationId: string | null | undefined): string => {
   if (!organizationId) throw ApiError.unauthorized("No organization");
@@ -17,8 +17,12 @@ const requireOrgId = (organizationId: string | null | undefined): string => {
 export const listOrgUsers: RequestHandler = async (req, res, next) => {
   try {
     const orgId = requireOrgId(req.user?.organizationId);
-    const users = await listOrgUsersForAdmin(orgId);
-    res.json({ items: users });
+    // Parsed here rather than by validate(..., "query") — Express 5 exposes
+    // req.query through a getter that re-derives the object, so the
+    // middleware's assignment is silently discarded. See middleware/validate.ts.
+    const query = OrgUserQuerySchema.parse(req.query);
+    const page = await listOrgUsersForAdmin(orgId, query);
+    res.json(page);
   } catch (err) {
     next(err);
   }

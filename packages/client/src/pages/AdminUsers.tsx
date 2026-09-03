@@ -45,10 +45,10 @@ export const AdminUsers = () => {
     setLoading(true);
     try {
       const [usersRes, assignmentsRes] = await Promise.all([
-        adminApi.listUsers(),
+        adminApi.listAllUsers(),
         eventAssignmentsApi.listAssignments(),
       ]);
-      setUsers(usersRes.items);
+      setUsers(usersRes);
       setAssignments(assignmentsRes.items);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Failed to load users");
