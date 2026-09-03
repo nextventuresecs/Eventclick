@@ -163,7 +163,7 @@ jobs:
       # never go green is a gate someone deletes. This fails on findings that
       # are actually actionable — ones with a fixed version to move to.
       - name: Scan server image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ needs.build.outputs.server_image }}:${{ needs.build.outputs.sha_short }}
           format: table
@@ -173,7 +173,7 @@ jobs:
           severity: 'HIGH,CRITICAL'
 
       - name: Scan client image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ needs.build.outputs.client_image }}:${{ needs.build.outputs.sha_short }}
           format: table
