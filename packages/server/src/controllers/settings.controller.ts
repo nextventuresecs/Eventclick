@@ -66,10 +66,10 @@ export const updatePreferences: RequestHandler = async (req, res, next) => {
 export const presignOrganizationLogo: RequestHandler = async (req, res, next) => {
   try {
     if (!req.user || !req.user.organizationId) throw ApiError.unauthorized();
-    const { contentType } = req.body as BrandingUploadRequestInput;
+    const { contentType, sizeBytes } = req.body as BrandingUploadRequestInput;
 
     const key = buildOrgLogoKey(req.user.organizationId, contentType);
-    const { uploadUrl, expiresIn } = await createPresignedPut(key, contentType);
+    const { uploadUrl, expiresIn } = await createPresignedPut(key, contentType, sizeBytes);
 
     const body: PhotoUploadResponse = {
       uploadUrl,
@@ -86,10 +86,10 @@ export const presignOrganizationLogo: RequestHandler = async (req, res, next) =>
 export const presignUserAvatar: RequestHandler = async (req, res, next) => {
   try {
     if (!req.user) throw ApiError.unauthorized();
-    const { contentType } = req.body as BrandingUploadRequestInput;
+    const { contentType, sizeBytes } = req.body as BrandingUploadRequestInput;
 
     const key = buildUserAvatarKey(req.user.id, contentType);
-    const { uploadUrl, expiresIn } = await createPresignedPut(key, contentType);
+    const { uploadUrl, expiresIn } = await createPresignedPut(key, contentType, sizeBytes);
 
     const body: PhotoUploadResponse = {
       uploadUrl,
