@@ -11,30 +11,11 @@ import {
   ChangePasswordSchema,
   SetPasswordSchema,
 } from "@application/shared";
-import RedisStore from "rate-limit-redis";
-import { redisClient } from "../config/redis";
 import { env } from "../config/env";
-import { ApiError } from "../utils/errors";
+import { createFailClosedStore } from "../middleware/rateLimitStore";
 import { validate } from "../middleware/validate";
 import { requireAuth } from "../middleware/requireAuth";
 import * as authController from "../controllers/auth.controller";
-
-const createFailClosedStore = (prefix: string) =>
-  new RedisStore({
-    prefix,
-    sendCommand: async (...args: string[]) => {
-      if (!redisClient.isOpen) {
-        if (args[0] === "SCRIPT" && args[1] === "LOAD") return "dummy_sha_fallback";
-        throw ApiError.internal("Rate limiter unavailable");
-      }
-      try {
-        return await redisClient.sendCommand(args);
-      } catch (err) {
-        if (String(err).includes("NOSCRIPT")) throw err;
-        throw ApiError.internal("Rate limiter unavailable");
-      }
-    },
-  });
 
 // Fixed, not derived from RATE_LIMIT_MAX. That variable tunes general API
 // throughput; "how many password guesses will we accept" is a policy decision,
