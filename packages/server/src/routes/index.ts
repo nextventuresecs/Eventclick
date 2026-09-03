@@ -11,16 +11,27 @@ import { env } from "../config/env";
 import { signAccessToken, verifyAccessToken } from "../services/jwt.service";
 import { s3 } from "../services/storage.service";
 import { HeadBucketCommand } from "@aws-sdk/client-s3";
-import { metricsRegistry, metricsMiddleware } from "../services/metrics.service";
+import { metricsMiddleware, renderMetrics, metricsContentType } from "../services/metrics.service";
 import { logger } from "../utils/logger";
 import { checkSchemaInvariants } from "../services/schema-health.service";
 
 export const apiRouter = Router();
 
-// Prometheus metrics endpoint
-apiRouter.get("/metrics", (_req, res) => {
-  res.set("Content-Type", "text/plain; version=0.0.4");
-  res.send(metricsRegistry.toPrometheus());
+// Prometheus metrics endpoint.
+//
+// Reachable only from inside the Docker network: nginx denies
+// /api/v1/metrics at the edge (see packages/client/common.conf), so a scraper
+// running alongside the server can read it while the public internet cannot.
+// Left unauthenticated on that basis — if the endpoint is ever exposed
+// publicly, it needs a credential, because it reveals route names, traffic
+// volumes and error rates.
+apiRouter.get("/metrics", async (_req, res, next) => {
+  try {
+    res.set("Content-Type", metricsContentType);
+    res.send(await renderMetrics());
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Lightweight liveness probe (is the process alive?)

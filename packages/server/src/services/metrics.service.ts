@@ -1,130 +1,99 @@
-type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
-type RouteKey = `${HttpMethod} ${string}`;
+import type { NextFunction, Request, Response } from "express";
+import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 
-interface RequestMetrics {
-  count: number;
-  errors: number;
-  latencyMsSum: number;
-  latencyMsMax: number;
-}
+/**
+ * Prometheus metrics.
+ *
+ * This replaces a hand-written registry that reported a latency **sum and
+ * max**, from which no percentile can be computed — and p95/p99 are the only
+ * latency numbers worth alerting on. It also keyed its series on a regex-
+ * normalised URL, so any path shape the normaliser missed became a permanent
+ * map entry: an unbounded, in-process, per-container series count.
+ *
+ * Three things change as a result:
+ *   - latency is a histogram, so percentiles are computable at query time;
+ *   - labels come from Express's **matched route pattern**, so cardinality is
+ *     bounded by the number of routes rather than by the number of distinct
+ *     URLs anyone chooses to request;
+ *   - default process metrics (memory, event-loop lag, GC) come from the
+ *     library rather than being reimplemented badly.
+ */
+export const registry = new Registry();
 
-class MetricsRegistry {
-  private requests = new Map<string, RequestMetrics>();
-  private activeConnections = 0;
-  private startTime = Date.now();
+collectDefaultMetrics({ register: registry });
 
-  recordRequest(method: string, url: string, statusCode: number, latencyMs: number): void {
-    const path = this.normalizePath(url);
-    const key = `${method} ${path}` as RouteKey;
+/**
+ * Buckets in seconds, the Prometheus convention. Chosen around this app's
+ * shape: most API calls are tens of milliseconds, PDF generation and report
+ * queries are the slow tail, and anything past 10s is already a failure the
+ * request timeout will end.
+ */
+const LATENCY_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
 
-    let metrics = this.requests.get(key);
-    if (!metrics) {
-      metrics = { count: 0, errors: 0, latencyMsSum: 0, latencyMsMax: 0 };
-      this.requests.set(key, metrics);
-    }
+export const httpRequestDuration = new Histogram({
+  name: "http_request_duration_seconds",
+  help: "HTTP request duration in seconds",
+  labelNames: ["method", "route", "status_code"] as const,
+  buckets: LATENCY_BUCKETS,
+  registers: [registry],
+});
 
-    metrics.count++;
-    metrics.latencyMsSum += latencyMs;
-    metrics.latencyMsMax = Math.max(metrics.latencyMsMax, latencyMs);
+export const httpRequestsTotal = new Counter({
+  name: "http_requests_total",
+  help: "Total HTTP requests",
+  labelNames: ["method", "route", "status_code"] as const,
+  registers: [registry],
+});
 
-    if (statusCode >= 500) {
-      metrics.errors++;
-    }
-  }
+export const httpActiveConnections = new Gauge({
+  name: "http_active_connections",
+  help: "In-flight HTTP requests",
+  registers: [registry],
+});
 
-  incrementActiveConnections(): void {
-    this.activeConnections++;
-  }
+/**
+ * The single label value every unmatched path collapses to.
+ *
+ * This is the cardinality guard. Express only populates `req.route` when a
+ * handler matched, so 404s — including a scanner walking thousands of
+ * generated URLs — all land here instead of minting a series each. The old
+ * registry had no such floor: it normalised what it recognised and kept
+ * everything else verbatim, forever.
+ */
+export const UNMATCHED_ROUTE = "unmatched";
 
-  decrementActiveConnections(): void {
-    this.activeConnections--;
-  }
+/**
+ * The matched route pattern, e.g. "/api/v1/rooms/:id/start" — not the URL that
+ * was requested. `req.route` is only set after routing, which is why this is
+ * read on `finish` rather than when the request arrives.
+ */
+export const routeLabel = (req: Request): string => {
+  const routePath = (req as Request & { route?: { path?: string } }).route?.path;
+  if (!routePath) return UNMATCHED_ROUTE;
 
-  getActiveConnections(): number {
-    return this.activeConnections;
-  }
+  const base = req.baseUrl ?? "";
+  const combined = `${base}${routePath === "/" ? "" : routePath}`;
+  return combined || "/";
+};
 
-  getUptimeSeconds(): number {
-    return Math.floor((Date.now() - this.startTime) / 1000);
-  }
-
-  toPrometheus(): string {
-    const lines: string[] = [];
-
-    lines.push("# HELP http_requests_total Total HTTP requests");
-    lines.push("# TYPE http_requests_total counter");
-    for (const [key, metrics] of this.requests) {
-      lines.push(`http_requests_total{method="${key.split(" ")[0]}",path="${key.split(" ")[1]}"} ${metrics.count}`);
-    }
-
-    lines.push("");
-    lines.push("# HELP http_request_errors_total Total HTTP 5xx errors");
-    lines.push("# TYPE http_request_errors_total counter");
-    for (const [key, metrics] of this.requests) {
-      if (metrics.errors > 0) {
-        lines.push(`http_request_errors_total{method="${key.split(" ")[0]}",path="${key.split(" ")[1]}"} ${metrics.errors}`);
-      }
-    }
-
-    lines.push("");
-    lines.push("# HELP http_request_duration_ms_sum Sum of request durations in ms");
-    lines.push("# TYPE http_request_duration_ms_sum counter");
-    for (const [key, metrics] of this.requests) {
-      lines.push(`http_request_duration_ms_sum{method="${key.split(" ")[0]}",path="${key.split(" ")[1]}"} ${metrics.latencyMsSum}`);
-    }
-
-    lines.push("");
-    lines.push("# HELP http_request_duration_ms_max Max request duration in ms");
-    lines.push("# TYPE http_request_duration_ms_max gauge");
-    for (const [key, metrics] of this.requests) {
-      lines.push(`http_request_duration_ms_max{method="${key.split(" ")[0]}",path="${key.split(" ")[1]}"} ${metrics.latencyMsMax}`);
-    }
-
-    lines.push("");
-    lines.push("# HELP http_active_connections Current active connections");
-    lines.push("# TYPE http_active_connections gauge");
-    lines.push(`http_active_connections ${this.activeConnections}`);
-
-    lines.push("");
-    lines.push("# HELP process_uptime_seconds Process uptime in seconds");
-    lines.push("# TYPE process_uptime_seconds gauge");
-    lines.push(`process_uptime_seconds ${this.getUptimeSeconds()}`);
-
-    return lines.join("\n") + "\n";
-  }
-
-  private normalizePath(url: string): string {
-    try {
-      const urlObj = new URL(url, "http://localhost");
-      let path = urlObj.pathname;
-
-      path = path.replace(new RegExp("^/api/v1/rooms/[^/]+$"), "/api/v1/rooms/:id");
-      path = path.replace(new RegExp("^/api/v1/users/[^/]+$"), "/api/v1/users/:id");
-      path = path.replace(new RegExp("^/api/v1/organizations/[^/]+$"), "/api/v1/organizations/:id");
-      path = path.replace(new RegExp("^/api/v1/reports/[^/]+/pdf$"), "/api/v1/reports/:id/pdf");
-      path = path.replace(new RegExp("^/api/v1/reports/[^/]+/status/[^/]+$"), "/api/v1/reports/:id/status/:jobId");
-      path = path.replace(/\/[a-f0-9-]{36}/g, "/:uuid");
-      path = path.replace(/\/\d+/g, "/:id");
-
-      return path || "/";
-    } catch {
-      return "/";
-    }
-  }
-}
-
-export const metricsRegistry = new MetricsRegistry();
-
-export const metricsMiddleware = (req: any, res: any, next: any): void => {
-  metricsRegistry.incrementActiveConnections();
-
-  const start = Date.now();
+export const metricsMiddleware = (req: Request, res: Response, next: NextFunction): void => {
+  httpActiveConnections.inc();
+  const stopTimer = httpRequestDuration.startTimer();
 
   res.on("finish", () => {
-    const latencyMs = Date.now() - start;
-    metricsRegistry.recordRequest(req.method, req.originalUrl, res.statusCode, latencyMs);
-    metricsRegistry.decrementActiveConnections();
+    const labels = {
+      method: req.method,
+      route: routeLabel(req),
+      status_code: String(res.statusCode),
+    };
+    stopTimer(labels);
+    httpRequestsTotal.inc(labels);
+    httpActiveConnections.dec();
   });
 
   next();
 };
+
+export const renderMetrics = async (): Promise<string> => registry.metrics();
+
+export const metricsContentType = registry.contentType;
