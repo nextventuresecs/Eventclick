@@ -47,8 +47,20 @@ jobs:
 
       - run: npm run build
 
+      # Blocking, deliberately. This step carried `continue-on-error: true`,
+      # which turned a high-severity advisory into an orange tick that the
+      # pipeline walked straight past on its way to deploying. A gate that
+      # cannot fail is a report, not a gate.
+      #
+      # The three high-severity advisories that existed when this was turned
+      # on (brace-expansion, fast-uri, nanoid) were resolved via `npm audit
+      # fix` first — turning the gate on over a known-failing tree would just
+      # have produced a red pipeline someone reverts.
+      #
+      # Moderates stay below the threshold: the remaining four are in
+      # esbuild/drizzle-kit build tooling that never runs in production, and
+      # clearing them needs a breaking `npm audit fix --force`.
       - run: npm audit --audit-level=high
-        continue-on-error: true
 
   unit-tests:
     name: Unit and Integration Tests
