@@ -1,0 +1,147 @@
+name: Uptime Check
+
+# ─────────────────────────────────────────────────────────────────────────────
+# An availability check that runs OUTSIDE the production instance.
+#
+# The pre-existing scripts/health-monitor.sh runs on the box it monitors, so
+# the one failure it cannot report is the one that matters most: the instance
+# going down takes the alerting with it. This workflow runs on GitHub's
+# infrastructure, so it survives the instance dying — which is the whole point.
+#
+# Why SSM rather than curling the public URL: Cloudflare Bot Fight Mode blocks
+# plain automated requests, so a curl-based check would alert on bot
+# protection rather than on downtime. deploy.yml hit exactly this and works
+# around it the same way (see "Verify Origin Health via SSM"). SSM also gives
+# the right failure semantics for free — if the instance is gone, the command
+# cannot be delivered and the check fails.
+#
+# Alerting: a failed run notifies repo watchers through GitHub, and sends mail
+# via Resend when UPTIME_ALERT_EMAIL is configured.
+#
+# Runbook: docs/runbooks/uptime-alert.md
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  schedule:
+    # Every 5 minutes — GitHub's shortest supported interval. Note that
+    # scheduled workflows are best-effort and can be delayed under load, so
+    # treat time-to-alert as "usually ~5 minutes, occasionally longer". If
+    # that ceases to be good enough, the answer is a hosted uptime service
+    # probing every 30s, not a shorter cron here.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  # Never stack checks: a slow run must not overlap the next scheduled one.
+  group: uptime-check
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Probe production origin
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Probe /ready on the origin via SSM
+        id: probe
+        run: |
+          set -uo pipefail
+          INSTANCE_ID="${{ secrets.EC2_INSTANCE_ID }}"
+
+          # /ready, not /health: health only says the process is alive, while
+          # ready checks the database and Redis it cannot serve traffic
+          # without. A process that is up but cannot reach Postgres is down
+          # from a user's point of view, and this check should agree with the
+          # user.
+          probe_once() {
+            CMD_ID=$(aws ssm send-command \
+              --instance-ids "$INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --timeout-seconds 30 \
+              --parameters '{"commands":["docker exec eventclick_server_prod wget -qO- http://localhost:4000/api/v1/ready"]}' \
+              --query "Command.CommandId" \
+              --output text 2>/dev/null) || return 1
+
+            for _ in $(seq 1 8); do
+              sleep 5
+              STATUS=$(aws ssm get-command-invocation \
+                --command-id "$CMD_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "Status" \
+                --output text 2>/dev/null || echo "Pending")
+
+              case "$STATUS" in
+                Success)
+                  aws ssm get-command-invocation \
+                    --command-id "$CMD_ID" \
+                    --instance-id "$INSTANCE_ID" \
+                    --query "StandardOutputContent" \
+                    --output text
+                  return 0
+                  ;;
+                Failed|TimedOut|Cancelled)
+                  return 1
+                  ;;
+              esac
+            done
+            return 1
+          }
+
+          # Two attempts, so a single dropped SSM message or a container
+          # restarting mid-deploy does not page anyone. A real outage fails
+          # both.
+          for ATTEMPT in 1 2; do
+            echo "--- probe attempt ${ATTEMPT}/2 ---"
+            if BODY=$(probe_once); then
+              echo "Response: ${BODY}"
+              echo "✅ origin is ready"
+              exit 0
+            fi
+            echo "attempt ${ATTEMPT} failed"
+            [ "$ATTEMPT" = "1" ] && sleep 20
+          done
+
+          echo "❌ origin did not answer /ready on two consecutive attempts"
+          exit 1
+
+      - name: Send email alert
+        # Runs only when the probe failed. Skipped silently when no alert
+        # address is configured, so the workflow still fails loudly through
+        # GitHub notifications alone.
+        if: failure() && steps.probe.outcome == 'failure'
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          ALERT_EMAIL: ${{ secrets.UPTIME_ALERT_EMAIL }}
+          FROM_EMAIL: ${{ vars.RESEND_FROM_EMAIL || 'noreply@eventclick.live' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          if [ -z "${RESEND_API_KEY:-}" ] || [ -z "${ALERT_EMAIL:-}" ]; then
+            echo "RESEND_API_KEY or UPTIME_ALERT_EMAIL not set — skipping email, GitHub notification still applies"
+            exit 0
+          fi
+
+          curl -sS -X POST "https://api.resend.com/emails" \
+            -H "Authorization: Bearer ${RESEND_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg from "$FROM_EMAIL" \
+              --arg to "$ALERT_EMAIL" \
+              --arg url "$RUN_URL" \
+              '{
+                from: $from,
+                to: [$to],
+                subject: "[Eventclick] Production origin failed its uptime check",
+                text: ("The production origin did not answer /api/v1/ready on two consecutive attempts.\n\nRun: " + $url + "\n\nFirst response step: docs/runbooks/uptime-alert.md")
+              }')" \
+            && echo "alert email sent"
