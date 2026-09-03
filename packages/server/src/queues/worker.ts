@@ -7,6 +7,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
 import { generateVerificationReportPdf } from "../services/report.service";
+import { PDF_ASYNC_RENDER_TIMEOUT_MS } from "../config/constants";
 import { findUserById } from "../services/auth";
 import { db } from "../db";
 import { runInBackgroundTenantContext } from "../db/backgroundTenantContext";
@@ -27,7 +28,6 @@ import { sqsClient } from "./sqs.client";
 const VISIBILITY_TIMEOUT_SECONDS = 300;
 const MAX_RECEIVE_WAIT = 20;
 const MAX_MESSAGES = 5;
-const PDF_GENERATION_TIMEOUT_MS = 120_000;
 const VISIBILITY_HEARTBEAT_INTERVAL_MS = 60_000;
 
 function sleep(ms: number): Promise<void> {
@@ -200,13 +200,19 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
 
     logger.info({ roomId, orgId, userId, jobId, event: "sqs.pdf_started" }, "Processing generate_pdf job");
 
-    // 3. Generate PDF with timeout
-    const pdfBuffer = await Promise.race([
-      generateVerificationReportPdf(roomId, orgId, user),
-      new Promise<Buffer>((_, reject) =>
-        setTimeout(() => reject(new Error("PDF generation timed out")), PDF_GENERATION_TIMEOUT_MS),
-      ),
-    ]);
+    // 3. Generate PDF with a deadline the renderer actually honours.
+    //
+    // This was a Promise.race against a timer, which rejected the outer
+    // promise while leaving the fetch to Gotenberg running — the render
+    // carried on producing a PDF nobody would collect, occupying a renderer
+    // queue that is small enough for that to matter. Passing the deadline
+    // into the service aborts the request itself.
+    //
+    // No enclosing HTTP request here, so this keeps the generous deadline: a
+    // large report legitimately takes longer than a request should.
+    const pdfBuffer = await generateVerificationReportPdf(roomId, orgId, user, {
+      timeoutMs: PDF_ASYNC_RENDER_TIMEOUT_MS,
+    });
     logger.info(
       { roomId, size: pdfBuffer.length, jobId, durationMs: Date.now() - startedAt, event: "sqs.pdf_generated" },
       "PDF generated successfully",
