@@ -7,6 +7,7 @@ import { eventRooms, organizations, attendanceEntries, activitySubmissions, acti
 import { ApiError } from "../utils/errors";
 import { env } from "../config/env";
 import { assertRoomAccessForUser } from "./event-assignment.service";
+import { logger } from "../utils/logger";
 
 /**
  * Calculates human-readable fieldwork run-time.
@@ -167,7 +168,11 @@ export const generateVerificationReportPdf = async (
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
   } catch (error: any) {
-    console.error("PDF generation failed via Gotenberg:", error);
+    // Structured, not console.error: the production logger emits JSON, so a
+    // bare console line is unparseable by log aggregation and carries no
+    // level, service or redaction. roomId is what is available here — this
+    // service has no request-scoped logger (see #82 for request-id tagging).
+    logger.error({ err: error, roomId, gotenbergUrl }, "PDF generation failed via Gotenberg");
     throw ApiError.internal(`PDF generation failed: ${error.message || error}`);
   }
 };
