@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { PoolClient } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { API_PREFIX } from "@application/shared";
 import { pool, tenantContextStorage } from "../db";
 import { ApiError } from "../utils/errors";
 
@@ -81,6 +82,36 @@ export async function runInTenantContext(
 }
 
 /**
+ * Routes that must never pin a pooled connection, because their response does
+ * not end: `runInTenantContext` releases its client on `res.on("finish")`, and
+ * a stream never finishes. One open browser tab would hold one connection —
+ * and one open transaction, which also blocks autovacuum — for as long as the
+ * tab stays open, so ~10 tabs exhaust the default pool (DB_POOL_MAX = 10) and
+ * every other request then waits for a connection that is not coming back.
+ *
+ * Raising the pool size is not the fix; it only moves the cliff.
+ *
+ * ⚠️ A handler on this list runs with NO tenant context. `app.current_tenant`
+ * is unset, so any RLS-scoped query it makes matches **zero rows silently** —
+ * no error, no exception, just empty results. If you add a database read to
+ * one of these handlers, either fetch it in a normal request before the
+ * stream opens, or wrap it in `runInBackgroundTenantContext(orgId, userId, fn)`
+ * from `db/backgroundTenantContext.ts`.
+ *
+ * Full paths, matched against `req.path` — this middleware is app-level, so it
+ * sees the API prefix. Keep in sync with the route declarations; the
+ * accompanying test asserts each entry still resolves to a mounted route.
+ */
+export const TENANT_CONTEXT_EXEMPT_PATHS: readonly string[] = [
+  // GET /notifications/stream — SSE. Needs req.user.id (attachUser has already
+  // set it) and Redis pub/sub, and runs no database query at all.
+  `${API_PREFIX}/notifications/stream`,
+];
+
+export const isTenantContextExempt = (path: string): boolean =>
+  TENANT_CONTEXT_EXEMPT_PATHS.includes(path);
+
+/**
  * Tenant context for authenticated requests. Depends on `attachUser` having
  * populated req.user earlier in the app-level chain — `requireAuth` runs later,
  * inside the routers, which is too late for this middleware.
@@ -88,6 +119,9 @@ export async function runInTenantContext(
 export async function setTenantContext(req: Request, res: Response, next: NextFunction): Promise<void> {
   const orgId = req.user?.organizationId;
   if (!orgId) return next();
+
+  // Checked before acquiring anything — see TENANT_CONTEXT_EXEMPT_PATHS.
+  if (isTenantContextExempt(req.path)) return next();
 
   return runInTenantContext(req, res, next, orgId, req.user?.id ?? "");
 }

@@ -41,7 +41,20 @@ export const markAllNotificationsRead = async (req: Request, res: Response) => {
 };
 
 /**
- * Server-Sent Events (SSE) endpoint for real-time notifications
+ * Server-Sent Events (SSE) endpoint for real-time notifications.
+ *
+ * ⚠️ This handler is exempt from tenant context — see
+ * TENANT_CONTEXT_EXEMPT_PATHS in middleware/tenantContext.ts. The exemption
+ * exists because the response never finishes, and the tenant middleware
+ * releases its pooled connection only on `res.on("finish")`: without it, one
+ * open tab holds one connection (inside an open transaction, which also
+ * blocks autovacuum) for hours, and ~10 tabs exhaust the pool.
+ *
+ * The consequence: there is no `app.current_tenant` here. Any RLS-scoped
+ * query added below returns **zero rows, silently** — no error to notice.
+ * If this handler ever needs data (an unread count on connect, say), either
+ * fetch it in a normal request or wrap it in
+ * `runInBackgroundTenantContext(orgId, userId, fn)`.
  */
 export const streamNotifications = async (req: Request, res: Response) => {
   const userId = req.user!.id;
