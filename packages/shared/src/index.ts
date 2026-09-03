@@ -470,6 +470,13 @@ export type SubmitActivityPhotoInput = z.infer<
   typeof SubmitActivityPhotoSchema
 >;
 
+// ─── Upload limits ──────────────────────────────────────────
+// One value, used by every upload schema AND by the server's presigner
+// (services/storage.service.ts signs Content-Length against it). Previously
+// `5 * 1024 * 1024` was written out in three schemas and a fourth constant,
+// so "the limit" was four numbers that happened to agree.
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
 export const ActivityPhotoUploadRequestSchema = z.object({
   activityId: z.string().min(1),
   contentType: z
@@ -479,7 +486,7 @@ export const ActivityPhotoUploadRequestSchema = z.object({
     .number()
     .int()
     .positive()
-    .max(5 * 1024 * 1024),
+    .max(MAX_UPLOAD_BYTES),
 });
 export type ActivityPhotoUploadRequestInput = z.infer<
   typeof ActivityPhotoUploadRequestSchema
@@ -781,7 +788,7 @@ export const PhotoUploadRequestSchema = z.object({
     .number()
     .int()
     .positive()
-    .max(5 * 1024 * 1024),
+    .max(MAX_UPLOAD_BYTES),
 });
 export type PhotoUploadRequestInput = z.infer<typeof PhotoUploadRequestSchema>;
 
@@ -872,8 +879,10 @@ export const BrandingUploadRequestSchema = z.object({
     .number()
     .int()
     .positive()
-    .max(5 * 1024 * 1024, "Image must be 5MB or smaller"),
+    .max(MAX_UPLOAD_BYTES, "Image must be 5MB or smaller"),
 });
 export type BrandingUploadRequestInput = z.infer<typeof BrandingUploadRequestSchema>;
-export const MAX_BRANDING_UPLOAD_BYTES = 5 * 1024 * 1024;
+// Kept as the name the client already imports; the value now comes from the
+// single upload limit above rather than being a second copy of it.
+export const MAX_BRANDING_UPLOAD_BYTES = MAX_UPLOAD_BYTES;
 export const BRANDING_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;

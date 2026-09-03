@@ -62,7 +62,7 @@ export const presignActivityPhoto = async (
   }
 
   const key = buildActivityPhotoKey(roomId, input.activityId);
-  const { uploadUrl, expiresIn } = await createPresignedPut(key, input.contentType);
+  const { uploadUrl, expiresIn } = await createPresignedPut(key, input.contentType, input.sizeBytes);
   const publicUrl = buildPublicUrl(key);
 
   return { uploadUrl, key, publicUrl, expiresIn };

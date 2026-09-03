@@ -26,14 +26,14 @@ export const presignAttendancePhoto: RequestHandler = async (req, res, next) => 
   try {
     const orgId = requireOrgId(req.user!.organizationId);
     const roomId = req.params.id as string;
-    const { contentType } = req.body as PhotoUploadRequestInput;
+    const { contentType, sizeBytes } = req.body as PhotoUploadRequestInput;
 
     // Verify the user's org owns the room before issuing a presigned URL
     await assertRoomInOrg(roomId, orgId);
     await assertRoomAccessForUser(req.user!, orgId, roomId);
 
     const key = buildPhotoKey(roomId, contentType);
-    const { uploadUrl, expiresIn } = await createPresignedPut(key, contentType);
+    const { uploadUrl, expiresIn } = await createPresignedPut(key, contentType, sizeBytes);
     const publicUrl = buildPublicUrl(key);
 
     const body: PhotoUploadResponse = { uploadUrl, key, publicUrl, expiresIn };

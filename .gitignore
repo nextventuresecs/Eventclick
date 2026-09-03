@@ -20,3 +20,5 @@ scratch/
 .auth/
 .env.backup.original
 .agents/
+# Playwright run artifacts — regenerated on every local run, never reviewed
+packages/e2e/test-results/
