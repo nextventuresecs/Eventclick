@@ -127,6 +127,15 @@ const EnvSchema = z.object({
 
   // ─── Observability (optional) ──────────────────────
   SENTRY_SERVER_DSN: z.string().optional(),
+  // Sampling is environment policy, not a code constant: production runs on a
+  // two-vCPU box that also hosts Postgres, Redis and the PDF renderer, so it
+  // cannot afford the tracing and profiling that are useful in development.
+  // Defaults are applied per NODE_ENV in instrument.ts when these are unset.
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional(),
+  SENTRY_PROFILES_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional(),
+  // The deployed image tag, so an issue can be attributed to the deploy that
+  // introduced it. Supplied as IMAGE_TAG by scripts/deploy.sh.
+  SENTRY_RELEASE: z.string().optional(),
 
   // ─── Web Push (optional — push is disabled if unset) ─────
   VAPID_PUBLIC_KEY: z.string().optional(),
