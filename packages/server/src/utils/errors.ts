@@ -27,4 +27,13 @@ export class ApiError extends Error {
   static internal(message = "Internal server error") {
     return new ApiError(500, "INTERNAL", message);
   }
+  /**
+   * An upstream this service depends on did not answer in time. Distinct from
+   * `internal` on purpose: the caller can tell "the renderer is slow, retry"
+   * from "the report could not be built", and a 504 is retryable in a way a
+   * 500 is not.
+   */
+  static gatewayTimeout(message = "Upstream service timed out") {
+    return new ApiError(504, "GATEWAY_TIMEOUT", message);
+  }
 }

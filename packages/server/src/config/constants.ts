@@ -40,3 +40,19 @@ export const DATA_RETENTION_POLL_MS = 24 * 60 * 60 * 1000;
 // other queries get a look in between them — the first real run faces every
 // row older than the retention period that has ever accumulated.
 export const DATA_RETENTION_BATCH_SIZE = 1_000;
+
+// ─── PDF rendering deadlines (services/report.service.ts) ──────────────────
+// Gotenberg had a fixed 120s abort deadline while the HTTP server closes any
+// request after SERVER_REQUEST_TIMEOUT_MS (30s by default). On the synchronous
+// download path the request was therefore ALWAYS killed first, while the
+// renderer carried on producing output nobody was waiting for — and its queue
+// is small, so that orphaned work crowded out live requests.
+//
+// The margin is what makes the inner deadline fire first: the renderer aborts,
+// the handler turns that into a real 504, and the caller learns why instead of
+// watching the connection close. Sized to leave room for the response itself
+// to be written after the abort.
+export const PDF_SYNC_RENDER_MARGIN_MS = 5_000;
+// The async worker has no HTTP request bounding it, so it keeps the generous
+// deadline — a large report legitimately takes longer than a request should.
+export const PDF_ASYNC_RENDER_TIMEOUT_MS = 120_000;

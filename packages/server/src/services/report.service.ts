@@ -6,6 +6,7 @@ import { db } from "../db";
 import { eventRooms, organizations, attendanceEntries, activitySubmissions, activityPhotos } from "../db/schema";
 import { ApiError } from "../utils/errors";
 import { env } from "../config/env";
+import { PDF_ASYNC_RENDER_TIMEOUT_MS } from "../config/constants";
 import { assertRoomAccessForUser } from "./event-assignment.service";
 import { logger } from "../utils/logger";
 
@@ -43,10 +44,27 @@ const formatDuration = (start: Date | null, end: Date | null, status: string): s
 /**
  * Generates objective fieldwork verification PDF report buffer using Gotenberg.
  */
+export interface PdfRenderOptions {
+  /**
+   * How long to give the renderer. Must be shorter than any enclosing request
+   * timeout, or the request dies first and the renderer keeps working on
+   * output nobody is waiting for. Defaults to the async worker's deadline,
+   * since that path has no HTTP request bounding it.
+   */
+  timeoutMs?: number;
+  /**
+   * Aborts the render when the caller goes away — a client that disconnects
+   * mid-download should not leave Gotenberg rendering a report nobody will
+   * receive. Its queue is small, so orphaned work crowds out live requests.
+   */
+  signal?: AbortSignal;
+}
+
 export const generateVerificationReportPdf = async (
   roomId: string,
   orgId: string,
   user: { id: string; role: UserRole; organizationId: string | null },
+  options: PdfRenderOptions = {},
 ): Promise<Buffer> => {
   // 1. Fetch Room details
   const [room] = await db
@@ -148,17 +166,26 @@ export const generateVerificationReportPdf = async (
 
   const gotenbergUrl = `${env.GOTENBERG_URL.replace(/\/+$/, "")}/forms/chromium/convert/html`;
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120_000);
+  const timeoutMs = options.timeoutMs ?? PDF_ASYNC_RENDER_TIMEOUT_MS;
 
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  // Caller went away (client disconnected, request already closed): stop
+  // rendering rather than finish a report nobody will receive.
+  const onCallerAbort = () => controller.abort();
+  options.signal?.addEventListener("abort", onCallerAbort, { once: true });
+
+  try {
     const response = await fetch(gotenbergUrl, {
       method: "POST",
       body: formData,
       signal: controller.signal,
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "Unknown error");
@@ -172,7 +199,27 @@ export const generateVerificationReportPdf = async (
     // bare console line is unparseable by log aggregation and carries no
     // level, service or redaction. roomId is what is available here — this
     // service has no request-scoped logger (see #82 for request-id tagging).
-    logger.error({ err: error, roomId, gotenbergUrl }, "PDF generation failed via Gotenberg");
+    logger.error({ err: error, roomId, gotenbergUrl, timeoutMs, timedOut }, "PDF generation failed via Gotenberg");
+
+    // A hung renderer gets a status of its own rather than a generic 500: the
+    // caller can tell "the renderer did not answer in time" from "the report
+    // could not be built", and 504 is the accurate one for an upstream that
+    // ran out of time.
+    if (timedOut) {
+      throw ApiError.gatewayTimeout(
+        `Report rendering exceeded ${Math.round(timeoutMs / 1000)}s. Try again, or use the queued report if this event is large.`,
+      );
+    }
+
+    // Aborted without our timeout firing means the caller disconnected. Still
+    // an error for control flow, but not one anybody will read.
+    if (options.signal?.aborted) {
+      throw ApiError.internal("Report rendering cancelled — the request was abandoned");
+    }
+
     throw ApiError.internal(`PDF generation failed: ${error.message || error}`);
+  } finally {
+    clearTimeout(timeoutId);
+    options.signal?.removeEventListener("abort", onCallerAbort);
   }
 };
