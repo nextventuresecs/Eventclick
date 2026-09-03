@@ -4,6 +4,7 @@ import { ApiError } from "../utils/errors";
 import { generateVerificationReportPdf } from "../services/report.service";
 import { enqueuePdfJob } from "../queues/sqs.client";
 import { notifyReportGenerated } from "../services/report-notification.service";
+import { recordAuditSafely } from "../services/audit.service";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
 
@@ -48,6 +49,19 @@ export const downloadRoomReportPdf: RequestHandler = async (req, res, next) => {
       req.user!.id,
       req.user!.email ?? "A team member",
     ).catch((err) => logger.error({ err, roomId }, "REPORT_GENERATED fan-out failed"));
+
+    // Inside the request's own tenant context, like the fan-out above.
+    await recordAuditSafely({
+      organizationId: orgId,
+      actorUserId: req.user!.id,
+      actorEmail: req.user!.email,
+      action: "report.generated",
+      resourceType: "report",
+      resourceId: roomId,
+      newValues: { roomId, delivery: "inline_download" },
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent") ?? undefined,
+    });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(

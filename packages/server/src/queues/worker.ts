@@ -16,6 +16,7 @@ import { notificationService } from "../services/notification.service";
 import { s3, buildPublicUrl } from "../services/storage.service";
 import { dispatchEmail, attemptEmailDelivery } from "../services/email-delivery.service";
 import { notifyReportGenerated } from "../services/report-notification.service";
+import { recordAuditSafely } from "../services/audit.service";
 import { sqsClient } from "./sqs.client";
 
 // SQS client is now the single shared instance from sqs.client.ts.
@@ -262,6 +263,25 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
         await notifyReportGenerated(roomId, orgId, completedJob.id, userId, user.fullName ?? user.email ?? "A team member");
       }).catch((fanOutErr) => {
         logger.error({ err: fanOutErr, jobId, event: "sqs.report_generated_fanout_failed" }, "REPORT_GENERATED fan-out failed, but PDF is ready");
+      });
+
+      // Its own tenant context, for the same reason as every other write in
+      // this worker: there is no ambient request here, so `db` would fall back
+      // to the bare pool with no app.current_tenant set — and audit_logs'
+      // insert policy would reject the row. There is no request metadata to
+      // record, which is itself accurate: nobody was on the other end.
+      await runInBackgroundTenantContext(orgId, userId, async () => {
+        await recordAuditSafely({
+          organizationId: orgId,
+          actorUserId: userId,
+          actorEmail: user.email ?? undefined,
+          action: "report.generated",
+          resourceType: "report",
+          resourceId: roomId,
+          newValues: { roomId, jobId: completedJob.id, delivery: "async_worker" },
+        });
+      }).catch((auditErr) => {
+        logger.error({ err: auditErr, jobId, event: "sqs.report_audit_failed" }, "Failed to record report.generated audit entry");
       });
     }
 

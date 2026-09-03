@@ -14,6 +14,7 @@ import {
 import { notifyEventCancelledOrExpired } from "../../services/event-cancellation-notification.service";
 import { logger } from "../../utils/logger";
 import { requireOrgId, toEventRoom } from "./room-helpers";
+import { recordAuditSafely } from "../../services/audit.service";
 
 export const listRooms: RequestHandler = async (req, res, next) => {
   try {
@@ -110,6 +111,18 @@ export const createRoom: RequestHandler = async (req, res, next) => {
 
     if (!row) throw ApiError.internal("Failed to create room");
 
+    await recordAuditSafely({
+      organizationId: orgId,
+      actorUserId: req.user!.id,
+      actorEmail: req.user!.email,
+      action: "room.created",
+      resourceType: "room",
+      resourceId: row.id,
+      newValues: { title: row.title, scheduledStart: row.scheduledStart, scheduledEnd: row.scheduledEnd },
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent") ?? undefined,
+    });
+
     // Auto-assign the creator to the room if they need assignment-based access
     if (req.user!.role !== "admin") {
       await db
@@ -192,6 +205,21 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
       patch.cancellationReason = input.cancellationReason;
     }
 
+    // Read before writing so the audit entry can carry both sides. One extra
+    // scoped SELECT on an admin-rate path, which is the cost of "what did it
+    // used to say" being answerable at all.
+    const [before] = await db
+      .select({
+        title: eventRooms.title,
+        status: eventRooms.status,
+        scheduledStart: eventRooms.scheduledStart,
+        scheduledEnd: eventRooms.scheduledEnd,
+        cancellationReason: eventRooms.cancellationReason,
+      })
+      .from(eventRooms)
+      .where(and(eq(eventRooms.id, id), eq(eventRooms.organizationId, orgId), isNull(eventRooms.deletedAt)))
+      .limit(1);
+
     const [row] = await db
       .update(eventRooms)
       .set(patch)
@@ -205,6 +233,25 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
       .returning();
 
     if (!row) throw ApiError.notFound("Room not found");
+
+    await recordAuditSafely({
+      organizationId: orgId,
+      actorUserId: req.user!.id,
+      actorEmail: req.user!.email,
+      action: "room.updated",
+      resourceType: "room",
+      resourceId: row.id,
+      oldValues: before ? { ...before } : undefined,
+      newValues: {
+        title: row.title,
+        status: row.status,
+        scheduledStart: row.scheduledStart,
+        scheduledEnd: row.scheduledEnd,
+        cancellationReason: row.cancellationReason,
+      },
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent") ?? undefined,
+    });
 
     if (input.status === "cancelled") {
       // Atomic claim, same shape as startLive's EVENT_STARTED guard: only the
@@ -261,9 +308,25 @@ export const deleteRoom: RequestHandler = async (req, res, next) => {
           isNull(eventRooms.deletedAt),
         ),
       )
-      .returning({ id: eventRooms.id });
+      .returning({ id: eventRooms.id, title: eventRooms.title, status: eventRooms.status });
 
     if (!deleted) throw ApiError.notFound("Room not found");
+
+    // The row is soft-deleted, so the title survives in the table — but the
+    // audit entry is what stays readable once the retention job hard-deletes
+    // it (#93).
+    await recordAuditSafely({
+      organizationId: orgId,
+      actorUserId: req.user!.id,
+      actorEmail: req.user!.email,
+      action: "room.deleted",
+      resourceType: "room",
+      resourceId: deleted.id,
+      oldValues: { title: deleted.title, status: deleted.status },
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent") ?? undefined,
+    });
+
     res.status(204).end();
   } catch (err) {
     next(err);

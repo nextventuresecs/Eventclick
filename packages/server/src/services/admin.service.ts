@@ -10,7 +10,7 @@ import { users, orgMembers, emailVerifications, organizations } from "../db/sche
 import { ApiError } from "../utils/errors";
 import { dispatchEmail } from "./email-delivery.service";
 import { notificationService } from "./notification.service";
-import { recordAudit } from "./audit.service";
+import { recordAudit, recordAuditSafely } from "./audit.service";
 import { logger } from "../utils/logger";
 
 export type { CreateOrgUserInput };
@@ -157,6 +157,19 @@ export const createOrgUser = async (
   }
 
   await invalidateUserCache(newUser.id, newUser.email);
+
+  // No request metadata here: this is a service, and threading `req` through
+  // only for the audit entry would be worse than the gap it fills. The two
+  // existing call sites that do have a request pass ip/userAgent; this one
+  // records who and what, which is the part an auditor asks about.
+  await recordAuditSafely({
+    organizationId: orgId,
+    actorUserId: createdBy,
+    action: "user.created",
+    resourceType: "user",
+    resourceId: newUser.id,
+    newValues: { email: newUser.email, fullName: newUser.fullName, role: newUser.role },
+  });
 
   return toOrgUser(newUser);
 };

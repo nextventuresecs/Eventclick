@@ -16,6 +16,7 @@ import {
   createPresignedPut,
 } from "../services/storage.service";
 import { assertRoomAccessForUser } from "../services/event-assignment.service";
+import { recordAuditSafely } from "../services/audit.service";
 
 const requireOrgId = (organizationId: string | null): string => {
   if (!organizationId) throw ApiError.badRequest("User has no organization");
@@ -58,6 +59,21 @@ export const postAttendance: RequestHandler = async (req, res, next) => {
       ipAddress: req.ip,
       userAgent: req.get("user-agent") ?? undefined,
     });
+    // Attendance is the product's output, so its creation is the entry an
+    // auditor is most likely to ask for. The submitter is recorded as the
+    // actor; the entry id is the resource.
+    await recordAuditSafely({
+      organizationId: orgId,
+      actorUserId: req.user!.id,
+      actorEmail: req.user!.email,
+      action: "attendance.created",
+      resourceType: "attendance_entry",
+      resourceId: entry.id,
+      newValues: { roomId, entryId: entry.id },
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent") ?? undefined,
+    });
+
     res.status(201).json(entry);
   } catch (err) {
     next(err);

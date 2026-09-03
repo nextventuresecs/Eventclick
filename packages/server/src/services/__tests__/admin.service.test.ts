@@ -74,6 +74,8 @@ vi.mock("../auth", () => ({
 
 vi.mock("../audit.service", () => ({
   recordAudit: vi.fn().mockResolvedValue(undefined),
+  // createOrgUser records user.created through the non-throwing wrapper (#92).
+  recordAuditSafely: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { createOrgUser } from "../admin.service";
