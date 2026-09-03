@@ -1,6 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type {
-  ActivityDefinition,
   ActivitySubmission,
   SubmitActivityPhotoInput,
   ActivityPhotoUploadRequestInput,
@@ -271,13 +270,6 @@ export const validateActivityQuotas = async (
     return;
   }
 
-  const submissions = await db
-    .select()
-    .from(activitySubmissions)
-    .where(eq(activitySubmissions.roomId, roomId));
-
-  const submissionMap = new Map(submissions.map((s) => [s.activityId, s]));
-  
   const allPhotos = await db
     .select()
     .from(activityPhotos)

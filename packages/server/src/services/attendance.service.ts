@@ -18,7 +18,7 @@ import {
 import { ApiError } from "../utils/errors";
 import { buildLiveAttendanceWindow, isWithinAttendanceWindow } from "./attendance-live-window.service";
 import { buildPublicUrl } from "./storage.service";
-import { assertRoomAccessForUser, assertRoomAccessWithRoom } from "./event-assignment.service";
+import { assertRoomAccessWithRoom } from "./event-assignment.service";
 import { env } from "../config/env";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

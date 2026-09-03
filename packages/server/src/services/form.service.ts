@@ -7,7 +7,7 @@ import {
   type FormDefinitionRow,
 } from "../db/schema";
 import { ApiError } from "../utils/errors";
-import { assertRoomAccessForUser, assertRoomAccessWithRoom } from "./event-assignment.service";
+import { assertRoomAccessWithRoom } from "./event-assignment.service";
 
 const toFormDefinition = (row: FormDefinitionRow): FormDefinition => ({
   id: row.id,
