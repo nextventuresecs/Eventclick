@@ -32,6 +32,12 @@ RUN npm run build --workspace=packages/client
 # ─── Stage 3: runner (Nginx) ──────────────────────────────────────────────────
 FROM nginx:1.29-alpine AS runner
 
+# Patch OS packages before anything else. The base tag is not rebuilt on every
+# Alpine security release, so a fresh `docker build` can still ship a known-
+# vulnerable libcrypto3 — which is exactly what the image scan (#95) caught.
+# This pulls the fixed package versions at build time.
+RUN apk --no-cache upgrade
+
 RUN rm /etc/nginx/conf.d/default.conf
 
 # common.conf goes OUTSIDE conf.d — nginx auto-includes *.conf in conf.d/
