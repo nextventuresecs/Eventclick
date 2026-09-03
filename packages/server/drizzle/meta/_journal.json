@@ -71,6 +71,13 @@
       "when": 1787341173540,
       "tag": "0009_event_started_ended_notifier_markers",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788377667177,
+      "tag": "0010_event_cancelled_expired_notifier_marker",
+      "breakpoints": true
     }
   ]
 }

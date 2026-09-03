@@ -54,6 +54,13 @@ export const eventRooms = pgTable(
     // services/event-lifecycle-notification.service.ts.
     eventStartedNotifiedAt: timestamp("event_started_notified_at", { withTimezone: true }),
     eventEndedNotifiedAt: timestamp("event_ended_notified_at", { withTimezone: true }),
+    // Idempotency marker for EVENT_CANCELLED_OR_EXPIRED. One column serves
+    // both reasons because a room can only take one of the two paths:
+    // cancelling sets status='cancelled', which is exactly what the expiry
+    // poll (jobs/eventExpiryNotifier.ts) excludes. Claimed atomically —
+    // UPDATE ... WHERE this IS NULL RETURNING — by room-crud.controller.ts's
+    // updateRoom on cancel, and by the poll job on expiry.
+    eventCancelledOrExpiredNotifiedAt: timestamp("event_cancelled_or_expired_notified_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

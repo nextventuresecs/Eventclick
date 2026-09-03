@@ -13,6 +13,7 @@ import {
   sendEventStartedEmail,
   sendEventEndedEmail,
   sendOrgBroadcastEmail,
+  sendEventCancelledEmail,
 } from "./email.service";
 
 export type EmailType =
@@ -22,7 +23,8 @@ export type EmailType =
   | "invite"
   | "event-started"
   | "event-ended"
-  | "org-broadcast";
+  | "org-broadcast"
+  | "event-cancelled";
 
 export interface DispatchEmailParams {
   userId: string;
@@ -62,6 +64,14 @@ const sendEmailByType = (type: string, email: string, payload: Record<string, un
         payload.body as string,
         payload.orgName as string,
         payload.priority as "normal" | "urgent",
+      );
+    case "event-cancelled":
+      return sendEventCancelledEmail(
+        email,
+        payload.roomTitle as string,
+        payload.reason as "cancelled" | "expired",
+        payload.scheduledStart as string,
+        payload.cancellationReason as string | null | undefined,
       );
     default:
       throw new Error(`Unknown email type: ${type}`);
