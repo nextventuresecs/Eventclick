@@ -130,7 +130,23 @@ const request = async <T = void>(
   if (res.status === 204) return null as unknown as T;
 
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  // Not every error body is JSON. express-rate-limit answers with plain text
+  // unless a `message` object is configured, so a 429 from the global limiter
+  // would otherwise throw a SyntaxError here and surface as "Login failed"
+  // instead of the reason.
+  let data: unknown = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    if (res.ok) throw new ApiClientError(res.status, "BAD_RESPONSE", "Unreadable server response");
+    throw new ApiClientError(
+      res.status,
+      res.status === 429 ? "RATE_LIMITED" : "UNKNOWN",
+      res.status === 429
+        ? "Too many attempts — please wait a minute and try again."
+        : text.slice(0, 200) || res.statusText,
+    );
+  }
 
   if (!res.ok) {
     const err = data as ApiErrorBody | null;
