@@ -125,6 +125,20 @@ const EnvSchema = z.object({
   SERVER_KEEPALIVE_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
   SERVER_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 
+  // ─── Data retention (GDPR) ─────────────────────────
+  // 365 days is what docs/GDPR_COMPLIANCE_REPORT.md publishes as the retention
+  // period for attendance, photos, submissions and recordings. The number
+  // lives here rather than in the job so the published figure and the enforced
+  // one can be reconciled without reading code.
+  DATA_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
+  // Ships ENABLED. The purge has never run, so its first pass faces a backlog
+  // nobody has measured — it reports what it would delete until an operator
+  // deliberately turns this off. See docs/runbooks/data-retention.md.
+  DATA_RETENTION_DRY_RUN: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
+
   // ─── Observability (optional) ──────────────────────
   SENTRY_SERVER_DSN: z.string().optional(),
   // Sampling is environment policy, not a code constant: production runs on a
