@@ -1,3 +1,8 @@
+// MUST be first: Sentry's auto-instrumentation patches http, express, pg and
+// redis as they are required, so anything imported before init() runs gets
+// the unpatched version.
+import "./instrument";
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -14,7 +19,7 @@ import { redisClient, connectRedis, disconnectRedis } from "./config/redis";
 import { apiRouter } from "./routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { API_PREFIX } from "@application/shared";
-import { initSentry, setupSentryExpressErrorHandler } from "./services/sentry.service";
+import { setupSentryExpressErrorHandler, tagRequestId } from "./services/sentry.service";
 import { registerProcessErrorHandlers } from "./utils/processErrors";
 
 // Registered before anything else starts: the background jobs and queue
@@ -24,12 +29,6 @@ import { registerProcessErrorHandlers } from "./utils/processErrors";
 registerProcessErrorHandlers();
 
 const app = express();
-
-if (env.SENTRY_SERVER_DSN) {
-  initSentry(env.SENTRY_SERVER_DSN, env.NODE_ENV).then(() => {
-    setupSentryExpressErrorHandler(app);
-  });
-}
 
 
 app.disable("x-powered-by");
@@ -124,6 +123,14 @@ app.use(
   }),
 );
 
+// Straight after pino-http, which is what generates req.id and returns it as
+// the x-request-id header. Tagging the Sentry scope with the same value is
+// what makes "given this issue, find its log lines" a one-field search.
+app.use((req, _res, next) => {
+  if (req.id) tagRequestId(String(req.id));
+  next();
+});
+
 app.use(
   rateLimit({
     windowMs: env.RATE_LIMIT_WINDOW_MS,
@@ -193,6 +200,12 @@ app.use(setTenantContext);
 app.use(API_PREFIX, apiRouter);
 
 app.use(notFoundHandler);
+
+// Before errorHandler, and this order is load-bearing: errorHandler ends the
+// response, so a Sentry handler registered after it never sees the error with
+// its request scope, route and trace context attached.
+setupSentryExpressErrorHandler(app);
+
 app.use(errorHandler);
 
 import { startSqsWorker, startEmailSqsWorker } from "./queues/worker";
