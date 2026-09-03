@@ -870,6 +870,63 @@ export const ClientLogSchema = z.object({
 });
 export type ClientLogInput = z.infer<typeof ClientLogSchema>;
 
+// ─── Audit log ──────────────────────────────────────────────
+// The actions audit.service.ts can record. Kept in shared because the admin
+// UI filters on them — a filter dropdown built from a hand-typed list drifts
+// from what the server actually writes.
+export const AUDIT_ACTIONS = [
+  "user.created",
+  "user.updated",
+  "user.deleted",
+  "room.created",
+  "room.updated",
+  "room.deleted",
+  "form.updated",
+  "attendance.created",
+  "report.generated",
+  "settings.updated",
+] as const;
+export const AuditActionSchema = z.enum(AUDIT_ACTIONS);
+export type AuditAction = z.infer<typeof AuditActionSchema>;
+
+export const AUDIT_LOG_PAGE_SIZE = 50;
+export const AUDIT_LOG_MAX_PAGE_SIZE = 200;
+
+export const AuditLogQuerySchema = z.object({
+  actorUserId: z.string().uuid().optional(),
+  action: AuditActionSchema.optional(),
+  resourceType: z.string().max(80).optional(),
+  resourceId: z.string().uuid().optional(),
+  // Inclusive lower bound / exclusive upper bound on created_at.
+  from: z.iso.datetime().optional(),
+  to: z.iso.datetime().optional(),
+  limit: z.coerce.number().int().positive().max(AUDIT_LOG_MAX_PAGE_SIZE).default(AUDIT_LOG_PAGE_SIZE),
+  offset: z.coerce.number().int().nonnegative().default(0),
+});
+export type AuditLogQuery = z.infer<typeof AuditLogQuerySchema>;
+
+export interface AuditLogEntry {
+  id: string;
+  actorUserId: string | null;
+  actorEmail: string | null;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  // Parsed from the text columns server-side; null when absent or unparseable.
+  oldValues: Record<string, unknown> | null;
+  newValues: Record<string, unknown> | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface AuditLogPage {
+  items: AuditLogEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 // ─── Branding uploads (organization logo / user avatar) ─────
 export const BrandingUploadRequestSchema = z.object({
   contentType: z

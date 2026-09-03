@@ -200,6 +200,7 @@ import type {
   OrgUserSummary,
   OrgBroadcastInput,
   OrgBroadcastResult,
+  AuditLogPage,
   ActivityDefinition,
   ActivityPhotoUploadRequestInput,
   SubmitActivityPhotoInput,
@@ -332,6 +333,22 @@ export const adminApi = {
     api.delete<{ success: boolean; message: string }>(`/admin/users/${userId}`, { confirmEmail }),
   sendBroadcast: (body: OrgBroadcastInput) =>
     api.post<OrgBroadcastResult>("/admin/broadcasts", body),
+  listAuditLogs: (params: {
+    actorUserId?: string;
+    action?: string;
+    resourceType?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+  } = {}) => {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== "") search.set(key, String(value));
+    }
+    const query = search.toString();
+    return api.get<AuditLogPage>(`/admin/audit-logs${query ? `?${query}` : ""}`);
+  },
 };
 
 export const uploadToPresignedUrl = async (

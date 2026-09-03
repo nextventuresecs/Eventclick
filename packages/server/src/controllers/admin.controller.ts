@@ -2,8 +2,9 @@ import type { RequestHandler } from "express";
 import type { CreateOrgUserInput } from "../services/admin.service";
 import { ApiError } from "../utils/errors";
 import { listOrgUsersForAdmin, createOrgUser, deleteUserAccount } from "../services/admin.service";
+import { listAuditLogs } from "../services/audit.service";
 import { sendOrgBroadcast } from "../services/org-broadcast.service";
-import type { OrgBroadcastInput } from "@application/shared";
+import { AuditLogQuerySchema, type OrgBroadcastInput } from "@application/shared";
 
 const requireOrgId = (organizationId: string | null | undefined): string => {
   if (!organizationId) throw ApiError.unauthorized("No organization");
@@ -88,6 +89,27 @@ export const sendBroadcast: RequestHandler = async (req, res, next) => {
     const result = await sendOrgBroadcast(orgId, req.user!.id, input);
 
     res.status(201).json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /admin/audit-logs — this organisation's audit trail, newest first.
+ *
+ * `requireOrgId` runs for the 401 it gives a user with no organisation, not
+ * to scope the query: scoping is RLS (`audit_logs_tenant_isolation`) applied
+ * to the tenant-pinned connection this request already holds.
+ */
+export const listAuditLog: RequestHandler = async (req, res, next) => {
+  try {
+    requireOrgId(req.user?.organizationId);
+    // Parsed here rather than by validate(..., "query") — see the route.
+    // A ZodError from this reaches errorHandler as a 400, same as body
+    // validation would.
+    const query = AuditLogQuerySchema.parse(req.query);
+    const page = await listAuditLogs(query);
+    res.json(page);
   } catch (err) {
     next(err);
   }

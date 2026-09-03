@@ -8,6 +8,7 @@ import {
   Users,
   UserCog,
   Megaphone,
+  ScrollText,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -103,6 +104,7 @@ const MENU_ITEMS = [
   { name: "Users", path: "/admin/users", icon: Users, permission: "manage_users" },
   { name: "Event Assignments", path: "/admin/event-assignments", icon: UserCog, permission: "manage_users" },
   { name: "Broadcast", path: "/admin/broadcast", icon: Megaphone, permission: "manage_users" },
+  { name: "Audit Log", path: "/admin/audit-log", icon: ScrollText, permission: "manage_users" },
 ];
 
 const TOOLS_ITEMS = [

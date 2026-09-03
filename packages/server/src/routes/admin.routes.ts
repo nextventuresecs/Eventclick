@@ -8,7 +8,7 @@ import { ApiError } from "../utils/errors";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireRole } from "../middleware/requireRole";
 import { validate } from "../middleware/validate";
-import { listOrgUsers, createUser, deleteUser, sendBroadcast } from "../controllers/admin.controller";
+import { listOrgUsers, createUser, deleteUser, sendBroadcast, listAuditLog } from "../controllers/admin.controller";
 import { CreateUserSchema, DeleteUserSchema } from "../schemas/admin.schemas";
 
 export const adminRouter = Router();
@@ -19,6 +19,15 @@ adminRouter.use(requireAuth);
 adminRouter.get("/users", requireRole("admin"), listOrgUsers);
 adminRouter.post("/users", requireRole("admin"), validate(CreateUserSchema), createUser);
 adminRouter.delete("/users/:id", requireRole("admin"), validate(DeleteUserSchema), deleteUser);
+
+// ── Audit log ────────────────────────────────────────────────────────────
+// Admin-only, and cross-tenant isolation is RLS rather than a filter in the
+// query — see services/audit.service.ts.
+// Query parsing happens in the controller, NOT via validate(..., "query"):
+// Express 5 exposes req.query through a getter that re-derives the object, so
+// the middleware's assignment is silently discarded and the handler would see
+// raw strings. See the note in middleware/validate.ts.
+adminRouter.get("/audit-logs", requireRole("admin"), listAuditLog);
 
 // ── Org broadcast ────────────────────────────────────────────────────────
 // One request fans out an in-app row, a web push, and an email for every
