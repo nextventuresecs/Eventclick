@@ -30,3 +30,13 @@ export const EVENT_EXPIRY_NOTIFIER_LOCK_TTL_SEC = 280; // must stay under the po
 // caring about months ago. Rooms older than this are left permanently
 // unnotified, which is the right outcome for stale history.
 export const EVENT_EXPIRY_LOOKBACK_HOURS = 72;
+
+// ─── Data retention purge (jobs/dataRetention.ts) ──────────────────────────
+// Daily. The cutoff moves by a day at a time, so anything more frequent
+// re-scans for nothing; anything less frequent lets a day's worth of expired
+// rows sit past their retention period.
+export const DATA_RETENTION_POLL_MS = 24 * 60 * 60 * 1000;
+// Rows deleted per transaction. Small enough that each batch is short and
+// other queries get a look in between them — the first real run faces every
+// row older than the retention period that has ever accumulated.
+export const DATA_RETENTION_BATCH_SIZE = 1_000;
