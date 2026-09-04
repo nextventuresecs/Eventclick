@@ -57,6 +57,14 @@ export const AUDIT_RETENTION_BATCH_SIZE = 500;
 // is rejected outright rather than truncated.
 export const S3_DELETE_BATCH_SIZE = 1_000;
 
+// ─── Media redirect signing (services/media.service.ts) ────────────────────
+// How long a signed media URL stays valid. Short on purpose: the URL is a
+// bearer capability that cannot be revoked once issued, so its lifetime is the
+// window in which a leaked link still works. Long enough for a browser to
+// follow the redirect and load the image (including a slow connection and a
+// retry), not long enough to be worth sharing.
+export const MEDIA_URL_TTL_SECONDS = 300;
+
 // ─── PDF rendering deadlines (services/report.service.ts) ──────────────────
 // Gotenberg had a fixed 120s abort deadline while the HTTP server closes any
 // request after SERVER_REQUEST_TIMEOUT_MS (30s by default). On the synchronous

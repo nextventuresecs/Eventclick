@@ -6,6 +6,7 @@ import type {
   PhotoUploadResponse,
   UserRole,
 } from "@application/shared";
+import { buildMediaPath } from "@application/shared";
 import { db } from "../db";
 import {
   eventRooms,
@@ -173,7 +174,11 @@ export const submitActivityPhoto = async (
     roomId: existingSub.roomId,
     activityId: existingSub.activityId,
     photos: allPhotos.map((p) => ({
-      url: p.photoUrl,
+      // A media reference, not the stored public URL: the bucket is private,
+      // so the object is reachable only through the authenticated route that
+      // signs on demand. The stored photo_url is left in place for rows
+      // written before this changed.
+      url: buildMediaPath("activity-photo", p.id),
       key: p.photoKey,
       uploadedAt: p.createdAt.toISOString(),
     })),
@@ -228,7 +233,11 @@ export const listRoomActivities = async (
     roomId: s.roomId,
     activityId: s.activityId,
     photos: (photosBySubmission.get(s.id) || []).map((p) => ({
-      url: p.photoUrl,
+      // A media reference, not the stored public URL: the bucket is private,
+      // so the object is reachable only through the authenticated route that
+      // signs on demand. The stored photo_url is left in place for rows
+      // written before this changed.
+      url: buildMediaPath("activity-photo", p.id),
       key: p.photoKey,
       uploadedAt: p.createdAt.toISOString(),
     })),

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { MediaImage, openMediaInNewTab } from "@/components/MediaImage";
 import { Link, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import {
@@ -272,7 +273,9 @@ export const AttendanceRecords = () => {
             }
             return escapeCsvCell(formatValue(val ?? null));
           }),
-          ...(hasPhotos ? [escapeCsvCell(entry.photoUrl || "")] : [])
+          ...(hasPhotos
+            ? [escapeCsvCell(entry.photoUrl ? `${window.location.origin}/api/v1${entry.photoUrl}` : "")]
+            : [])
         ].join(","),
       ),
     ];
@@ -571,18 +574,17 @@ export const AttendanceRecords = () => {
                       {hasPhotos && (
                         <td className="px-4 py-3 text-xs">
                           {entry.photoUrl ? (
-                            <a
-                              href={entry.photoUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              type="button"
+                              onClick={() => void openMediaInNewTab(entry.photoUrl!)}
                               className="inline-block w-8 h-8 rounded border border-border overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all"
                             >
-                              <img
-                                src={entry.photoUrl}
+                              <MediaImage
+                                path={entry.photoUrl}
                                 alt="attendance"
                                 className="w-full h-full object-cover"
                               />
-                            </a>
+                            </button>
                           ) : (
                             <span className="text-muted-foreground/40">—</span>
                           )}
