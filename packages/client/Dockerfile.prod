@@ -17,17 +17,38 @@ ARG VITE_API_URL
 ARG VITE_LIVEKIT_URL
 ARG VITE_GOOGLE_CLIENT_ID
 ARG VITE_SENTRY_CLIENT_DSN
+ARG VITE_SENTRY_RELEASE
 
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_LIVEKIT_URL=$VITE_LIVEKIT_URL
 ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 ENV VITE_SENTRY_CLIENT_DSN=$VITE_SENTRY_CLIENT_DSN
+ENV VITE_SENTRY_RELEASE=$VITE_SENTRY_RELEASE
 
 COPY packages/shared ./packages/shared
 COPY packages/client ./packages/client
 
 RUN npm run build --workspace=packages/shared
-RUN npm run build --workspace=packages/client
+
+# SENTRY_AUTH_TOKEN arrives as a BuildKit secret, never as an ARG. An ARG's
+# value is recorded in that stage's layer metadata, and this build exports its
+# cache with `mode=max` — which would publish the token to the GitHub Actions
+# cache along with every other build layer. A secret mount exists only for the
+# lifetime of this RUN and is not written to any layer.
+#
+# Absent (local builds, forks, PR builds) the file does not exist, the variable
+# is empty, and vite.config.ts skips upload entirely — no source maps are
+# emitted and the build behaves exactly as it did before.
+RUN --mount=type=secret,id=sentry_auth_token \
+    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" \
+    npm run build --workspace=packages/client
+
+# Unconditional, and not a duplicate of the plugin's own cleanup: that only
+# runs after a *successful* upload, and the upload is deliberately non-fatal.
+# Without this, a failed upload would leave .map files in dist, which stage 3
+# copies wholesale into the nginx root — publishing readable client source to
+# anyone who asks for it.
+RUN find packages/client/dist -name '*.map' -delete
 
 # ─── Stage 3: runner (Nginx) ──────────────────────────────────────────────────
 FROM nginx:1.29-alpine AS runner
