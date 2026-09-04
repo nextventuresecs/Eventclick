@@ -257,6 +257,7 @@ export const Dashboard = () => {
   const { toast } = useToast();
 
   const canManageRooms = user ? hasRolePermission(user.role, "manage_rooms") : false;
+  const canManageUsers = user ? hasRolePermission(user.role, "manage_users") : false;
 
   useEffect(() => {
     if (user && !user.organizationId) {
@@ -267,14 +268,8 @@ export const Dashboard = () => {
 
     const fetchData = async () => {
       try {
-        const [roomsRes, assignmentsRes, usersRes] = await Promise.all([
-          roomsApi.list(),
-          eventAssignmentsApi.listAssignments(),
-          eventAssignmentsApi.listUsers(),
-        ]);
+        const roomsRes = await roomsApi.list();
         setRooms(roomsRes.items);
-        setAssignments(assignmentsRes.items);
-        setAllUsers(usersRes.items);
       } catch (err) {
         setError(err instanceof ApiClientError ? err.message : "Failed to load dashboard data");
       } finally {
@@ -284,23 +279,40 @@ export const Dashboard = () => {
     void fetchData();
   }, [user]);
 
+  // The team panel below is admin-only, and so are the two endpoints feeding
+  // it. Fetch them separately from the room list: batching all three meant a
+  // single 403 rejected the batch and replaced the whole page with an
+  // "Insufficient permissions" banner for every non-admin.
+  useEffect(() => {
+    if (!canManageUsers || !user?.organizationId) return;
+
+    const fetchTeam = async () => {
+      try {
+        const [assignmentsRes, usersRes] = await Promise.all([
+          eventAssignmentsApi.listAssignments(),
+          eventAssignmentsApi.listUsers(),
+        ]);
+        setAssignments(assignmentsRes.items);
+        setAllUsers(usersRes.items);
+      } catch {
+        // Leave the panel empty; the rest of the dashboard is still valid.
+        setAssignments([]);
+        setAllUsers([]);
+      }
+    };
+    void fetchTeam();
+  }, [canManageUsers, user?.organizationId]);
+
   const verifiedAttendees = useMemo(() => rooms.reduce((sum, r) => sum + (r.attendanceCount ?? 0), 0), [rooms]);
   const liveRoomsCount = useMemo(() => rooms.filter((r) => r.status === "live").length, [rooms]);
   const scheduledRoomsCount = useMemo(() => rooms.filter((r) => r.status === "scheduled").length, [rooms]);
 
-  const assignedRoomIds = useMemo(() => new Set(assignments.map((a) => a.roomId)), [assignments]);
-  const visibleRooms = useMemo(
-    () => (canManageRooms ? rooms : rooms.filter((r) => assignedRoomIds.has(r.id))),
-    [rooms, canManageRooms, assignedRoomIds]
-  );
-
-  const filteredRooms = useMemo(() => {
-    return visibleRooms.filter((r) => {
-      if (search && !r.title.toLowerCase().includes(search.toLowerCase()) && !(r.location && r.location.toLowerCase().includes(search.toLowerCase()))) return false;
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      return true;
-    });
-  }, [visibleRooms, search, statusFilter]);
+  // GET /rooms is already scoped server-side: anyone without `manage_users`
+  // receives only the rooms assigned to them. Re-filtering here needs the
+  // assignment list, which is an admin-only endpoint — so the filter could
+  // only ever narrow a list that was already correct, and for a non-admin it
+  // narrowed it to nothing.
+  const visibleRooms = rooms;
 
   const memberRows = useMemo(() => {
     const rows = allUsers
@@ -315,6 +327,14 @@ export const Dashboard = () => {
       });
     return rows.slice(0, 6);
   }, [allUsers, assignments, rooms]);
+
+  const filteredRooms = useMemo(() => {
+    return visibleRooms.filter((r) => {
+      if (search && !r.title.toLowerCase().includes(search.toLowerCase()) && !(r.location && r.location.toLowerCase().includes(search.toLowerCase()))) return false;
+      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      return true;
+    });
+  }, [visibleRooms, search, statusFilter]);
 
   if (loading) {
     return (
@@ -558,6 +578,7 @@ export const Dashboard = () => {
           </div>
 
           {/* Team Members Overview */}
+          {canManageUsers && (
           <div className="space-y-3">
             <h3 className="text-base font-bold font-display text-gray-900">Active Team Members</h3>
             <Card className="card-static rounded-2xl overflow-hidden">
@@ -599,6 +620,7 @@ export const Dashboard = () => {
               </div>
             </Card>
           </div>
+          )}
         </div>
 
         {/* Right 1 Col: Calendar, Maps, Quick Actions */}
