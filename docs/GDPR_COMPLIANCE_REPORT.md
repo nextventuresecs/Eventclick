@@ -43,7 +43,7 @@ This report documents the exact code changes, endpoint specifications, and audit
 | **Art. 17**    | Right to erasure                   | ✅ Done    | `DELETE /api/v1/profile/me/account` + admin soft-delete       |
 | **Art. 20**    | Right to data portability          | ✅ Done    | `GET /api/v1/profile/me/export` (JSON)                        |
 | **Art. 25**    | Data protection by design          | ⚠️ Partial | Audit logging + retention job; DPIA pending                   |
-| **Art. 30**    | Records of processing              | ✅ Done    | `audit.service.ts` + `audit_logs` table                       |
+| **Art. 30**    | Records of processing              | ✅ Done    | `audit.service.ts` + `audit_logs`; enforcement verified — §6.4 |
 | **Art. 32**    | Security of processing             | ✅ Done    | Encryption, RBAC, fail-closed rate limiting                   |
 | **Art. 33/34** | Breach notification                | ❌ Missing | No 72-hour notification workflow                              |
 | **Art. 35**    | Data protection impact assessment  | ❌ Missing | No documented DPIA                                            |
@@ -519,8 +519,53 @@ export async function purgeExpiredData() {
 
 ### 6.3 Integrity
 
-- Logs are **append-only** at the application level.
-- For higher assurance, consider PostgreSQL logical replication to an append-only audit database or cloud-native audit log service.
+- Logs are **append-only**, enforced in the database rather than only in application code:
+  migration `0003_rls_privileges_converge.sql` grants `app_user` `SELECT, INSERT` on
+  `audit_logs` and explicitly revokes `UPDATE, DELETE`. No request-scoped code path can
+  rewrite or erase an entry.
+- The single exception is `jobs/auditRetention.ts`, which runs as `auth_svc_role`
+  (BYPASSRLS, granted DELETE in `0001`) and records an `audit.purged` entry naming the
+  cutoff and row count for every purge it performs.
+- Not tamper-evident: anyone holding `auth_svc_role` credentials or database superuser
+  access can still alter history. Hash-chaining entries, or shipping them to a store the
+  application cannot write to, is the control that would close that. Neither is implemented.
+
+### 6.4 Verification status (as of 2026-09-04)
+
+**The `audit_logs` table is currently empty. This reflects an idle production system, not a
+failed control**, and is recorded here so that emptiness is not later read as evidence that
+audit logging does not work.
+
+Production holds a single event room created 2026-08-17. The audit logging service reached
+production on 2026-09-03. No audited action (`room.created`, `settings.updated`,
+`attendance.created`, …) has occurred in the interval, so there has been nothing to record.
+
+The write mechanism was verified directly against the production database on 2026-09-04.
+Both probes ran inside a transaction that was rolled back, so nothing was written:
+
+| Probe | Result |
+| ----- | ------ |
+| `INSERT` as `app_user_login` with `app.current_tenant` set | `INSERT 0 1` — succeeded |
+| The same `INSERT` with no tenant context | `ERROR: new row violates row-level security policy` |
+
+The second probe is what makes the first meaningful: it demonstrates that the policy is
+actively enforced, so the successful insert satisfied `audit_logs_insert_only` rather than
+bypassing a policy that was not running. Together they establish that the RLS policy, the
+`INSERT` grant, and tenant isolation all function in production.
+
+Alongside this, `recordAuditSafely` is present in the deployed image (three call sites in
+the room controller alone) and `setTenantContext` is mounted globally ahead of the API
+router, so request-scoped writes carry the tenant the policy requires.
+
+**What remains unverified:** no live authenticated request has been observed producing a
+row. Code inspection and the probes above cover the mechanism; they do not substitute for
+an end-to-end observation. The next audited action performed in production will settle it —
+query `audit_logs` afterwards and confirm a row appears.
+
+Note that `recordAuditSafely` logs and swallows write failures by design, so that a failed
+audit write cannot turn a successful operation into an error the caller retries. A
+consequence is that a broken audit trail would look identical to an idle one from outside;
+`grep "Failed to record audit"` in the server logs is the signal that distinguishes them.
 
 ---
 
