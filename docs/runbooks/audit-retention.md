@@ -132,6 +132,22 @@ AUDIT_ARCHIVE_BUCKET=eventclick-audit-archive
 Credentials and endpoint come from the existing `S3_*` variables — same R2
 account, no new secrets.
 
+**Putting a value in SSM is not enough.** `docker-compose.prod.yml` has no
+`env_file`; it passes every variable explicitly as `${VAR:-default}`, so a
+variable that is not declared there never reaches the process and the zod
+default in `env.ts` applies instead. That failure is silent and looks exactly
+like a correctly-configured run whenever the default matches what you intended —
+`AUDIT_RETENTION_DAYS` defaults to 365, so a missing value still logs
+`retentionDays=365`. Confirm what the container actually received:
+
+```bash
+docker inspect eventclick_server_prod --format '{{json .Config.Env}}' | tr ',' '
+' | grep -iE "retention|archive"
+```
+
+All four `AUDIT_*` variables should appear. They are declared in **both** the
+`server` and `pdf-worker` blocks, because `env.ts` validates on startup in each.
+
 ### What actually gets archived
 
 One gzipped NDJSON object per organisation per batch, keyed
