@@ -76,11 +76,16 @@ services:
     depends_on:
       minio:
         condition: service_started
+    # Private, matching production. The bucket previously allowed anonymous
+    # download, which suited the old public-URL design — uploads are now served
+    # through the authenticated /media route, which signs a short-lived URL per
+    # request. Leaving dev world-readable would mean every access-control
+    # mistake still renders an image locally and only fails in production.
     entrypoint: >
       /bin/sh -c "
       until mc alias set local http://minio:9000 $${S3_ACCESS_KEY} $${S3_SECRET_KEY}; do sleep 1; done;
       mc mb -p local/$${S3_BUCKET} || true;
-      mc anonymous set download local/$${S3_BUCKET} || true;
+      mc anonymous set none local/$${S3_BUCKET} || true;
       exit 0;
       "
     environment:
