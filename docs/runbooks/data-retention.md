@@ -89,20 +89,26 @@ runs should report small numbers — a day's worth of newly-expired rows.
 
 ## Known limitations
 
-- **Orphaned objects from *other* delete paths are not swept.** This job now
-  deletes an object before the row that names it, so age-based expiry no longer
-  leaks files. Every other path still does: `activity_photos` and
-  `attendance_entries` cascade from `event_rooms`, so **deleting a room removes
-  the rows and leaves the objects**, and has since launch. `activity_photos`
-  also soft-deletes (`deleted_at`), which strands the object while the row
-  survives. Closing that needs the delete paths themselves to remove objects,
-  plus a one-off sweep for what has already accumulated — see below.
-- **No bucket-diff sweep.** Reconciling the bucket against the database would
-  catch everything already orphaned, but it has to tell an orphan apart from an
-  object whose row has not been written yet: `createPresignedPut` means the
-  upload completes before the insert, so a naive diff deletes live uploads. That
-  needs an age threshold and its own runbook, and is deliberately not attempted
-  here.
+- **Abandoned uploads are not swept.** This job deletes an object before the row
+  that names it, so age-based expiry no longer leaks files. The one remaining
+  source of orphans is an upload that never became a row:
+  `createPresignedPut` hands the client a key and creates nothing, and the row
+  is written only when the client comes back to claim it
+  (`submitActivityPhoto`, and the equivalent attendance and branding paths). A
+  client that uploads and then never completes — a crash, a closed tab, a failed
+  validation — leaves an object nothing will ever reference or name again.
+
+  This is the *only* such source. Nothing else in the codebase hard-deletes a
+  row carrying a storage key: `event_rooms` and `users` soft-delete
+  (`deleted_at`), so their `ON DELETE CASCADE` never fires, and the only other
+  hard deletes are `sessions` and `push_subscriptions`, which own no objects.
+- **No bucket-diff sweep.** Reconciling the bucket against the database is what
+  would catch the abandoned uploads above, and everything already accumulated.
+  It has to tell an orphan apart from an object whose row has not been written
+  *yet* — the window between upload and claim is short but real, so a naive diff
+  deletes live uploads. An age threshold comfortably longer than that window
+  (hours, not minutes) makes it tractable. Deliberately not attempted here; it
+  needs its own dry-run-first runbook.
 - **Audit logs are not purged by this job.** It does not touch `audit_logs` at
   all, and deliberately so — deleting the audit trail is a different decision
   from deleting expired event data. That is now handled by a separate job with
