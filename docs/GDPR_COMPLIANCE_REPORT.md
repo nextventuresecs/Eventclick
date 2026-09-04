@@ -69,6 +69,7 @@ This report documents the exact code changes, endpoint specifications, and audit
 | Cookie consent banner      | `packages/client/src/components/CookieConsent.tsx` | Essential / All options, localStorage persistence            |
 | Data retention job         | `packages/server/src/jobs/dataRetention.ts`        | 365-day purge of attendance, photos, submissions, recordings |
 | Object storage deletion    | `packages/server/src/services/storage.service.ts`  | Purge removes the uploaded file before the row naming it     |
+| Private media access       | `packages/server/src/services/media.service.ts`    | Uploads served via authenticated route + short-lived signed URL |
 | Profile routes wired       | `packages/server/src/routes/index.ts`              | `/api/v1/profile` mounted                                    |
 
 ### 3.2 What is still missing
@@ -530,7 +531,22 @@ export async function purgeExpiredData() {
   access can still alter history. Hash-chaining entries, or shipping them to a store the
   application cannot write to, is the control that would close that. Neither is implemented.
 
-### 6.4 Verification status (as of 2026-09-04)
+### 6.4 Uploaded media access
+
+Attendance and activity photos are personal data — identifiable people, stored alongside the
+`latitude`/`longitude` recorded with them. They are **not** served from a public bucket.
+
+`GET /api/v1/media/:resource/:id` authenticates the caller, re-checks the tenant against
+current state, and only then mints a signed URL valid for 5 minutes
+(`MEDIA_URL_TTL_SECONDS`). The reference the API returns is stable and carries no
+credential; the capability is created at the moment of use and expires quickly.
+
+This matters for art. 17 and art. 32: a public-bucket URL is an unauthenticated, permanent,
+unrevocable link that keeps working after a user deletes the underlying record, and cannot be
+withdrawn from whoever already has it. Routing access through the application means removing
+a user's access takes effect on their next request.
+
+### 6.5 Verification status (as of 2026-09-04)
 
 **The `audit_logs` table is currently empty. This reflects an idle production system, not a
 failed control**, and is recorded here so that emptiness is not later read as evidence that

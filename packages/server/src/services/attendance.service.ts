@@ -7,6 +7,7 @@ import type {
   UserRole,
   RoomStatus,
 } from "@application/shared";
+import { buildMediaPath } from "@application/shared";
 import { db } from "../db";
 import {
   attendanceEntries,
@@ -29,7 +30,9 @@ const toAttendanceEntry = (row: AttendanceEntryRow): AttendanceEntry => ({
   roomId: row.roomId,
   formDefinitionId: row.formDefinitionId,
   data: row.data,
-  photoUrl: row.photoUrl,
+  // A media reference when the entry has a photo, so the private object is
+  // reachable through the authenticated route rather than a public URL.
+  photoUrl: row.photoKey ? buildMediaPath("attendance", row.id) : null,
   submittedAt: row.submittedAt.toISOString(),
 });
 

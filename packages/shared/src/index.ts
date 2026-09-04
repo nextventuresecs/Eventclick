@@ -889,6 +889,31 @@ export interface OrgUserPage {
   offset: number;
 }
 
+// ─── Media references ───────────────────────────────────────
+// Uploads live in a private bucket, so the API hands out a stable reference
+// rather than a URL to the object. `GET {API_PREFIX}{path}` checks access and
+// returns a short-lived signed URL (as JSON) or redirects to one.
+//
+// Stable on purpose: a signed URL embedded in a payload expires, which would
+// rot inside an exported CSV and cost a signature per row whether or not the
+// image is ever shown. This reference does not expire, because it is not a
+// capability — it names a resource, and access is re-checked on use.
+export const MEDIA_RESOURCES = [
+  "attendance",
+  "activity-photo",
+  "org-logo",
+  "user-avatar",
+] as const;
+export type MediaResource = (typeof MEDIA_RESOURCES)[number];
+
+export const buildMediaPath = (resource: MediaResource, id: string): string =>
+  `/media/${resource}/${id}`;
+
+export interface MediaUrlResponse {
+  url: string;
+  expiresIn: number;
+}
+
 // ─── Audit log ──────────────────────────────────────────────
 // The actions audit.service.ts can record. Kept in shared because the admin
 // UI filters on them — a filter dropdown built from a hand-typed list drifts

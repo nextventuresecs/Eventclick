@@ -182,6 +182,7 @@ apiRouter.get("/health/deep", async (_req, res) => {
 });
 
 import { settingsRouter } from "./settings.routes";
+import { mediaRouter } from "./media.routes";
 import { feedbackRouter } from "./feedback.routes";
 import { bugReportRouter } from "./bug-report.routes";
 import { notificationRoutes } from "./notification.routes";
@@ -198,3 +199,4 @@ apiRouter.use("/feedback", feedbackRouter);
 apiRouter.use("/bug-reports", bugReportRouter);
 apiRouter.use("/notifications", notificationRoutes);
 apiRouter.use("/profile", profileRouter);
+apiRouter.use("/media", mediaRouter);
