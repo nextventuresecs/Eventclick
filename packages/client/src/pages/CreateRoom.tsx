@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Calendar, Loader2, Plus, Trash2, Camera, ClipboardList, MapPin, Navigation } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, Camera, ClipboardList, MapPin, Navigation } from "lucide-react";
 import { roomsApi, ApiClientError } from "@/lib/api";
 import { CreateRoomSchema, hasRolePermission } from "@application/shared";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 
 export const CreateRoom = () => {
   const navigate = useNavigate();
@@ -22,8 +23,8 @@ export const CreateRoom = () => {
   const [latitude, setLatitude] = useState<number | undefined>();
   const [longitude, setLongitude] = useState<number | undefined>();
   const [locating, setLocating] = useState(false);
-  const [scheduledStart, setScheduledStart] = useState("");
-  const [scheduledEnd, setScheduledEnd] = useState("");
+  const [scheduledStart, setScheduledStart] = useState<Date | null>(null);
+  const [scheduledEnd, setScheduledEnd] = useState<Date | null>(null);
   const [maxParticipants, setMaxParticipants] = useState("");
   const [attendanceWindowBefore, setAttendanceWindowBefore] = useState("15");
   const [attendanceWindowAfter, setAttendanceWindowAfter] = useState("30");
@@ -113,8 +114,10 @@ export const CreateRoom = () => {
       location: location || undefined,
       latitude,
       longitude,
-      scheduledStart: scheduledStart ? new Date(scheduledStart).toISOString() : "",
-      scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : "",
+      // Straight from the picked Date — never re-parsed from a formatted
+      // string, which is where a timezone shift would creep in.
+      scheduledStart: scheduledStart ? scheduledStart.toISOString() : "",
+      scheduledEnd: scheduledEnd ? scheduledEnd.toISOString() : "",
       maxParticipants: maxParticipants ? parseInt(maxParticipants, 10) : undefined,
       attendanceWindowBefore: attendanceWindowBefore ? parseInt(attendanceWindowBefore, 10) : undefined,
       attendanceWindowAfter: attendanceWindowAfter ? parseInt(attendanceWindowAfter, 10) : undefined,
@@ -243,37 +246,28 @@ export const CreateRoom = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="scheduledStart">Start Time <span className="text-destructive">*</span></Label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-(--color-gray-600)">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <Input
-                    id="scheduledStart"
-                    type="datetime-local"
-                    value={scheduledStart}
-                    onChange={(e) => setScheduledStart(e.target.value)}
-                    disabled={submitting}
-                    required
-                    className="pl-10 input-premium"
-                  />
-                </div>
+                <DateTimePicker
+                  id="scheduledStart"
+                  value={scheduledStart}
+                  onChange={setScheduledStart}
+                  disabled={submitting}
+                  required
+                  placeholder="Select start date and time"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="scheduledEnd">End Time <span className="text-destructive">*</span></Label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-(--color-gray-600)">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <Input
-                    id="scheduledEnd"
-                    type="datetime-local"
-                    value={scheduledEnd}
-                    onChange={(e) => setScheduledEnd(e.target.value)}
-                    disabled={submitting}
-                    required
-                    className="pl-10 input-premium"
-                  />
-                </div>
+                <DateTimePicker
+                  id="scheduledEnd"
+                  value={scheduledEnd}
+                  onChange={setScheduledEnd}
+                  disabled={submitting}
+                  required
+                  placeholder="Select end date and time"
+                  // An end before its start is the most common mis-entry here;
+                  // the picker refuses it rather than the server rejecting it.
+                  minDate={scheduledStart}
+                />
               </div>
             </div>
 
