@@ -82,15 +82,17 @@ describe("DateTimePicker", () => {
     expect(new Date(submitted).getTime()).toBe(date.getTime());
   });
 
-  it("renders a readable value rather than the raw format", () => {
+  it("keeps the real input visible, so required and focus still work", () => {
     render(<Harness onPick={vi.fn()} />);
 
-    pick("2026-09-10 14:30");
+    const input = document.querySelector<HTMLInputElement>("input#when");
+    // flatpickr's altInput mode would switch this to type=hidden and move
+    // `required` onto a field the browser can neither validate nor focus.
+    expect(input?.type).toBe("text");
+    expect(input?.value ?? "").toBe("");
 
-    // altInput carries the human-facing text; the original input keeps the
-    // machine format.
-    const alt = document.querySelector<HTMLInputElement>("input.form-control");
-    expect(alt?.value ?? "").toMatch(/Sep/i);
+    pick("2026-09-10 14:30");
+    expect(input?.value).toBe("2026-09-10 14:30");
   });
 
   it("is labellable by the id the caller passed", () => {

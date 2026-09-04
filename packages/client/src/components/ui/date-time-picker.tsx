@@ -53,12 +53,15 @@ export const DateTimePicker = ({
     const fp = flatpickr(inputRef.current, {
       enableTime: true,
       dateFormat: "Y-m-d H:i",
-      altInput: true,
-      // What the user reads. The submitted value comes from the Date object,
-      // not from this string, so the format is free to be human-friendly.
-      altFormat: "D, d M Y at h:i K",
+      // No altInput. flatpickr's altInput mode replaces the real field with a
+      // display-only one and switches the original to type=hidden — which
+      // takes `required` with it, and a browser cannot validate or focus a
+      // hidden field, so the form silently stops enforcing the field.
+      // Enhancing the visible input in place keeps required, focus and
+      // keyboard entry working.
+      allowInput: true,
       minuteIncrement: 5,
-      time_24hr: false,
+      time_24hr: true,
       onChange: (selectedDates) => onChangeRef.current(selectedDates[0] ?? null),
     });
     fpRef.current = fp;
@@ -81,11 +84,6 @@ export const DateTimePicker = ({
   useEffect(() => {
     fpRef.current?.set("minDate", minDate ?? undefined);
   }, [minDate]);
-
-  useEffect(() => {
-    const alt = fpRef.current?.altInput;
-    if (alt) alt.disabled = Boolean(disabled);
-  }, [disabled]);
 
   return (
     <div className="relative">

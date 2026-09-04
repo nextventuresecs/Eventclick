@@ -53,8 +53,14 @@ export class CreateRoomPage {
     if (data.location) {
       await this.locationInput.fill(data.location);
     }
-    await this.scheduledStartInput.fill(data.scheduledStart);
-    await this.scheduledEndInput.fill(data.scheduledEnd);
+    // The schedule fields are flatpickr-enhanced text inputs taking
+    // "YYYY-MM-DD HH:mm", not the native datetime-local "YYYY-MM-DDTHH:mm".
+    // Callers still pass the ISO-ish form, so normalise here rather than at
+    // every call site. blur() commits the typed value to the picker.
+    await this.scheduledStartInput.fill(data.scheduledStart.replace("T", " "));
+    await this.scheduledStartInput.blur();
+    await this.scheduledEndInput.fill(data.scheduledEnd.replace("T", " "));
+    await this.scheduledEndInput.blur();
     if (data.maxParticipants) {
       await this.maxParticipantsInput.fill(data.maxParticipants);
     }
