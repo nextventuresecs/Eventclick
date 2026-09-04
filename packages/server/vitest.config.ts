@@ -12,13 +12,22 @@ export default defineConfig({
       reporter: ["text", "lcov"],
       include: ["services/**", "utils/**", "db/helpers.ts"],
     },
-    // Env overrides so tests never hit real infra
+    // Env overrides so tests never hit real infra.
+    //
+    // The three database URLs are the exception: they defer to the ambient
+    // value when one is set. CI provisions a real migrated Postgres for this
+    // job and exports these — hardcoding them here pointed the integration
+    // tests at `Eventclick_test`, a database that exists in no environment
+    // (CI creates `eventclick_test`), so anything needing a live connection
+    // could only ever skip. Unit tests are unaffected: they mock `pg`.
     env: {
       NODE_ENV: "test",
       PORT: "0",
-      DATABASE_URL: "postgresql://test:test@localhost:5432/Eventclick_test",
-      AUTH_DATABASE_URL: "postgresql://test:test@localhost:5432/Eventclick_test",
-      APP_DATABASE_URL: "postgresql://test:test@localhost:5432/Eventclick_test",
+      DATABASE_URL: process.env.DATABASE_URL ?? "postgresql://test:test@localhost:5432/eventclick_test",
+      AUTH_DATABASE_URL:
+        process.env.AUTH_DATABASE_URL ?? "postgresql://test:test@localhost:5432/eventclick_test",
+      APP_DATABASE_URL:
+        process.env.APP_DATABASE_URL ?? "postgresql://test:test@localhost:5432/eventclick_test",
       SQS_PDF_QUEUE_URL: "https://sqs.ap-south-1.amazonaws.com/123456789012/test-pdf-queue",
       SQS_DLQ_URL: "http://sqs.ap-south-1.amazonaws.com/123456789012/eventclick-test-dlq",
       COOKIE_DOMAIN: "localhost",
