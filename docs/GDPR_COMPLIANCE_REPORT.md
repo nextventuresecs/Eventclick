@@ -15,9 +15,15 @@ Eventclick processes personal data of organization administrators, event manager
 - **Soft-delete** for user accounts via admin panel.
 - **Self-service data export** endpoint (`GET /api/v1/profile/me/export`).
 - **Self-service account deletion** endpoint (`DELETE /api/v1/profile/me/account`).
-- **Immutable audit logging** service (`packages/server/src/services/audit.service.ts`) with 7-year retention.
+- **Append-only audit logging** service (`packages/server/src/services/audit.service.ts`), with a
+  365-day retention period now *enforced* by `packages/server/src/jobs/auditRetention.ts` rather
+  than only described here. 365 days is the standard security/audit log period (PCI DSS v4.0
+  req. 10.5.1; CIS Controls v8 control 8.10; SOC 2 / ISO 27001 practice). It replaces an
+  uncited "7 years" this report previously asserted and nothing enforced — see
+  `docs/runbooks/audit-retention.md`.
 - **Cookie consent banner** component (`packages/client/src/components/CookieConsent.tsx`).
 - **Automated data retention** purge job (`packages/server/src/jobs/dataRetention.ts`).
+- **Litigation hold** (`organizations.legal_hold`) exempting an organisation from both purges.
 - **No documented data processing agreements** with third-party subprocessors.
 - **No documented DPIA** or breach notification workflow.
 
@@ -55,7 +61,9 @@ This report documents the exact code changes, endpoint specifications, and audit
 | Admin user deletion (soft) | `packages/server/src/services/admin.service.ts`    | `deletedAt` + `isActive = false`                             |
 | Self-deletion flow         | `packages/server/src/routes/profile.routes.ts`     | Email confirmation + soft delete                             |
 | Data export endpoint       | `packages/server/src/routes/profile.routes.ts`     | JSON export with password hash redacted                      |
-| Audit log service          | `packages/server/src/services/audit.service.ts`    | Append-only, 7-year retention                                |
+| Audit log service          | `packages/server/src/services/audit.service.ts`    | Append-only; DELETE revoked from `app_user` in 0003          |
+| Audit retention job        | `packages/server/src/jobs/auditRetention.ts`       | 365-day purge, writes an `audit.purged` receipt              |
+| Litigation hold            | `packages/server/drizzle/0012_org_legal_hold.sql`  | `organizations.legal_hold` exempts an org from both purges   |
 | Audit log schema           | `packages/server/src/db/schema/auditLogs.ts`       | Full audit trail with actor, IP, user agent                  |
 | Audit DB migration         | `packages/server/drizzle/0000_slow_firestar.sql`  | `audit_logs` table created in baseline migration       |
 | Cookie consent banner      | `packages/client/src/components/CookieConsent.tsx` | Essential / All options, localStorage persistence            |
@@ -480,8 +488,33 @@ export async function purgeExpiredData() {
 
 ### 6.2 Retention
 
-- Audit logs retained for **7 years** to satisfy regulatory requirements.
-- Implemented via PostgreSQL TTL or periodic cleanup job.
+- Audit logs retained for **365 days** (`AUDIT_RETENTION_DAYS`), the standard security and
+  audit log retention period:
+  - PCI DSS v4.0 req. 10.5.1 — at least 12 months of audit history
+  - CIS Controls v8, control 8.10 — 90 days minimum, 12 months recommended
+  - SOC 2 / ISO 27001 programmes — 12 months conventionally
+  - GDPR sets **no** audit retention period; art. 5(1)(e) storage limitation argues against
+    keeping personal data longer than necessary, so a longer period requires a justification
+    rather than a shorter one requiring an excuse.
+- This corrects an earlier claim in this report of **7 years** "to satisfy regulatory
+  requirements". No such requirement was cited or established. 7 years is a tax and financial
+  records convention; if Eventclick becomes subject to one, raise `AUDIT_RETENTION_DAYS` and
+  record the citation here in the same change.
+- Enforced by `packages/server/src/jobs/auditRetention.ts`, a daily batched purge that ships in
+  dry-run mode. `env.ts` refuses to start if `AUDIT_RETENTION_DAYS < DATA_RETENTION_DAYS`.
+- Organisations flagged `organizations.legal_hold` are exempt from this purge and from the data
+  retention purge, so a litigation hold does not have to race a schedule.
+- Each purge writes an `audit.purged` entry naming the cutoff and the row count, so the trail
+  records its own trimming.
+- **Expired rows are archived to WORM storage before deletion** (`AUDIT_ARCHIVE_BUCKET`, a
+  Cloudflare R2 bucket carrying a bucket lock rule), implementing tier-then-delete rather than
+  delete-only. The purge refuses to delete at all when no archive is configured, unless
+  `AUDIT_ARCHIVE_DISABLED=true` records that the loss is intended.
+- **Archived rows are pseudonymised** (`services/audit-archive.service.ts`), so immutability does
+  not obstruct art. 17 erasure: `actor_email`, `ip_address` and `user_agent` are dropped, and
+  personal-data keys inside `old_values` / `new_values` are redacted. `actor_user_id` is retained
+  as a pseudonym in the art. 4(5) sense — a UUID that cannot be attributed to a person without
+  the `users` table, and that stops being attributable once that row is erased.
 
 ### 6.3 Integrity
 

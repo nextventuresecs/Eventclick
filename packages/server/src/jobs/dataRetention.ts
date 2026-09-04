@@ -1,6 +1,7 @@
-import { inArray, lt } from "drizzle-orm";
+import { and, inArray, lt, notInArray } from "drizzle-orm";
 import { authDb, withJobStatementTimeout } from "../db";
 import { attendanceEntries, activityPhotos, roomRecordings, activitySubmissions } from "../db/schema";
+import { loadHeldOrganizationIds } from "./auditRetention";
 import {
   DATA_RETENTION_BATCH_SIZE,
   DATA_RETENTION_POLL_MS,
@@ -37,6 +38,8 @@ export interface RetentionRunResult {
   retentionDays: number;
   durationMs: number;
   tables: RetentionTableResult[];
+  /** Organisations skipped entirely because they are under litigation hold. */
+  heldOrganizations: number;
   totalDeleted: number;
 }
 
@@ -57,7 +60,14 @@ const purgeTable = async (
   entry: (typeof RETAINED_TABLES)[number],
   cutoff: Date,
   dryRun: boolean,
+  heldOrgIds: string[],
 ): Promise<RetentionTableResult> => {
+  // `notInArray(col, [])` compiles to a predicate Postgres rejects, so the
+  // clause is omitted entirely when nothing is on hold — the normal case.
+  const expired = heldOrgIds.length
+    ? and(lt(entry.ageColumn, cutoff), notInArray(entry.table.organizationId, heldOrgIds))
+    : lt(entry.ageColumn, cutoff);
+
   let examined = 0;
   let deleted = 0;
 
@@ -65,7 +75,7 @@ const purgeTable = async (
     const batch = await authDb
       .select({ id: entry.table.id })
       .from(entry.table)
-      .where(lt(entry.ageColumn, cutoff))
+      .where(expired)
       .limit(DATA_RETENTION_BATCH_SIZE);
 
     if (batch.length === 0) break;
@@ -82,9 +92,24 @@ const purgeTable = async (
     }
 
     const ids = batch.map((r) => r.id);
-    await withJobStatementTimeout(authDb, (tx) =>
+    const result = await withJobStatementTimeout(authDb, (tx) =>
       tx.delete(entry.table).where(inArray(entry.table.id, ids)),
     );
+
+    // A DELETE that matches nothing is not a drained table — the SELECT above
+    // just found these rows. It means the statement was blocked (a revoked
+    // privilege, a policy that excludes DELETE), and without this the loop
+    // re-selects the same batch forever while `deleted` climbs past what was
+    // ever removed. Stop loudly; the per-table catch keeps the other tables
+    // running and the schedule intact.
+    const affected = (result as { rowCount?: number | null } | undefined)?.rowCount ?? 0;
+    if (affected !== ids.length) {
+      throw new Error(
+        `${entry.name} purge deleted ${affected} of ${ids.length} rows in a batch — refusing ` +
+          `to continue; check the DELETE privilege for the retention role`,
+      );
+    }
+
     deleted += ids.length;
 
     // A short batch means the table is drained.
@@ -109,12 +134,16 @@ export const purgeExpiredData = async (
   const retentionDays = env.DATA_RETENTION_DAYS;
   const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
 
+  // Loaded once for the whole pass, not per table, so every table in one run
+  // agrees on which organisations are exempt.
+  const heldOrgIds = await loadHeldOrganizationIds();
+
   const tables: RetentionTableResult[] = [];
   for (const entry of RETAINED_TABLES) {
     // Per table, so one failing table does not abandon the others — and the
     // schedule keeps running either way.
     try {
-      tables.push(await purgeTable(entry, cutoff, dryRun));
+      tables.push(await purgeTable(entry, cutoff, dryRun, heldOrgIds));
     } catch (err) {
       logger.error(
         { err, table: entry.name, event: "retention.table_failed" },
@@ -130,6 +159,7 @@ export const purgeExpiredData = async (
     retentionDays,
     durationMs: Date.now() - startedAt,
     tables,
+    heldOrganizations: heldOrgIds.length,
     totalDeleted: tables.reduce((sum, t) => sum + t.deleted, 0),
   };
 

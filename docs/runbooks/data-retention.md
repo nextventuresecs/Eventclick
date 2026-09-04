@@ -52,6 +52,13 @@ Before turning it on, confirm:
   intended effect of retention, and worth confirming rather than discovering.
 - **You have a backup you could restore from.** `scripts/backup-db.sh`.
   Deletion is not reversible.
+- **Nobody in scope is under dispute.** An organisation with
+  `organizations.legal_hold = true` is skipped entirely by this job — none of
+  its rows are deleted regardless of age. Set the flag *before* enabling the
+  purge for anyone under litigation or investigation; there is no undo
+  afterwards. `SELECT id, name FROM organizations WHERE legal_hold;` shows who
+  is currently held, and `docs/runbooks/audit-retention.md` covers the flag in
+  full.
 
 ## Step 3 — enable it
 
@@ -61,7 +68,7 @@ the backlog in batches of 1,000, each in its own short transaction.
 Watch for:
 
 ```
-event=retention.run_complete dryRun=false totalDeleted=… durationMs=…
+event=retention.run_complete dryRun=false totalDeleted=… heldOrganizations=… durationMs=…
 ```
 
 ## Step 4 — confirm afterwards
@@ -75,11 +82,11 @@ runs should report small numbers — a day's worth of newly-expired rows.
   `room_recordings` *rows*; the underlying S3/R2 objects they point at are left
   in place. The database stops referencing them, so they become orphaned rather
   than deleted. Closing that gap needs a separate storage-side sweep.
-- **Audit logs are not purged.** The compliance report describes a 7-year
-  audit retention; this job does not touch `audit_logs` at all, and deliberately
-  so — deleting the audit trail is a different decision from deleting expired
-  event data. The 7-year figure is currently a statement of intent, not an
-  enforced control.
+- **Audit logs are not purged by this job.** It does not touch `audit_logs` at
+  all, and deliberately so — deleting the audit trail is a different decision
+  from deleting expired event data. That is now handled by a separate job with
+  its own schedule and its own dry-run switch: see
+  `docs/runbooks/audit-retention.md`.
 - **No leader election.** Background jobs run in every process. A second
   container would run this purge concurrently with the first; the batches are
   idempotent (each deletes rows by id), so the outcome is correct but the work
@@ -92,8 +99,24 @@ runs should report small numbers — a day's worth of newly-expired rows.
 ## If it fails
 
 A failing table is logged as `event=retention.table_failed` and the run
-continues with the others; a failing run is logged as
+continues with the others — including the deliberate failure a blocked DELETE
+now raises. A batch that deletes fewer rows than the SELECT just returned means
+the statement was blocked (a revoked privilege, a policy that excludes DELETE)
+rather than that the table is drained; the job aborts that table with
+`deleted N of M rows in a batch` instead of re-selecting the same rows forever
+while reporting deletions it never made. That one means "check the role's
+privileges", not "retry".
+
+A failing run is logged as
 `event=retention.run_failed` and the schedule stays intact. Neither stops
 future runs, so a transient database problem resolves itself on the next pass.
+One failure is deliberately **not** partial: the legal-hold lookup runs once
+before any table is touched, outside the per-table error handling, so a database
+problem there aborts the entire run rather than letting it proceed table by
+table. That is the intended direction — the job must not delete anything while
+it cannot determine which organisations are exempt. The cost is that a blip in
+that one query means no progress at all for that pass, rather than three tables
+out of four.
+
 The signal worth alerting on is `retention.run_complete` *not* appearing for
 several days.
