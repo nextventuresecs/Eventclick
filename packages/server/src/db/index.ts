@@ -80,6 +80,25 @@ export const tenantContextStorage = new AsyncLocalStorage<NodePgDatabase<typeof 
 export const db = new Proxy(basePoolDb, {
   get(target, prop, receiver) {
     const scoped = tenantContextStorage.getStore();
+
+    // Refuse `db.transaction()` while a tenant transaction is already open,
+    // rather than letting it silently commit that transaction out from under
+    // the request (see withTransaction below for the full mechanism). This is
+    // the choke point every service already goes through, so the mistake
+    // cannot reach production a third time; it is a throw and not a silent
+    // redirect because the two have different rollback semantics and the
+    // caller has to pick knowingly.
+    //
+    // Only reachable through this Proxy. A callback that reaches for
+    // `tx.transaction()` on the instance withTransaction hands it is holding
+    // the bound drizzle instance directly and is not covered — don't.
+    if (prop === "transaction" && scoped) {
+      throw new Error(
+        "db.transaction() inside a tenant-scoped request would commit the request " +
+          "transaction and drop app.current_tenant. Use withTransaction() from db/index.ts.",
+      );
+    }
+
     const active = scoped ?? target;
     return Reflect.get(active, prop, receiver);
   },
