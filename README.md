@@ -1,8 +1,8 @@
 # Eventclick
 
-**Real-time NGO transparency and verification platform.**
+**Real-time Org transparency and verification platform.**
 
-Eventclick helps non-profit organizations prove their field work is actually happening. NGO administrators create live event rooms, stream ongoing activities, and share secure links so donors and funders can watch work in real time. The platform also captures attendance records with photo evidence, creating a transparent digital trail that builds trust and donor confidence.
+Eventclick helps non-profit organizations prove their field work is actually happening. Org administrators create live event rooms, stream ongoing activities, and share secure links so donors and funders can watch work in real time. The platform also captures attendance records with photo evidence, creating a transparent digital trail that builds trust and donor confidence.
 
 ---
 
@@ -28,11 +28,11 @@ Eventclick helps non-profit organizations prove their field work is actually hap
 
 | Feature | Description |
 |---------|-------------|
-| **Live Streaming** | Stream live events via WebRTC (LiveKit) so donors can watch NGO work in real time |
+| **Live Streaming** | Stream live events via WebRTC (LiveKit) so donors can watch Org work in real time |
 | **Attendance Verification** | Custom forms with photo capture to prove who was present at events |
 | **Activity Tracking** | Photo-verified checklists to prove specific tasks were completed |
-| **Role-Based Access** | Three roles (NGO Admin, Event Admin, Volunteer) with granular permissions |
-| **Multi-Tenant** | Each NGO has its own isolated organization — data never leaks between orgs |
+| **Role-Based Access** | Three roles (Org Admin, Event Admin, Volunteer) with granular permissions |
+| **Multi-Tenant** | Each Org has its own isolated organization — data never leaks between orgs |
 | **Share Links** | Secure, token-based links let anyone watch a live session without logging in |
 | **PDF Reports** | Generate verification reports as downloadable PDFs |
 | **Recording** | Record live sessions and store them in cloud storage |
@@ -156,7 +156,7 @@ The database uses PostgreSQL with Drizzle ORM. All tables support soft deletes (
 ```
 ┌──────────────────┐     ┌──────────────────┐     ┌──────────────────────┐
 │  organizations   │────▶│     users         │────▶│     sessions         │
-│  (NGO/Nonprofit) │     │  (All user types) │     │  (Refresh tokens)    │
+│  (Org/Nonprofit) │     │  (All user types) │     │  (Refresh tokens)    │
 └──────────────────┘     └──────────────────┘     └──────────────────────┘
         │                        │
         │                        ▼
@@ -181,7 +181,7 @@ The database uses PostgreSQL with Drizzle ORM. All tables support soft deletes (
 
 | Table | What It Stores |
 |-------|---------------|
-| `organizations` | NGO name, slug, logo, contact info |
+| `organizations` | Org name, slug, logo, contact info |
 | `users` | Email, password hash, role, organization link |
 | `eventRooms` | Event title, schedule, status (scheduled/live/ended), streaming config, activity checklists |
 | `formDefinitions` | Custom attendance form fields (stored as JSONB) |
@@ -197,7 +197,7 @@ The database uses PostgreSQL with Drizzle ORM. All tables support soft deletes (
 
 Eventclick has three roles. Each role can only do what it needs to — nothing more.
 
-| Feature | NGO Admin | Event Admin | Volunteer |
+| Feature | Org Admin | Event Admin | Volunteer |
 |---------|:---------:|:-----------:|:---------:|
 | Create event admins | ✅ | ❌ | ❌ |
 | Create volunteers | ✅ | ✅ | ❌ |
@@ -382,7 +382,7 @@ Secrets are **never** committed to git or stored in `.env` files on disk permane
 | **SSL/TLS** | Cloudflare handles SSL termination. HSTS headers enforce HTTPS |
 | **Authentication** | JWT access + refresh tokens with single-use rotation and replay detection |
 | **Authorization** | Role-based access control (RBAC) checked on every endpoint |
-| **Multi-Tenancy** | Every database query filters by `organizationId` — data never leaks between NGOs |
+| **Multi-Tenancy** | Every database query filters by `organizationId` — data never leaks between Orgs |
 | **Input Validation** | Every API input is validated with Zod schemas before processing |
 | **Password Storage** | bcrypt with 12 rounds — never stored in plain text |
 | **Rate Limiting** | Express rate limiter with Redis backend |
@@ -489,7 +489,7 @@ The current `t3.small` (2 vCPU, 2 GB RAM) handles this fine. The memory limits i
 ### Phase 3 — Future Features
 
 - [ ] **Donor/Viewer role** — Read-only access for funders to view reports and recordings
-- [ ] **Super Admin role** — Platform-level admin for managing multiple NGOs
+- [ ] **Super Admin role** — Platform-level admin for managing multiple Orgs
 - [ ] **Regional Manager role** — Oversight across multiple organizations
 - [ ] **Offline attendance mode** — Capture attendance without internet, sync later
 - [ ] **Mobile app** — React Native for field workers
@@ -500,7 +500,7 @@ The current `t3.small` (2 vCPU, 2 GB RAM) handles this fine. The memory limits i
 ### Infrastructure Improvements
 
 - [ ] **Terraform IaC** — Define all AWS infrastructure as code (currently manually set up)
-- [ ] **Multi-region deployment** — For NGOs operating in different geographies
+- [ ] **Multi-region deployment** — For Orgs operating in different geographies
 - [ ] **Auto-scaling** — Scale EC2 instances based on traffic
 - [ ] **Staging environment** — A separate environment for testing before production
 - [ ] **Canary deployments** — Roll out changes to a small percentage of traffic first
