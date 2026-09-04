@@ -51,7 +51,8 @@ Before turning it on, confirm:
   the retention period will lose their underlying attendance data. That is the
   intended effect of retention, and worth confirming rather than discovering.
 - **You have a backup you could restore from.** `scripts/backup-db.sh`.
-  Deletion is not reversible.
+  Deletion is not reversible — and as of the storage sweep it now removes the
+  uploaded files too, which no database backup restores.
 - **Nobody in scope is under dispute.** An organisation with
   `organizations.legal_hold = true` is skipped entirely by this job — none of
   its rows are deleted regardless of age. Set the flag *before* enabling the
@@ -71,6 +72,16 @@ Watch for:
 event=retention.run_complete dryRun=false totalDeleted=… heldOrganizations=… durationMs=…
 ```
 
+Per table you will also see `objectsDeleted` and `objectsFailed`. A non-zero
+`objectsFailed` is not an error — those rows were kept back deliberately and the
+next run retries them. Persistent failures mean the bucket credentials or policy
+need looking at:
+
+```
+event=storage.delete_partial  failed=… requested=…
+event=retention.batch_blocked table=activity_photos blocked=…
+```
+
 ## Step 4 — confirm afterwards
 
 Re-run the counts from step 1: they should be at or near zero. Subsequent daily
@@ -78,10 +89,20 @@ runs should report small numbers — a day's worth of newly-expired rows.
 
 ## Known limitations
 
-- **Object storage is not purged.** The job deletes `activity_photos` and
-  `room_recordings` *rows*; the underlying S3/R2 objects they point at are left
-  in place. The database stops referencing them, so they become orphaned rather
-  than deleted. Closing that gap needs a separate storage-side sweep.
+- **Orphaned objects from *other* delete paths are not swept.** This job now
+  deletes an object before the row that names it, so age-based expiry no longer
+  leaks files. Every other path still does: `activity_photos` and
+  `attendance_entries` cascade from `event_rooms`, so **deleting a room removes
+  the rows and leaves the objects**, and has since launch. `activity_photos`
+  also soft-deletes (`deleted_at`), which strands the object while the row
+  survives. Closing that needs the delete paths themselves to remove objects,
+  plus a one-off sweep for what has already accumulated — see below.
+- **No bucket-diff sweep.** Reconciling the bucket against the database would
+  catch everything already orphaned, but it has to tell an orphan apart from an
+  object whose row has not been written yet: `createPresignedPut` means the
+  upload completes before the insert, so a naive diff deletes live uploads. That
+  needs an age threshold and its own runbook, and is deliberately not attempted
+  here.
 - **Audit logs are not purged by this job.** It does not touch `audit_logs` at
   all, and deliberately so — deleting the audit trail is a different decision
   from deleting expired event data. That is now handled by a separate job with
