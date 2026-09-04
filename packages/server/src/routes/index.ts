@@ -185,6 +185,7 @@ import { settingsRouter } from "./settings.routes";
 import { mediaRouter } from "./media.routes";
 import { feedbackRouter } from "./feedback.routes";
 import { bugReportRouter } from "./bug-report.routes";
+import { contactRouter } from "./contact.routes";
 import { notificationRoutes } from "./notification.routes";
 import { profileRouter } from "./profile.routes";
 
@@ -197,6 +198,7 @@ apiRouter.use("/event-assignments", eventAssignmentRouter);
 apiRouter.use(settingsRouter);
 apiRouter.use("/feedback", feedbackRouter);
 apiRouter.use("/bug-reports", bugReportRouter);
+apiRouter.use("/contact", contactRouter);
 apiRouter.use("/notifications", notificationRoutes);
 apiRouter.use("/profile", profileRouter);
 apiRouter.use("/media", mediaRouter);

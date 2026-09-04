@@ -1,6 +1,8 @@
 import { Resend } from "resend";
+import type { SubmitContactRequestInput } from "@application/shared";
 import { logger } from "../utils/logger";
 import { env } from "../config/env";
+import { renderBrandedEmail } from "../utils/email-template";
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
@@ -324,6 +326,77 @@ export const sendEventCancelledEmail = async (
     logger.info(
       { email, roomTitle, reason, cancellationReason, event: "email.event_cancelled" },
       `[EMAIL MOCK] Event ${reason} Sent\nTo: ${email}\nRoom: ${roomTitle}\nWhen: ${scheduledStart}\nNote: ${cancellationReason ?? "(none)"}`,
+    );
+  }
+};
+
+/**
+ * Notifies the team of a demo or support request submitted from the marketing
+ * site. Every value here is attacker-controlled free text from an
+ * unauthenticated form, so all of it goes through escapeHtml — and the
+ * submitter's address is set as replyTo rather than from, so a reply reaches
+ * them without letting the form choose our sending identity.
+ */
+export const sendContactRequestEmail = async (
+  request: SubmitContactRequestInput,
+): Promise<void> => {
+  const isDemo = request.kind === "demo";
+  const heading = isDemo ? "New demo request" : "New support request";
+  const subject = `${heading} — ${request.orgName}`;
+
+  const rows: [string, string | undefined][] = [
+    ["Name", request.fullName],
+    ["Work email", request.workEmail],
+    ["Organisation", request.orgName],
+    ["Team size", request.teamSize],
+    ["Use case", request.useCase],
+    ["Support type", request.supportType],
+    ["Context", request.additionalContext],
+    [
+      "Marketing consent",
+      request.consentGiven === undefined ? undefined : request.consentGiven ? "Yes" : "No",
+    ],
+  ];
+
+  const body = rows
+    .filter((entry): entry is [string, string] => Boolean(entry[1]))
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:6px 16px 6px 0;color:#667085;font-size:13px;vertical-align:top;">${escapeHtml(label)}</td>` +
+        `<td style="padding:6px 0;color:#1D2939;font-size:14px;">${escapeHtml(value)}</td></tr>`,
+    )
+    .join("");
+
+  if (resend) {
+    const { error } = await resend.emails.send({
+      from: env.RESEND_FROM_EMAIL,
+      to: env.CONTACT_NOTIFY_EMAIL,
+      replyTo: request.workEmail,
+      subject,
+      html: renderBrandedEmail({
+        heading,
+        intro: `Submitted from the marketing site by <strong>${escapeHtml(request.fullName)}</strong>.`,
+        bodyHtml: `<table role="presentation" cellpadding="0" cellspacing="0" border="0">${body}</table>`,
+      }),
+    });
+
+    if (error) {
+      logger.error(
+        { kind: request.kind, orgName: request.orgName, error, event: "email.contact_request_failed" },
+        "Failed to send contact request email",
+      );
+      throw error;
+    }
+    logger.info(
+      { kind: request.kind, orgName: request.orgName, event: "email.contact_request_sent" },
+      "Contact request email sent via Resend",
+    );
+  } else {
+    logger.info(
+      { kind: request.kind, request, event: "email.contact_request" },
+      `[EMAIL MOCK] ${heading}
+To: ${env.CONTACT_NOTIFY_EMAIL}
+Org: ${request.orgName}`,
     );
   }
 };

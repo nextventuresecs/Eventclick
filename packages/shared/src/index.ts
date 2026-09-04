@@ -402,6 +402,29 @@ export const SubmitBugReportSchema = z.object({
 });
 export type SubmitBugReportInput = z.infer<typeof SubmitBugReportSchema>;
 
+// ─── Public Contact / Demo Requests ─────────────────
+// Submitted from the marketing site by people who have no account, so unlike
+// every other schema here these back an unauthenticated endpoint. Keep the
+// bounds tight: the values are echoed into a notification email.
+export const CONTACT_REQUEST_KINDS = ["demo", "support"] as const;
+export const ContactRequestKindSchema = z.enum(CONTACT_REQUEST_KINDS);
+export type ContactRequestKind = z.infer<typeof ContactRequestKindSchema>;
+
+export const SubmitContactRequestSchema = z.object({
+  kind: ContactRequestKindSchema,
+  fullName: z.string().trim().min(1).max(200),
+  workEmail: z.string().trim().email().max(320),
+  orgName: z.string().trim().min(1).max(200),
+  // Demo-request fields.
+  teamSize: z.string().trim().max(100).optional(),
+  useCase: z.string().trim().max(200).optional(),
+  // Support-request fields.
+  supportType: z.string().trim().max(100).optional(),
+  additionalContext: z.string().trim().max(5000).optional(),
+  consentGiven: z.boolean().optional(),
+});
+export type SubmitContactRequestInput = z.infer<typeof SubmitContactRequestSchema>;
+
 export interface AuthUser {
   id: string;
   email: string;
