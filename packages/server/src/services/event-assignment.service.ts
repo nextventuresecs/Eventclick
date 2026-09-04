@@ -1,6 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { EventAdminAssignment, OrgUserSummary, UserRole } from "@application/shared";
-import { db } from "../db";
+import { db, withTransaction } from "../db";
 import {
   eventAdminAssignments,
   eventRooms,
@@ -161,7 +161,7 @@ export const assignEventAdminToRoom = async ({
     throw ApiError.badRequest("Only volunteers or event admins can be assigned");
   }
 
-  await db.transaction(async (tx) => {
+  await withTransaction(async (tx) => {
     // Ensure orgMember record exists (idempotent)
     const [existingMember] = await tx
       .select({ id: orgMembers.id })

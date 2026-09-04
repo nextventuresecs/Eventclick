@@ -13,7 +13,7 @@ import argon2 from "argon2";
 import { invalidateUserCache } from "./auth";
 import { db, authDb } from "../db";
 import { users, orgMembers, emailVerifications, organizations } from "../db/schema";
-import { ApiError } from "../utils/errors";
+import { ApiError, isUniqueViolation } from "../utils/errors";
 import { dispatchEmail } from "./email-delivery.service";
 import { notificationService } from "./notification.service";
 import { recordAudit, recordAuditSafely } from "./audit.service";
@@ -83,7 +83,10 @@ export const createOrgUser = async (
 ): Promise<OrgUserSummary> => {
   const { email, fullName, password, role = "volunteer" } = input;
 
-  // Check for existing user with same email
+  // Fast path only. `db` is the RLS pool, so this sees users in *this* org;
+  // users_email_unique is global. A duplicate belonging to another tenant is
+  // invisible here and only surfaces as a 23505 on the insert below — as does
+  // a concurrent create that lands between this check and that insert.
   const [existing] = await db
     .select({ id: users.id })
     .from(users)
@@ -108,42 +111,55 @@ export const createOrgUser = async (
   // auth-registration.service.ts uses the identical authDb.transaction
   // pattern for the same reason. RLS bypass here is safe: organizationId is
   // the server-trusted `orgId` param, not client input.
-  const { user: newUser, token } = await authDb.transaction(async (tx) => {
-    const [user] = await tx
-      .insert(users)
-      .values({
-        email: email.toLowerCase(),
-        fullName,
-        passwordHash,
-        role: role as UserRole,
+  const created = await authDb
+    .transaction(async (tx) => {
+      const [user] = await tx
+        .insert(users)
+        .values({
+          email: email.toLowerCase(),
+          fullName,
+          passwordHash,
+          role: role as UserRole,
+          organizationId: orgId,
+          isActive: true,
+        })
+        .returning();
+
+      if (!user) throw ApiError.internal("Failed to create user");
+
+      // Also create orgMember record
+      await tx.insert(orgMembers).values({
+        userId: user.id,
         organizationId: orgId,
-        isActive: true,
-      })
-      .returning();
+        role: role as UserRole,
+        invitedBy: createdBy,
+      });
 
-    if (!user) throw ApiError.internal("Failed to create user");
+      // Generate Email Verification Token
+      const verificationToken = crypto.randomBytes(32).toString("hex");
+      const tokenHash = crypto.createHash("sha256").update(verificationToken).digest("hex");
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Also create orgMember record
-    await tx.insert(orgMembers).values({
-      userId: user.id,
-      organizationId: orgId,
-      role: role as UserRole,
-      invitedBy: createdBy,
+      await tx.insert(emailVerifications).values({
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      });
+
+      return { user, token: verificationToken };
+    })
+    .catch((error: unknown) => {
+      // Escaped as a 500 before this (Sentry EVENTCLICK-SERVER-8). The
+      // duplicate is a client-correctable condition, so it gets the same 409
+      // the pre-check returns; the message stays generic rather than
+      // confirming which tenant already holds the address.
+      if (isUniqueViolation(error, "users_email_unique")) {
+        throw ApiError.conflict("A user with this email already exists");
+      }
+      throw error;
     });
 
-    // Generate Email Verification Token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(verificationToken).digest("hex");
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    await tx.insert(emailVerifications).values({
-      userId: user.id,
-      tokenHash,
-      expiresAt,
-    });
-
-    return { user, token: verificationToken };
-  });
+  const { user: newUser, token } = created;
 
   // The user is already committed — route the USER_INVITED event through
   // ChannelRouter (respecting the invitee's notification preferences, which

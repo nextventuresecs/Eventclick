@@ -7,7 +7,7 @@ import type {
   UserRole,
 } from "@application/shared";
 import { buildMediaPath } from "@application/shared";
-import { db } from "../db";
+import { db, withTransaction } from "../db";
 import {
   eventRooms,
   activitySubmissions,
@@ -132,9 +132,11 @@ export const submitActivityPhoto = async (
     throw ApiError.internal("Failed to create activity submission");
   }
 
-  // Wrap the photo-count-check + insert in a transaction to prevent
-  // concurrent requests from overshooting the 50-photo limit.
-  await db.transaction(async (tx) => {
+  // Keep the photo-count-check + insert atomic. withTransaction, not
+  // db.transaction: inside a request this already runs in the tenant
+  // transaction, and opening a nested one there commits it early and drops
+  // app.current_tenant — which silently emptied the read-back below.
+  await withTransaction(async (tx) => {
     const countResult = await tx
       .select({ count: sql<number>`count(*)` })
       .from(activityPhotos)

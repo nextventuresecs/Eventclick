@@ -87,6 +87,48 @@ export const db = new Proxy(basePoolDb, {
 
 export type Database = typeof db;
 
+/**
+ * Runs `fn` atomically, without opening a transaction that is already open.
+ *
+ * `db` is a Proxy: inside a tenant-scoped request it resolves to a drizzle
+ * instance bound to the single connection that `runInTenantContext` has
+ * already put into a transaction (BEGIN + SET LOCAL app.current_tenant).
+ * Calling `db.transaction()` there is actively harmful, because drizzle's
+ * node-postgres driver only opens a savepoint when it is holding a *Pool*; on
+ * a bound PoolClient it emits raw `begin`/`commit` instead. Postgres downgrades
+ * the nested `begin` to a warning, so the inner `commit` ends the *request*
+ * transaction — and `SET LOCAL app.current_tenant` dies with it. Every
+ * subsequent query in that request then runs with no tenant: RLS predicates
+ * evaluate against NULL, reads silently match zero rows, and writes fail their
+ * WITH CHECK. That is what turned a successful assignment insert into a 500
+ * (Sentry EVENTCLICK-SERVER-9) and what made photo read-backs come back empty.
+ *
+ * So: when a request transaction is already in flight, run inline against it —
+ * it supplies the atomicity the caller wanted. Outside one (background jobs,
+ * the SQS worker, migrations) `db` is the bare pool and a real transaction is
+ * both correct and necessary, so fall through to it.
+ *
+ * "In flight" covers runInBackgroundTenantContext too — it populates the same
+ * store with a bound client, so poll jobs and deferred callbacks take the
+ * inline path and keep their real ROLLBACK-on-throw. The pool fallback is
+ * reached only with no store set at all, which is already the untenanted case
+ * where every RLS-scoped statement fails or matches nothing regardless of the
+ * transaction around it.
+ *
+ * Note this is atomicity, not an independent rollback scope: a caller inside a
+ * request shares the request's transaction, which `runInTenantContext` commits
+ * on `res.on("finish")` regardless of handler outcome. Callers that need to
+ * roll back a failed unit of work must surface an error the request path
+ * already treats as fatal.
+ */
+export const withTransaction = async <T>(
+  fn: (tx: NodePgDatabase<typeof schema>) => Promise<T>,
+): Promise<T> => {
+  const scoped = tenantContextStorage.getStore();
+  if (scoped) return fn(scoped);
+  return basePoolDb.transaction((tx) => fn(tx as unknown as NodePgDatabase<typeof schema>));
+};
+
 // Postgres interval literal — digits plus a unit, nothing else. The value is
 // operator-supplied via env and is interpolated raw below (SET does not take
 // bind parameters), so it is validated rather than trusted.

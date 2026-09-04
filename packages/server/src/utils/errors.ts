@@ -37,3 +37,26 @@ export class ApiError extends Error {
     return new ApiError(504, "GATEWAY_TIMEOUT", message);
   }
 }
+
+/**
+ * True when `error` is (or wraps) a Postgres unique-constraint violation,
+ * optionally for one named constraint.
+ *
+ * Drizzle does not surface driver errors directly: a failed query is rethrown
+ * as its own Error whose message is the SQL text, with the pg error hanging
+ * off `cause`. So the check has to walk the chain rather than look at the
+ * top-level object — see the two stacked exception values on Sentry
+ * EVENTCLICK-SERVER-8, where the 23505 is the inner one.
+ */
+export const isUniqueViolation = (error: unknown, constraint?: string): boolean => {
+  let current: unknown = error;
+  // Bounded so a self-referential `cause` cannot spin here.
+  for (let depth = 0; current != null && depth < 10; depth += 1) {
+    const candidate = current as { code?: unknown; constraint?: unknown; cause?: unknown };
+    if (candidate.code === "23505" && (!constraint || candidate.constraint === constraint)) {
+      return true;
+    }
+    current = candidate.cause;
+  }
+  return false;
+};
