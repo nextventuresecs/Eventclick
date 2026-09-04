@@ -134,6 +134,12 @@ jobs:
             VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
             VITE_SENTRY_CLIENT_DSN=${{ secrets.VITE_SENTRY_CLIENT_DSN }}
             VITE_SENTRY_RELEASE=${{ steps.image-tags.outputs.sha }}
+          # Passed as a BuildKit secret rather than a build-arg so it is not
+          # baked into the exported layer cache below. Same sha as the release
+          # above, by construction — the upload and the runtime release cannot
+          # drift apart.
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           cache-from: type=gha,scope=client
           cache-to: type=gha,mode=max,scope=client
           provenance: false
