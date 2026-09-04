@@ -88,6 +88,10 @@ const EnvSchema = z.object({
   // ─── Email ────────────────────────────────────────
   RESEND_API_KEY: z.string(),
   RESEND_FROM_EMAIL: z.string().default("noreply@eventclick.live"),
+  // Where marketing-site demo and support requests are delivered. This is a
+  // `to:` address, not a sender — `from:` stays RESEND_FROM_EMAIL, which is
+  // the verified sending domain.
+  CONTACT_NOTIFY_EMAIL: z.string().email().default("demo@ustuealkai.resend.app"),
 
   // ─── LiveKit ──────────────────────────────────────
   LIVEKIT_URL: z.string().min(1, "LIVEKIT_URL is required"),
