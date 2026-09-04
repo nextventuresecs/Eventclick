@@ -133,6 +133,7 @@ jobs:
             VITE_LIVEKIT_URL=${{ secrets.VITE_LIVEKIT_URL }}
             VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
             VITE_SENTRY_CLIENT_DSN=${{ secrets.VITE_SENTRY_CLIENT_DSN }}
+            VITE_SENTRY_RELEASE=${{ steps.image-tags.outputs.sha }}
           cache-from: type=gha,scope=client
           cache-to: type=gha,mode=max,scope=client
           provenance: false
