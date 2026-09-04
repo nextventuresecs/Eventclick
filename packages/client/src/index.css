@@ -277,3 +277,65 @@ input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
   display: none;
 }
+
+/* ── flatpickr, themed to the brand ──────────────────────────────────
+   flatpickr ships its own stylesheet with a blue accent and square
+   corners. These overrides only restate colour and radius so the
+   calendar matches the rest of the app; layout is left to the library.
+   Scoped to .flatpickr-calendar because the element is appended to
+   <body>, outside any component tree. */
+.flatpickr-calendar {
+  border-radius: 1rem;
+  border: 1px solid var(--color-gray-200);
+  box-shadow: 0 12px 32px rgba(64, 34, 145, 0.14);
+  font-family: inherit;
+}
+
+.flatpickr-months .flatpickr-month,
+.flatpickr-weekdays,
+span.flatpickr-weekday {
+  background: transparent;
+  color: var(--color-gray-600);
+  fill: var(--color-gray-600);
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month input.cur-year {
+  font-weight: 600;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.flatpickr-day.today {
+  border-color: var(--color-accent);
+}
+
+.flatpickr-day:hover:not(.selected):not(.flatpickr-disabled) {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  border-color: transparent;
+}
+
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay {
+  color: var(--color-gray-400);
+}
+
+.flatpickr-time input:hover,
+.flatpickr-time input:focus,
+.flatpickr-time .flatpickr-am-pm:hover,
+.flatpickr-time .flatpickr-am-pm:focus {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg {
+  fill: var(--color-primary);
+}
