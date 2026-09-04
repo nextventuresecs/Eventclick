@@ -213,6 +213,7 @@ import { startSessionCleanupJob } from "./jobs/sessionCleanup";
 import { startAttendanceWindowNotifierJob } from "./jobs/attendanceWindowNotifier";
 import { startEventExpiryNotifierJob } from "./jobs/eventExpiryNotifier";
 import { startDataRetentionJob } from "./jobs/dataRetention";
+import { startAuditRetentionJob } from "./jobs/auditRetention";
 
 const shouldStartWorker = env.SQS_WORKER_ENABLED !== "false";
 
@@ -224,6 +225,7 @@ async function startServer() {
     startAttendanceWindowNotifierJob();
     startEventExpiryNotifierJob();
     startDataRetentionJob();
+    startAuditRetentionJob();
     startSqsWorker().catch((err) => {
       logger.error({ err }, "SQS worker crashed");
     });

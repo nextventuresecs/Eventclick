@@ -41,6 +41,17 @@ export const DATA_RETENTION_POLL_MS = 24 * 60 * 60 * 1000;
 // row older than the retention period that has ever accumulated.
 export const DATA_RETENTION_BATCH_SIZE = 1_000;
 
+// ─── Audit log retention purge (jobs/auditRetention.ts) ────────────────────
+// Daily, same reasoning as the data purge. Deliberately offset from it so the
+// two sweeps do not contend for the same connections and locks on startup —
+// both jobs run immediately when the process boots.
+export const AUDIT_RETENTION_POLL_MS = 24 * 60 * 60 * 1000;
+export const AUDIT_RETENTION_START_DELAY_MS = 5 * 60 * 1000;
+// Smaller than the data purge batch. Audit rows carry old_values/new_values
+// text blobs, so a thousand of them is a great deal more heap and WAL than a
+// thousand attendance rows.
+export const AUDIT_RETENTION_BATCH_SIZE = 500;
+
 // ─── PDF rendering deadlines (services/report.service.ts) ──────────────────
 // Gotenberg had a fixed 120s abort deadline while the HTTP server closes any
 // request after SERVER_REQUEST_TIMEOUT_MS (30s by default). On the synchronous

@@ -904,6 +904,10 @@ export const AUDIT_ACTIONS = [
   "attendance.created",
   "report.generated",
   "settings.updated",
+  // Written by the audit retention purge itself. An audit trail that can be
+  // trimmed without leaving a trace is not an audit trail — the receipt names
+  // the cutoff and the row count, and outlives the rows it describes.
+  "audit.purged",
 ] as const;
 export const AuditActionSchema = z.enum(AUDIT_ACTIONS);
 export type AuditAction = z.infer<typeof AuditActionSchema>;

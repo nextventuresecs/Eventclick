@@ -10,6 +10,13 @@ export const organizations = pgTable("organizations", {
   websiteUrl: text("website_url"),
   contactEmail: varchar("contact_email", { length: 320 }),
   isActive: boolean("is_active").notNull().default(true),
+  // Litigation / investigation hold. While true, both retention purges skip
+  // this organisation entirely — expired rows are kept rather than deleted,
+  // because a retention policy that destroys evidence during a dispute is
+  // worse than one that keeps data too long. Set and cleared by an operator
+  // through the database; there is deliberately no API to flip it, so the
+  // decision leaves a deploy-shaped trail rather than a request-shaped one.
+  legalHold: boolean("legal_hold").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),

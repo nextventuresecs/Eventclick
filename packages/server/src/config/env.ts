@@ -139,6 +139,48 @@ const EnvSchema = z.object({
     .default("true")
     .transform((v) => v !== "false"),
 
+  // ─── Audit log retention ───────────────────────────
+  // 365 days, the standard retention period for security and audit logs:
+  //   - PCI DSS v4.0 req. 10.5.1 — at least 12 months of audit log history
+  //   - CIS Controls v8, control 8.10 — 90 days minimum, 12 months recommended
+  //   - SOC 2 / ISO 27001 programmes conventionally evidence 12 months
+  // GDPR sets no audit retention period at all; art. 5(1)(e) storage limitation
+  // pushes the other way, so a longer period needs a reason rather than a
+  // shorter one needing an excuse.
+  //
+  // This replaces an uncited "7 years" that the compliance report asserted and
+  // nothing enforced. 7 years is a tax and financial records convention; it
+  // applies if Eventclick is under such an obligation, and that obligation has
+  // not been established. If it is later, raise this and cite it in the report
+  // in the same change — see docs/runbooks/audit-retention.md.
+  AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
+  // Ships ENABLED, for the same reason as the data purge and one more: the
+  // audit trail is the record used to reconstruct what happened, so a wrong
+  // cutoff destroys the evidence needed to investigate the mistake.
+  AUDIT_RETENTION_DRY_RUN: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
+
+  // ─── Audit log archive (WORM) ──────────────────────
+  // R2 bucket the purge writes expired rows to before deleting them. Must be a
+  // bucket with a lock rule (R2 bucket locks / S3 Object Lock), and must NOT be
+  // S3_BUCKET: a lock rule there would make recordings and activity photos
+  // undeletable too, breaking the data retention purge and any erasure request.
+  // Credentials and endpoint are shared with S3_* — same R2 account.
+  //
+  // Empty means no archive is configured. The purge then refuses to delete
+  // anything unless AUDIT_ARCHIVE_DISABLED says the destruction was intended.
+  AUDIT_ARCHIVE_BUCKET: z.string().default(""),
+  // The explicit acknowledgement that expired audit rows are to be destroyed
+  // with no archived copy. Deliberately a separate variable from an empty
+  // bucket name, so deleting the backlog is something somebody chose rather
+  // than something that happened because a value was missing.
+  AUDIT_ARCHIVE_DISABLED: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
+
   // ─── Observability (optional) ──────────────────────
   SENTRY_SERVER_DSN: z.string().optional(),
   // Sampling is environment policy, not a code constant: production runs on a
@@ -166,7 +208,16 @@ const EnvSchema = z.object({
     message: "In production, AUTH_DATABASE_URL and APP_DATABASE_URL are required for RLS isolation. In dev, DATABASE_URL or both RLS URLs are required.",
     path: ["DATABASE_URL"],
   }
-);
+).refine((e) => e.AUDIT_RETENTION_DAYS >= e.DATA_RETENTION_DAYS, {
+  // The audit trail has to outlive the data it describes, or the system reaches
+  // a state where a record still exists and the log of who touched it does not
+  // — which is precisely the question an audit trail exists to answer. Both
+  // have defaults, so this comparison always runs.
+  message:
+    "AUDIT_RETENTION_DAYS must be >= DATA_RETENTION_DAYS: purging the audit trail " +
+    "before the data it describes leaves records nobody can account for.",
+  path: ["AUDIT_RETENTION_DAYS"],
+});
 
 
 const parsed = EnvSchema.safeParse(process.env);
