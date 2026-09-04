@@ -68,6 +68,7 @@ This report documents the exact code changes, endpoint specifications, and audit
 | Audit DB migration         | `packages/server/drizzle/0000_slow_firestar.sql`  | `audit_logs` table created in baseline migration       |
 | Cookie consent banner      | `packages/client/src/components/CookieConsent.tsx` | Essential / All options, localStorage persistence            |
 | Data retention job         | `packages/server/src/jobs/dataRetention.ts`        | 365-day purge of attendance, photos, submissions, recordings |
+| Object storage deletion    | `packages/server/src/services/storage.service.ts`  | Purge removes the uploaded file before the row naming it     |
 | Profile routes wired       | `packages/server/src/routes/index.ts`              | `/api/v1/profile` mounted                                    |
 
 ### 3.2 What is still missing

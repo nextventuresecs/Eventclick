@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
   // rows[table] = rows still present, as { id, organizationId }
-  rows: {} as Record<string, { id: string; organizationId: string }[]>,
+  rows: {} as Record<string, { id: string; organizationId: string; storageKey?: string | null }[]>,
+  // Keys actually handed to deleteObjects, in order — asserted on directly,
+  // because a broken key extraction still passes a call-count check.
+  deletedKeys: [] as string[],
+  failKeys: [] as string[],
   deletedBatches: [] as { size: number }[],
   transactions: 0,
   selectLimits: [] as number[],
@@ -11,6 +15,7 @@ const hoisted = vi.hoisted(() => ({
   // Set to make the mocked DELETE report fewer rows than it was given, the
   // shape a revoked privilege or a missing DELETE policy produces.
   deleteAffectsNothing: false,
+  callOrder: [] as string[],
 }));
 
 const tableName = (t: any): string => t?.__name ?? "unknown";
@@ -28,6 +33,8 @@ vi.mock("../../db/schema", () => {
     __name: name,
     id: { __col: `${name}.id` },
     organizationId: { __col: `${name}.organization_id` },
+    photoKey: { __col: `${name}.photo_key` },
+    s3Key: { __col: `${name}.s3_key` },
     submittedAt: {},
     createdAt: {},
   });
@@ -40,6 +47,14 @@ vi.mock("../../db/schema", () => {
     auditLogs: mk("audit_logs"),
   };
 });
+
+vi.mock("../../services/storage.service", () => ({
+  deleteObjects: async (keys: string[]) => {
+    hoisted.deletedKeys.push(...keys);
+    hoisted.callOrder.push("deleteObjects");
+    return keys.filter((k) => hoisted.failKeys.includes(k));
+  },
+}));
 
 vi.mock("drizzle-orm", () => ({
   lt: () => ({ __op: "lt" }),
@@ -82,6 +97,7 @@ vi.mock("../../db", () => ({
       delete: (t: any) => ({
         where: (cond: any) => {
           const name = tableName(t);
+          hoisted.callOrder.push("deleteRows");
           hoisted.deletedBatches.push({ size: cond.ids.length });
           if (hoisted.deleteAffectsNothing) return Promise.resolve({ rowCount: 0 });
           hoisted.rows[name] = (hoisted.rows[name] ?? []).filter((r) => !cond.ids.includes(r.id));
@@ -103,6 +119,7 @@ const seed = (counts: Record<string, number>, organizationId = DEFAULT_ORG) => {
     hoisted.rows[table] = Array.from({ length: n }, (_, i) => ({
       id: `${table}-${i}`,
       organizationId,
+      storageKey: `${table}/key-${i}.jpg`,
     }));
   }
 };
@@ -116,6 +133,9 @@ describe("data retention purge (#93 — the job that never ran)", () => {
     hoisted.failTable = null;
     hoisted.heldOrgs = [];
     hoisted.deleteAffectsNothing = false;
+    hoisted.deletedKeys = [];
+    hoisted.failKeys = [];
+    hoisted.callOrder = [];
   });
 
   it("deletes nothing in a dry run, but reports what it would delete", async () => {
@@ -225,6 +245,87 @@ describe("data retention purge (#93 — the job that never ran)", () => {
       { id: "held-1", organizationId: "org-under-hold" },
     ]);
     expect(result.totalDeleted).toBe(4);
+  });
+
+  it("deletes the object before the row that names it", async () => {
+    // The key lives only in the row. Delete the row first and the file is
+    // stranded in the bucket with nothing able to name it again.
+    seed({ attendance_entries: 2 });
+
+    await purgeExpiredData(false);
+
+    expect(hoisted.callOrder).toEqual(["deleteObjects", "deleteRows"]);
+  });
+
+  it("passes the rows' actual storage keys, not just the right number of them", async () => {
+    seed({ activity_photos: 3 });
+
+    const result = await purgeExpiredData(false);
+
+    expect(hoisted.deletedKeys).toEqual([
+      "activity_photos/key-0.jpg",
+      "activity_photos/key-1.jpg",
+      "activity_photos/key-2.jpg",
+    ]);
+    expect(result.tables.find((t) => t.table === "activity_photos")?.objectsDeleted).toBe(3);
+  });
+
+  it("keeps a row whose object could not be deleted, and purges the rest", async () => {
+    // Opposite stance to the audit archive, on purpose: a row kept one more
+    // day is recoverable, a row deleted whose object leaked is not.
+    seed({ activity_photos: 3 });
+    hoisted.failKeys = ["activity_photos/key-1.jpg"];
+
+    const result = await purgeExpiredData(false);
+
+    expect(hoisted.rows.activity_photos?.map((r) => r.id)).toEqual(["activity_photos-1"]);
+    const table = result.tables.find((t) => t.table === "activity_photos");
+    expect(table).toMatchObject({ deleted: 2, objectsDeleted: 2, objectsFailed: 1 });
+  });
+
+  it("skips rows with no storage key rather than sending empty keys", async () => {
+    // A pending recording has no s3_key, and an attendance entry need not
+    // carry a photo.
+    seed({ room_recordings: 2 });
+    hoisted.rows.room_recordings = hoisted.rows.room_recordings!.map((r) => ({
+      ...r,
+      storageKey: null,
+    }));
+
+    const result = await purgeExpiredData(false);
+
+    expect(hoisted.deletedKeys).toEqual([]);
+    expect(result.tables.find((t) => t.table === "room_recordings")?.deleted).toBe(2);
+  });
+
+  it("does not reach for storage on a table that has no key column", async () => {
+    seed({ activity_submissions: 2 });
+
+    await purgeExpiredData(false);
+
+    expect(hoisted.callOrder).toEqual(["deleteRows"]);
+    expect(hoisted.deletedKeys).toEqual([]);
+  });
+
+  it("deletes no objects in a dry run", async () => {
+    seed({ activity_photos: 4 });
+
+    await purgeExpiredData(true);
+
+    expect(hoisted.deletedKeys).toEqual([]);
+    expect(hoisted.callOrder).toEqual([]);
+  });
+
+  it("stops the table when every row in a batch is blocked on its object", async () => {
+    // Otherwise the same rows are re-selected forever.
+    seed({ activity_photos: 2 });
+    hoisted.failKeys = ["activity_photos/key-0.jpg", "activity_photos/key-1.jpg"];
+
+    const result = await purgeExpiredData(false);
+
+    expect(hoisted.deletedBatches).toHaveLength(0);
+    expect(hoisted.rows.activity_photos).toHaveLength(2);
+    expect(result.tables.find((t) => t.table === "activity_photos")?.objectsFailed).toBe(2);
   });
 
   it("aborts a table rather than looping when the delete removes nothing", async () => {

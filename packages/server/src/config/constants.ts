@@ -52,6 +52,11 @@ export const AUDIT_RETENTION_START_DELAY_MS = 5 * 60 * 1000;
 // thousand attendance rows.
 export const AUDIT_RETENTION_BATCH_SIZE = 500;
 
+// ─── Object storage deletion (services/storage.service.ts) ─────────────────
+// The `DeleteObjects` maximum on both S3 and R2. Sending more in one request
+// is rejected outright rather than truncated.
+export const S3_DELETE_BATCH_SIZE = 1_000;
+
 // ─── PDF rendering deadlines (services/report.service.ts) ──────────────────
 // Gotenberg had a fixed 120s abort deadline while the HTTP server closes any
 // request after SERVER_REQUEST_TIMEOUT_MS (30s by default). On the synchronous

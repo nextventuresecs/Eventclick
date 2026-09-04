@@ -1,9 +1,11 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
 import { MAX_UPLOAD_BYTES } from "@application/shared";
 import { env } from "../config/env";
+import { S3_DELETE_BATCH_SIZE } from "../config/constants";
+import { logger } from "../utils/logger";
 import { ApiError } from "../utils/errors";
 
 const credentials = {
@@ -143,4 +145,67 @@ export const createPresignedGet = async (
     Key: key,
   });
   return await getSignedUrl(s3, cmd, { expiresIn });
+};
+
+/**
+ * Deletes objects from the uploads bucket, and reports which keys survived.
+ *
+ * **Why this exists.** Nothing in the codebase deleted an object until now.
+ * Rows that point at storage — `attendance_entries.photo_key`,
+ * `activity_photos.photo_key`, `room_recordings.s3_key` — have always been
+ * removed while their objects stayed, so the bucket has been accumulating
+ * files no row references since launch.
+ *
+ * **Deliberately tolerant, unlike the audit archive.** That archive fails
+ * closed because re-uploading an object is harmless, so refusing to proceed
+ * costs nothing. Deleting is not idempotent in the same way: the caller
+ * removes the row straight after, and once the row is gone the key is
+ * unrecoverable. So a failure here must not abort the run — it returns the
+ * keys that failed, the caller keeps those rows, and the next pass tries
+ * again. A row kept one more day is recoverable; a row deleted whose object
+ * leaked is not.
+ *
+ * S3 and R2 both treat deleting a key that does not exist as success, so a
+ * re-run over a partially-deleted batch is safe.
+ *
+ * Batched at 1,000, the `DeleteObjects` maximum.
+ *
+ * @returns the keys that could **not** be deleted.
+ */
+export const deleteObjects = async (keys: string[]): Promise<string[]> => {
+  if (keys.length === 0) return [];
+
+  const failed: string[] = [];
+  for (let i = 0; i < keys.length; i += S3_DELETE_BATCH_SIZE) {
+    const chunk = keys.slice(i, i + S3_DELETE_BATCH_SIZE);
+    try {
+      const result = await s3.send(
+        new DeleteObjectsCommand({
+          Bucket: env.S3_BUCKET,
+          Delete: { Objects: chunk.map((Key) => ({ Key })), Quiet: true },
+        }),
+      );
+      for (const err of result.Errors ?? []) {
+        if (err.Key) failed.push(err.Key);
+      }
+    } catch (err) {
+      // A whole-request failure (credentials, network, bucket policy) fails
+      // the entire chunk rather than the run: the caller keeps those rows and
+      // the next pass retries them.
+      logger.error(
+        { err, keys: chunk.length, bucket: env.S3_BUCKET, event: "storage.delete_failed" },
+        `Failed to delete ${chunk.length} objects from ${env.S3_BUCKET}`,
+      );
+      failed.push(...chunk);
+    }
+  }
+
+  if (failed.length > 0) {
+    logger.warn(
+      { failed: failed.length, requested: keys.length, event: "storage.delete_partial" },
+      `${failed.length} of ${keys.length} objects could not be deleted`,
+    );
+  }
+
+  return failed;
 };
