@@ -6,6 +6,23 @@ import { renderBrandedEmail } from "../utils/email-template";
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
+/**
+ * Escapes text destined for an HTML email body.
+ *
+ * Applied to every interpolated value, not just admin free text. Room titles
+ * and organisation names are user input too — they arrive from a form — so
+ * the earlier distinction between "values the system produced" and
+ * author-entered text did not hold, and sendEventCancelledEmail was already
+ * escaping its title while the started/ended pair was not.
+ */
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 export const sendPasswordResetEmail = async (
   email: string,
   token: string,
@@ -21,13 +38,13 @@ export const sendPasswordResetEmail = async (
       from: env.RESEND_FROM_EMAIL,
       to: email,
       subject: "Reset your Eventclick password",
-      html: `
-          <h1>Password Reset</h1>
-          <p>You requested a password reset for your Eventclick account.</p>
-          <p>Please click the link below to set a new password:</p>
-          <p><a href="${resetLink}">${resetLink}</a></p>
-          <p>If you did not request this, you can safely ignore this email.</p>
-        `,
+      html: renderBrandedEmail({
+        heading: "Reset your password",
+        intro: "You requested a password reset for your Eventclick account.",
+        cta: { label: "Set a new password", url: resetLink },
+        footnote:
+          "If you did not request this, you can safely ignore this email — your password will not change.",
+      }),
     });
 
     if (error) {
@@ -58,12 +75,12 @@ export const sendReportReadyEmail = async (
       from: env.RESEND_FROM_EMAIL,
       to: email,
       subject: `Your Event Report is Ready — ${roomLabel}`,
-      html: `
-          <h1>Report Ready</h1>
-          <p>Your event report for <strong>${roomLabel}</strong> has been generated successfully.</p>
-          <p><a href="${downloadLink}">Download Report</a></p>
-          <p>This link will expire in 1 hour.</p>
-        `,
+      html: renderBrandedEmail({
+        heading: "Your report is ready",
+        intro: `Your event report for <strong>${escapeHtml(roomLabel)}</strong> has been generated.`,
+        cta: { label: "Download report", url: downloadLink },
+        footnote: "This link expires in 1 hour.",
+      }),
     });
 
     if (error) {
@@ -93,13 +110,13 @@ export const sendVerificationEmail = async (
       from: env.RESEND_FROM_EMAIL,
       to: email,
       subject: "Verify your Eventclick account",
-      html: `
-          <h1>Verify Your Email</h1>
-          <p>Thank you for registering with Eventclick.</p>
-          <p>Please click the link below to verify your email address and activate your account:</p>
-          <p><a href="${verifyLink}">${verifyLink}</a></p>
-          <p>If you did not register for an account, you can safely ignore this email.</p>
-        `,
+      html: renderBrandedEmail({
+        heading: "Verify your email",
+        intro:
+          "Thanks for registering with Eventclick. Confirm your address to activate your account.",
+        cta: { label: "Verify email address", url: verifyLink },
+        footnote: "If you did not register for an account, you can safely ignore this email.",
+      }),
     });
 
     if (error) {
@@ -135,13 +152,14 @@ export const sendInviteEmail = async (
       from: env.RESEND_FROM_EMAIL,
       to: email,
       subject: `You've been invited to join ${orgName} on Eventclick`,
-      html: `
-          <h1>You're invited</h1>
-          <p>You've been added to <strong>${orgName}</strong> on Eventclick.</p>
-          <p>Click the link below to verify your email and finish setting up your account:</p>
-          <p><a href="${verifyLink}">${verifyLink}</a></p>
-          <p>If you weren't expecting this, you can safely ignore this email.</p>
-        `,
+      html: renderBrandedEmail({
+        heading: "You're invited",
+        intro: `You've been added to <strong>${escapeHtml(orgName)}</strong> on Eventclick.`,
+        bodyHtml:
+          '<p style="margin:0;">Verify your email to finish setting up your account.</p>',
+        cta: { label: "Accept invitation", url: verifyLink },
+        footnote: "If you weren't expecting this, you can safely ignore this email.",
+      }),
     });
 
     if (error) {
@@ -167,11 +185,11 @@ export const sendEventStartedEmail = async (
       from: env.RESEND_FROM_EMAIL,
       to: email,
       subject: `"${roomTitle}" is now live`,
-      html: `
-          <h1>Your event has started</h1>
-          <p><strong>${roomTitle}</strong> is now live.</p>
-          <p><a href="${watchUrl}">Join the stream</a></p>
-        `,
+      html: renderBrandedEmail({
+        heading: "Your event has started",
+        intro: `<strong>${escapeHtml(roomTitle)}</strong> is now live.`,
+        cta: { label: "Join the stream", url: watchUrl },
+      }),
     });
 
     if (error) {
@@ -196,22 +214,30 @@ export const sendEventEndedEmail = async (
   // recordingUrl/summaryUrl are omitted, not stubbed, when not yet available
   // (e.g. egress upload still processing at stopLive time) — see
   // services/event-lifecycle-notification.service.ts::notifyEventEnded.
+  const linkRow = 'style="margin:0 0 8px 0;"';
+  const linkStyle = 'style="color:#370679;"';
   const links = [
-    recordingUrl ? `<p><a href="${recordingUrl}">Watch the recording</a></p>` : "",
-    summaryUrl ? `<p><a href="${summaryUrl}">View the event summary</a></p>` : "",
+    recordingUrl
+      ? `<p ${linkRow}><a href="${recordingUrl}" ${linkStyle}>Watch the recording</a></p>`
+      : "",
+    summaryUrl
+      ? `<p ${linkRow}><a href="${summaryUrl}" ${linkStyle}>View the event summary</a></p>`
+      : "",
   ].join("");
-  const linksFallback = links || "<p>The recording will be available soon — check back later.</p>";
+  const linksFallback =
+    links ||
+    '<p style="margin:0;">The recording will be available soon — check back later.</p>';
 
   if (resend) {
     const { error } = await resend.emails.send({
       from: env.RESEND_FROM_EMAIL,
       to: email,
       subject: `"${roomTitle}" has ended`,
-      html: `
-          <h1>Your event has ended</h1>
-          <p><strong>${roomTitle}</strong> has finished.</p>
-          ${linksFallback}
-        `,
+      html: renderBrandedEmail({
+        heading: "Your event has ended",
+        intro: `<strong>${escapeHtml(roomTitle)}</strong> has finished.`,
+        bodyHtml: linksFallback,
+      }),
     });
 
     if (error) {
@@ -226,21 +252,6 @@ export const sendEventEndedEmail = async (
     );
   }
 };
-
-/**
- * Escapes text destined for an HTML email body. Every other sender in this
- * file interpolates values the system itself produced (room titles, signed
- * URLs, tokens); a broadcast interpolates free text an admin typed, which
- * reaches every member of their organisation. Without escaping, an admin
- * could put markup — or a link wearing someone else's name — into all of it.
- */
-const escapeHtml = (value: string): string =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 
 export const sendOrgBroadcastEmail = async (
   email: string,
@@ -261,12 +272,11 @@ export const sendOrgBroadcastEmail = async (
       from: env.RESEND_FROM_EMAIL,
       to: email,
       subject,
-      html: `
-          <h1>${safeTitle}</h1>
-          <p>${safeBody}</p>
-          <hr>
-          <p style="color:#667085;font-size:12px">Sent to all members of ${safeOrg} on Eventclick.</p>
-        `,
+      html: renderBrandedEmail({
+        heading: safeTitle,
+        bodyHtml: `<p style="margin:0;">${safeBody}</p>`,
+        footnote: `Sent to all members of ${safeOrg} on Eventclick.`,
+      }),
     });
 
     if (error) {
@@ -306,12 +316,15 @@ export const sendEventCancelledEmail = async (
       from: env.RESEND_FROM_EMAIL,
       to: email,
       subject,
-      html: `
-          <h1>${reason === "cancelled" ? "Event cancelled" : "Event did not take place"}</h1>
-          <p>${lead}</p>
-          ${safeNote ? `<p><strong>Reason given:</strong> ${safeNote}</p>` : ""}
-          <p>No attendance is required. You do not need to do anything.</p>
-        `,
+      html: renderBrandedEmail({
+        heading:
+          reason === "cancelled" ? "Event cancelled" : "Event did not take place",
+        intro: lead,
+        bodyHtml: safeNote
+          ? `<p style="margin:0;"><strong>Reason given:</strong> ${safeNote}</p>`
+          : undefined,
+        footnote: "No attendance is required. You do not need to do anything.",
+      }),
     });
 
     if (error) {
