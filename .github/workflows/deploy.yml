@@ -80,7 +80,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Checkout the commit that triggered CI (not the current HEAD)
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}

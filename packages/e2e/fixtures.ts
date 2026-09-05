@@ -28,6 +28,27 @@ export const test = base.extend<Options & Fixtures>({
   }, {}],
 
   page: async ({ page, request, role }, use) => {
+    // Arrive with cookie consent already recorded.
+    //
+    // The consent banner is fixed to the bottom-right at z-[100], which is
+    // exactly where a form's primary action sits. Without this it intercepts
+    // the click on "Create Room" and the test fails as a 60s timeout with
+    // "subtree intercepts pointer events" — intermittently, because whether
+    // the two overlap depends on viewport and scroll position.
+    //
+    // Setting it is also the more realistic state: every test here is a
+    // signed-in user, and a signed-in user has already answered the banner.
+    await page.context().addCookies([
+      {
+        name: "eventclick_consent",
+        value: encodeURIComponent(
+          JSON.stringify({ analytics: false, marketing: false, timestamp: Date.now() }),
+        ),
+        domain: cookieDomain,
+        path: "/",
+      },
+    ]);
+
     if (role !== "none") {
       const email = role === "volunteer" ? volunteerEmail : adminEmail;
       const password = role === "volunteer" ? volunteerPassword : adminPassword;
