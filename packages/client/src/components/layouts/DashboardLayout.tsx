@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  ChevronDown,
   Bell,
   CalendarDays,
   UserCircle,
@@ -24,7 +25,6 @@ import {
   Shield,
   MessageSquare,
   AlertTriangle,
-  Search,
   Sparkles,
   SlidersHorizontal,
   CheckCircle2,
@@ -129,6 +129,7 @@ export const DashboardLayout = () => {
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const addonsRef = useRef<HTMLDivElement>(null);
+  const headerMenuRef = useRef<HTMLDivElement>(null);
 
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem("sidebar_collapsed") === "true";
@@ -136,6 +137,9 @@ export const DashboardLayout = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [addonsOpen, setAddonsOpen] = useState(false);
+  // Separate from `profileOpen`, which belongs to the sidebar's own menu —
+  // sharing it would open both at once.
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
   const { isOnline, isSyncing } = useNetwork();
@@ -153,6 +157,7 @@ export const DashboardLayout = () => {
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setHeaderMenuOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -166,10 +171,17 @@ export const DashboardLayout = () => {
       if (addonsOpen && addonsRef.current && !addonsRef.current.contains(e.target as Node)) {
         setAddonsOpen(false);
       }
+      if (
+        headerMenuOpen &&
+        headerMenuRef.current &&
+        !headerMenuRef.current.contains(e.target as Node)
+      ) {
+        setHeaderMenuOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, [profileOpen, notifOpen, addonsOpen]);
+  }, [profileOpen, notifOpen, addonsOpen, headerMenuOpen]);
 
   const canManageRooms = user ? hasRolePermission(user.role, "manage_rooms") : false;
   const canViewForms = user ? hasRolePermission(user.role, "create_attendance_form") || hasRolePermission(user.role, "take_attendance") : false;
@@ -458,15 +470,6 @@ export const DashboardLayout = () => {
 
           {/* Right Action Tools & Addons */}
           <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            {/* Search Command Trigger */}
-            <div className="hidden lg:flex items-center gap-2 px-3 h-9 rounded-xl bg-gray-100/80 border border-gray-200/80 text-gray-400 text-xs font-medium cursor-pointer hover:bg-gray-100 hover:text-gray-600 transition-all">
-              <Search className="w-3.5 h-3.5" />
-              <span>Quick search...</span>
-              <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-white rounded border border-gray-200 text-gray-500 shadow-2xs">
-                ⌘K
-              </kbd>
-            </div>
-
             {/* Quick Addons / Options Icon Menu */}
             <div className="relative" ref={addonsRef}>
               <button
@@ -612,16 +615,106 @@ export const DashboardLayout = () => {
               </Link>
             )}
 
-            {/* Profile Avatar Quick Pill — mobile reaches this via the bottom nav's Account tab */}
-            <Link
-              to="/profile"
-              className="hidden md:flex items-center gap-2 p-1 rounded-xl hover:bg-gray-100 transition-colors"
-              title="User Profile"
-            >
-              <div className="h-8 w-8 rounded-lg bg-brand-gradient text-white flex items-center justify-center font-bold text-xs shadow-xs">
-                {initials}
-              </div>
-            </Link>
+            {/* Account menu — mobile reaches the same items via the bottom nav's
+                Account tab. Deliberately the same list as the sidebar's profile
+                menu: two account menus on one screen offering different things
+                is worse than either on its own. */}
+            <div className="relative hidden md:block" ref={headerMenuRef}>
+              <button
+                onClick={() => setHeaderMenuOpen((open) => !open)}
+                aria-haspopup="menu"
+                aria-expanded={headerMenuOpen}
+                aria-label="Account menu"
+                className={`flex items-center gap-1 p-1 rounded-xl transition-colors cursor-pointer ${
+                  headerMenuOpen ? "bg-gray-100 ring-2 ring-purple-400/30" : "hover:bg-gray-100"
+                }`}
+              >
+                <ImageSource
+                  src={user?.photoUrl}
+                  alt=""
+                  className="h-8 w-8 rounded-lg object-cover shadow-xs"
+                  fallback={
+                    <div className="h-8 w-8 rounded-lg bg-brand-gradient text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                      {initials}
+                    </div>
+                  }
+                />
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-gray-400 transition-transform ${headerMenuOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {headerMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95"
+                >
+                  <div className="px-4 py-2.5 border-b border-gray-100 bg-purple-50/50">
+                    <p className="text-sm font-bold font-display text-gray-900 truncate">
+                      {user?.fullName || "User"}
+                    </p>
+                    <p className="text-xs text-gray-400 font-mono truncate">{user?.email || ""}</p>
+                    <p className="text-[11px] text-purple-600 font-semibold mt-0.5">
+                      {user ? ROLE_LABELS[user.role] : "Member"}
+                    </p>
+                  </div>
+                  <div className="py-1">
+                    <Link
+                      to="/profile"
+                      role="menuitem"
+                      onClick={() => setHeaderMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors"
+                    >
+                      <UserCircle className="w-4 h-4 text-purple-600" /> Account Profile
+                    </Link>
+                    <Link
+                      to="/settings"
+                      role="menuitem"
+                      onClick={() => setHeaderMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors"
+                    >
+                      <Settings2 className="w-4 h-4 text-purple-600" /> Settings
+                    </Link>
+                    <Link
+                      to="/help"
+                      role="menuitem"
+                      onClick={() => setHeaderMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors"
+                    >
+                      <HelpCircle className="w-4 h-4 text-purple-600" /> Help Center
+                    </Link>
+                    <Link
+                      to="/feedback"
+                      role="menuitem"
+                      onClick={() => setHeaderMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors"
+                    >
+                      <MessageSquare className="w-4 h-4 text-purple-600" /> Give Feedback
+                    </Link>
+                    <Link
+                      to="/report-bug"
+                      role="menuitem"
+                      onClick={() => setHeaderMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-900 font-medium transition-colors"
+                    >
+                      <AlertTriangle className="w-4 h-4 text-red-500" /> Report a Bug
+                    </Link>
+                  </div>
+                  <div className="border-t border-gray-100 pt-1 mt-1">
+                    <button
+                      role="menuitem"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-semibold transition-colors cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4" /> Logout
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
