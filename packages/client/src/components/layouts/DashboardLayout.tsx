@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  Search,
   ChevronDown,
   Bell,
   CalendarDays,
@@ -33,95 +34,13 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { MENU_ITEMS, TOOLS_ITEMS, navItemsForRole } from "@/lib/navigation";
+import { CommandPalette } from "@/components/CommandPalette";
 import { ImageSource } from "@/components/MediaImage";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNetwork } from "@/hooks/useNetwork";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
 import { Button } from "@/components/ui/button";
-
-const HelpDropdown = () => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((prev) => !prev)}
-        className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-gray-400 hover:text-gray-700 hover:bg-(--color-gray-100) transition-colors cursor-pointer"
-        title="Help & more"
-      >
-        <ChevronRight className="w-3.5 h-3.5" />
-      </button>
-      {open && (
-        <div className="absolute left-full top-0 ml-1 w-52 bg-(--color-surface) border border-(--color-gray-200) rounded-xl shadow-xl py-1.5 z-50">
-          {HELP_ITEMS.map((item) => {
-            const isExternal = item.path.startsWith("http");
-            const content = (
-              <>
-                <item.icon className="w-4 h-4" /> {item.name}
-              </>
-            );
-            if (isExternal) {
-              return (
-                <a
-                  key={item.path}
-                  href={item.path}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-4 py-2 text-sm text-(--color-gray-600) hover:bg-(--color-gray-50) hover:text-(--color-gray-900) transition-colors"
-                >
-                  {content}
-                </a>
-              );
-            }
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className="flex items-center gap-3 px-4 py-2 text-sm text-(--color-gray-600) hover:bg-(--color-gray-50) hover:text-(--color-gray-900) transition-colors"
-              >
-                {content}
-              </Link>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const MENU_ITEMS = [
-  { name: "Dashboard", path: "/dashboard", icon: Home },
-  { name: "Rooms", path: "/rooms", icon: FileText },
-  { name: "Create Room", path: "/rooms/create", icon: PlusCircle },
-  { name: "Users", path: "/admin/users", icon: Users, permission: "manage_users" },
-  { name: "Event Assignments", path: "/admin/event-assignments", icon: UserCog, permission: "manage_users" },
-  { name: "Broadcast", path: "/admin/broadcast", icon: Megaphone, permission: "manage_users" },
-  { name: "Audit Log", path: "/admin/audit-log", icon: ScrollText, permission: "manage_users" },
-];
-
-const TOOLS_ITEMS = [
-  { name: "Forms", path: "/forms", icon: FileInput },
-  { name: "Reports", path: "/reports", icon: FileText },
-];
-
-export const HELP_ITEMS = [
-  { name: "Help Center", path: "/help", icon: HelpCircle },
-  { name: "Download app", path: "/download", icon: Download },
-  { name: "Terms of Service", path: "https://eventclick.live/terms", icon: Shield },
-  { name: "Privacy Policy", path: "https://eventclick.live/privacy", icon: Shield },
-  { name: "Cookie Policy", path: "https://eventclick.live/cookies", icon: Shield },
-  { name: "Feedback", path: "/feedback", icon: MessageSquare },
-  { name: "Report a bug", path: "/report-bug", icon: AlertTriangle },
-];
 
 export const DashboardLayout = () => {
   const { user, logout } = useAuth();
@@ -140,6 +59,7 @@ export const DashboardLayout = () => {
   // Separate from `profileOpen`, which belongs to the sidebar's own menu —
   // sharing it would open both at once.
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
   const { isOnline, isSyncing } = useNetwork();
@@ -159,6 +79,20 @@ export const DashboardLayout = () => {
     setMobileMenuOpen(false);
     setHeaderMenuOpen(false);
   }, [location.pathname]);
+
+  // Bound to the layout rather than the document at large, so it is inert on
+  // the login and share pages. preventDefault matters: unhandled, Cmd/Ctrl+K
+  // focuses the browser's address bar on some platforms.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -188,15 +122,15 @@ export const DashboardLayout = () => {
   const canViewReports = user ? hasRolePermission(user.role, "view_reports") : false;
   const canManageUsers = user ? hasRolePermission(user.role, "manage_users") : false;
 
-  const navItems = MENU_ITEMS.filter((item) => {
-    if (!item.permission) return true;
-    return hasRolePermission(user?.role ?? "volunteer", item.permission as "manage_rooms" | "manage_live_session" | "create_attendance_form" | "take_attendance" | "view_reports" | "view_live_session" | "share_live_link" | "manage_users");
-  }) as typeof MENU_ITEMS;
+  // Same helper the command palette uses. Two copies of this filter would
+  // drift, and the drift would be a permission leak rather than a cosmetic
+  // difference.
+  const navItems = navItemsForRole(user?.role, MENU_ITEMS);
 
   const toolsItems = [
-    ...(canViewForms ? [TOOLS_ITEMS[0]] : []),
-    ...(canViewReports ? [TOOLS_ITEMS[1]] : []),
-  ] as typeof TOOLS_ITEMS;
+    ...(canViewForms ? [TOOLS_ITEMS[0]!] : []),
+    ...(canViewReports ? [TOOLS_ITEMS[1]!] : []),
+  ];
 
   // A bottom tab bar holds at most 5 targets before they stop being tappable at
   // 375px. Four primary tabs plus Account; everything else moves into the drawer.
@@ -434,6 +368,13 @@ export const DashboardLayout = () => {
         </div>
       </aside>
 
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        role={user?.role}
+        onLogout={logout}
+      />
+
       <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
         {/* Network Status Banner */}
         {!isOnline && (
@@ -614,6 +555,22 @@ export const DashboardLayout = () => {
                 </Button>
               </Link>
             )}
+
+            {/* Command palette trigger. This pill previously existed as a
+                styled <div> advertising ⌘K with nothing behind it; it is a
+                button now because there is something behind it. */}
+            <button
+              onClick={() => setPaletteOpen(true)}
+              aria-label="Open command palette"
+              aria-keyshortcuts="Meta+K Control+K"
+              className="hidden lg:flex items-center gap-2 px-3 h-9 rounded-xl bg-gray-100/80 border border-gray-200/80 text-gray-400 text-xs font-medium cursor-pointer hover:bg-gray-100 hover:text-gray-600 transition-all"
+            >
+              <Search className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Quick search...</span>
+              <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-white rounded border border-gray-200 text-gray-500 shadow-2xs">
+                ⌘K
+              </kbd>
+            </button>
 
             {/* Account menu — mobile reaches the same items via the bottom nav's
                 Account tab. Deliberately the same list as the sidebar's profile
