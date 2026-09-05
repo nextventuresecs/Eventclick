@@ -48,6 +48,7 @@ const EventAssignments = lazyLoad(() => import("./pages/EventAssignments"), "Eve
 const Forms = lazyLoad(() => import("./pages/Forms"), "Forms");
 const Reports = lazyLoad(() => import("./pages/Reports"), "Reports");
 const Profile = lazyLoad(() => import("./pages/Profile"), "Profile");
+const NotFound = lazyLoad(() => import("./pages/NotFound"), "NotFound");
 const HelpCenter = lazyLoad(() => import("./pages/HelpCenter"), "HelpCenter");
 const Feedback = lazyLoad(() => import("./pages/Feedback"), "Feedback");
 const ReportBug = lazyLoad(() => import("./pages/ReportBug"), "ReportBug");
@@ -297,6 +298,16 @@ const router = createBrowserRouter([
               },
             ],
           },
+          // Last child of the dashboard layout, so an unrecognised path keeps
+          // the sidebar and header instead of stranding the user on a bare
+          // page. Without it React Router falls back to its own built-in
+          // error screen — not even RouteErrorFallback, since no route in this
+          // tree matches for it to bubble to.
+          //
+          // Signed-out visitors never reach it: ProtectedRoute above sends
+          // them to /login first, which also avoids telling someone who is not
+          // authenticated which paths exist.
+          { path: "*", element: <NotFound /> },
         ],
       },
     ],
