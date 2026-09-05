@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { DateTimePicker } from "./date-time-picker";
 
@@ -93,6 +93,43 @@ describe("DateTimePicker", () => {
 
     pick("2026-09-10 14:30");
     expect(input?.value).toBe("2026-09-10 14:30");
+  });
+
+  it("closes the calendar when focus leaves the field", async () => {
+    // An open calendar is absolutely positioned over the rest of the form, so
+    // leaving it open after a tab-out covers the fields below it — including
+    // the submit button, which then cannot be clicked at all.
+    render(<Harness onPick={vi.fn()} />);
+    const input = document.querySelector<HTMLInputElement>("input#when");
+    if (!input) throw new Error("picker input not found");
+
+    input.focus();
+    input.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+    await waitFor(() => {
+      expect(document.querySelector(".flatpickr-calendar.open")).not.toBeNull();
+    });
+
+    input.blur();
+    await waitFor(() => {
+      expect(document.querySelector(".flatpickr-calendar.open")).toBeNull();
+    });
+  });
+
+  it("keeps the typed value after the calendar closes", async () => {
+    const onPick = vi.fn();
+    render(<Harness onPick={onPick} />);
+    const input = document.querySelector<HTMLInputElement>("input#when");
+    if (!input) throw new Error("picker input not found");
+
+    pick("2026-09-10 14:30");
+    input.blur();
+
+    await waitFor(() => {
+      expect(document.querySelector(".flatpickr-calendar.open")).toBeNull();
+    });
+    expect(input.value).toBe("2026-09-10 14:30");
+    const [picked] = onPick.mock.calls.at(-1) ?? [];
+    expect((picked as Date).getHours()).toBe(14);
   });
 
   it("is labellable by the id the caller passed", () => {

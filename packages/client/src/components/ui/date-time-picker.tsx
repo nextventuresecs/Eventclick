@@ -66,7 +66,31 @@ export const DateTimePicker = ({
     });
     fpRef.current = fp;
 
+    // Close when focus leaves the field.
+    //
+    // flatpickr dismisses the calendar on an outside *click*, so moving on with
+    // the keyboard — or with any programmatic focus change — leaves it open,
+    // absolutely positioned over whatever follows in the form. Tab out of Start
+    // Time and the calendar sits on top of the fields below it, including the
+    // submit button.
+    //
+    // Deferred by a tick, and skipped while the calendar itself holds focus or
+    // sits under the pointer: clicking a day blurs the input first, and closing
+    // synchronously there would cancel the selection being made.
+    const input = inputRef.current;
+    const handleBlur = () => {
+      window.setTimeout(() => {
+        const calendar = fpRef.current?.calendarContainer;
+        if (!calendar) return;
+        if (document.activeElement && calendar.contains(document.activeElement)) return;
+        if (calendar.matches(":hover")) return;
+        fpRef.current?.close();
+      }, 0);
+    };
+    input.addEventListener("blur", handleBlur);
+
     return () => {
+      input.removeEventListener("blur", handleBlur);
       fp.destroy();
       fpRef.current = null;
     };
