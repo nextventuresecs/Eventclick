@@ -132,11 +132,17 @@ describe("DashboardLayout header account menu", () => {
     expect(menu).toHaveTextContent("admin@example.com");
   });
 
-  it("does not advertise a search that does not exist", async () => {
-    // The header carried a "Quick search... ⌘K" pill that was a plain <div>
-    // with no handler, and no ⌘K listener existed anywhere in the app.
+  it("advertises ⌘K only because something is behind it", async () => {
+    // This pill shipped for a while as a styled <div> with no handler, while
+    // no ⌘K listener existed anywhere in the app. The requirement is not that
+    // it looks clickable — it is that it is a control and it does something.
     await renderLayout();
-    expect(screen.queryByText(/quick search/i)).not.toBeInTheDocument();
-    expect(screen.queryByText("⌘K")).not.toBeInTheDocument();
+
+    const trigger = screen.getByRole("button", { name: /open command palette/i });
+    expect(trigger).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(trigger);
+    expect(screen.getByRole("dialog", { name: /command palette/i })).toBeInTheDocument();
   });
 });
