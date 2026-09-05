@@ -11,6 +11,7 @@ import {
   createPresignedPut,
 } from "../services/storage.service";
 import { recordAuditSafely } from "../services/audit.service";
+import { presentImageUrl } from "../services/auth/auth-helpers";
 
 export const updateOrganization: RequestHandler = async (req, res, next) => {
   try {
@@ -42,7 +43,16 @@ export const updateOrganization: RequestHandler = async (req, res, next) => {
       userAgent: req.get("user-agent") ?? undefined,
     });
 
-    res.json({ organization: updatedOrg });
+    // Same presentation the auth payload uses. Returning the raw bucket URL
+    // here while /auth/me returns a media path would leave the client's
+    // in-memory user disagreeing with what a reload produces — the logo would
+    // work until refresh, or break until refresh, depending which won.
+    res.json({
+      organization: {
+        ...updatedOrg,
+        logoUrl: presentImageUrl(updatedOrg.logoUrl, "org-logo", orgId),
+      },
+    });
   } catch (err) {
     next(err);
   }

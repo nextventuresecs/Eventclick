@@ -33,6 +33,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { ImageSource } from "@/components/MediaImage";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useNetwork } from "@/hooks/useNetwork";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
@@ -332,7 +333,7 @@ export const DashboardLayout = () => {
               <div className="rounded-2xl bg-brand-gradient-tile text-white p-3.5 shadow-md border border-white/10 hover:shadow-lg transition-all">
                 <div className="flex items-center gap-3">
                   {user?.photoUrl ? (
-                    <img src={user.photoUrl} alt={user.fullName} className="w-10 h-10 rounded-xl object-cover border-2 border-white/20 shrink-0" />
+                    <ImageSource src={user.photoUrl} alt={user.fullName ?? ""} className="w-10 h-10 rounded-xl object-cover border-2 border-white/20 shrink-0" />
                   ) : (
                     <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-white font-bold text-sm border border-white/20 shrink-0">{initials}</div>
                   )}
@@ -353,7 +354,7 @@ export const DashboardLayout = () => {
                 title={user?.fullName || "User"}
               >
                 {user?.photoUrl ? (
-                  <img src={user.photoUrl} alt={user.fullName} className="w-9 h-9 rounded-xl object-cover border-2 border-purple-600 shadow-xs" />
+                  <ImageSource src={user.photoUrl} alt={user.fullName ?? ""} className="w-9 h-9 rounded-xl object-cover border-2 border-purple-600 shadow-xs" />
                 ) : (
                   <div className="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">{initials}</div>
                 )}
@@ -686,7 +687,7 @@ export const DashboardLayout = () => {
             aria-expanded={mobileMenuOpen}
           >
             {user?.photoUrl ? (
-              <img src={user.photoUrl} alt="" className="w-5 h-5 rounded-full object-cover border border-purple-200 shrink-0" />
+              <ImageSource src={user.photoUrl} alt="" className="w-5 h-5 rounded-full object-cover border border-purple-200 shrink-0" />
             ) : (
               <div className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-[8px] shrink-0">{initials}</div>
             )}

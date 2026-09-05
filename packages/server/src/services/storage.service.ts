@@ -136,6 +136,10 @@ export const buildPublicUrl = (key: string): string => {
   return `${base}/${key}`;
 };
 
+// Key helpers live in utils/storage-keys so they can be imported (and tested)
+// without constructing the S3 client this module creates at load.
+export { keyFromPublicUrl, isUploadedObjectUrl } from "../utils/storage-keys";
+
 export const createPresignedGet = async (
   key: string,
   expiresIn = 3600,

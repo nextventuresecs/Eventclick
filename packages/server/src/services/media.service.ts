@@ -8,6 +8,7 @@ import {
   users,
 } from "../db/schema";
 import { createPresignedGet } from "./storage.service";
+import { keyFromPublicUrl } from "../utils/storage-keys";
 import { MEDIA_URL_TTL_SECONDS } from "../config/constants";
 import { ApiError } from "../utils/errors";
 
@@ -54,20 +55,14 @@ export const isMediaResource = (value: string): value is MediaResource =>
  *
  * `organizations.logo_url` and `users.photo_url` hold a full public URL rather
  * than a bare key — they predate the key/URL split that `attendance_entries`
- * and `activity_photos` use. The key is recovered by taking the path after the
- * public endpoint's origin, which is exactly what `buildPublicUrl` prepended.
+ * and `activity_photos` use. Recovery is delegated to `keyFromPublicUrl`, the
+ * exact inverse of `buildPublicUrl`; doing it here by taking the whole
+ * pathname dropped the bucket segment that path-style URLs carry, so under
+ * S3_FORCE_PATH_STYLE the recovered key had the bucket name baked into it and
+ * signed an object that does not exist.
  */
-const keyFromStoredUrl = (url: string | null): string | null => {
-  if (!url) return null;
-  try {
-    // Leading slash stripped: object keys are relative, URL paths are not.
-    const path = new URL(url).pathname.replace(/^\/+/, "");
-    return path.length > 0 ? decodeURIComponent(path) : null;
-  } catch {
-    // Not a URL at all — some rows may already hold a bare key.
-    return url.replace(/^\/+/, "");
-  }
-};
+const keyFromStoredUrl = (url: string | null): string | null =>
+  url ? keyFromPublicUrl(url) : null;
 
 const resolveKey = async (
   resource: MediaResource,

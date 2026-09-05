@@ -64,6 +64,32 @@ export const MediaImage = ({ path, fallback = null, alt = "", ...imgProps }: Med
 };
 
 /**
+ * Renders an image from any of the three shapes a stored image can take.
+ *
+ * Avatar and organisation-logo fields hold whichever the user chose: a media
+ * path for something they uploaded (private bucket, needs signing), an
+ * external URL for a preset or a pasted address, or — while an upload is in
+ * flight — a local `blob:` preview. Only the first can go through
+ * `MediaImage`; the other two are already loadable and must be passed to the
+ * browser untouched, so a component that treats every value as a media path
+ * breaks presets and previews.
+ */
+export interface ImageSourceProps
+  extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, "src"> {
+  src: string | null | undefined;
+  fallback?: React.ReactNode;
+}
+
+export const isMediaPath = (value: string | null | undefined): boolean =>
+  typeof value === "string" && value.startsWith("/media/");
+
+export const ImageSource = ({ src, fallback = null, alt = "", ...imgProps }: ImageSourceProps) => {
+  if (!src) return <>{fallback}</>;
+  if (isMediaPath(src)) return <MediaImage path={src} fallback={fallback} alt={alt} {...imgProps} />;
+  return <img src={src} alt={alt} {...imgProps} />;
+};
+
+/**
  * Opens a media path in a new tab.
  *
  * The tab is opened *before* the URL is resolved, and navigated afterwards.

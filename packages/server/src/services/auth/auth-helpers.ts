@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { AuthUser } from "@application/shared";
+import { buildMediaPath } from "@application/shared";
+import { isUploadedObjectUrl } from "../../utils/storage-keys";
 import { authDb } from "../../db";
 import { users, organizations, type User } from "../../db/schema";
 import { signAccessToken } from "../jwt.service";
@@ -17,6 +19,29 @@ export const slugify = (name: string): string =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "org";
 
+/**
+ * Presents a stored image URL the way the client can actually load it.
+ *
+ * The uploads bucket is private, so a URL pointing into it cannot be used as
+ * an `<img src>` — the request arrives unauthenticated and the object store
+ * refuses it. Our own uploads are therefore handed out as a media path, which
+ * the client resolves to a short-lived signed URL through the authenticated
+ * media route.
+ *
+ * A preset or pasted external URL is returned untouched: it is already
+ * loadable, and routing it through the media route would sign a key that does
+ * not exist.
+ */
+export const presentImageUrl = (
+  storedUrl: string | null | undefined,
+  resource: "user-avatar" | "org-logo",
+  id: string | null,
+): string | null => {
+  if (!storedUrl) return null;
+  if (!isUploadedObjectUrl(storedUrl)) return storedUrl;
+  return id ? buildMediaPath(resource, id) : null;
+};
+
 export const toAuthUser = (
   u: User,
   orgName?: string | null,
@@ -30,9 +55,10 @@ export const toAuthUser = (
   organizationId: u.organizationId,
   organizationName: orgName,
   organizationDescription: orgDescription,
-  organizationLogoUrl: orgLogoUrl,
+  organizationLogoUrl: presentImageUrl(orgLogoUrl, "org-logo", u.organizationId),
   emailVerified: u.emailVerifiedAt !== null,
   preferences: u.preferences,
+  photoUrl: presentImageUrl(u.photoUrl, "user-avatar", u.id),
 });
 
 export type UserWithOrg = User & {
