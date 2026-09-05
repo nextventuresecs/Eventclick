@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/useToast";
 import { authApi, settingsApi, uploadToPresignedUrl } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
+import { ImageSource, isMediaPath } from "@/components/MediaImage";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -52,7 +53,13 @@ export const Profile = () => {
 
   const [fullName, setFullName] = useState(user?.fullName || "");
   const [email] = useState(user?.email || "");
+  // `photoUrl` is the value to *display*, which after a reload is a media path
+  // (`/media/user-avatar/<id>`) for an uploaded image. That path is not a
+  // storable value — writing it back would replace the object URL in the
+  // database with a route, and the media route would then try to sign it as an
+  // object key. So it is only sent when the user actually changed it.
   const [photoUrl, setPhotoUrl] = useState(user?.photoUrl || "");
+  const [photoDirty, setPhotoDirty] = useState(false);
   const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [savingDetails, setSavingDetails] = useState(false);
@@ -69,7 +76,11 @@ export const Profile = () => {
   // Organization logo state. `logoUrl` is always a short http(s) URL — either the
   // storage URL returned after upload, or one the admin pasted. A data: URL is never
   // stored or sent (the API caps logoUrl at 1000 chars).
-  const [logoUrl, setLogoUrl] = useState(user?.organizationLogoUrl || "");
+  // Same split as the avatar. `logoInput` backs the paste-a-URL field and stays
+  // empty for an uploaded logo — a media path is not something to show, or let
+  // someone edit, in a URL box.
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoDirty, setLogoDirty] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(user?.organizationLogoUrl || null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [savingLogo, setSavingLogo] = useState(false);
@@ -134,9 +145,11 @@ export const Profile = () => {
     try {
       const publicUrl = await uploadImage(file, settingsApi.presignAvatar);
       setPhotoUrl(publicUrl);
+      setPhotoDirty(true);
       toast("Photo uploaded. Click 'Save Changes' to apply.", "success");
     } catch (err) {
       setPhotoUrl(user?.photoUrl || "");
+      setPhotoDirty(false);
       toast(err instanceof Error ? err.message : "Failed to upload photo", "error");
     } finally {
       setUploadingAvatar(false);
@@ -145,14 +158,20 @@ export const Profile = () => {
 
   const handleSaveDetails = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (photoUrl && !isHttpUrl(photoUrl)) {
+    if (photoDirty && photoUrl && !isHttpUrl(photoUrl)) {
       toast("Photo must be an http(s) URL — upload the file instead", "error");
       return;
     }
     setSavingDetails(true);
     try {
-      const { user: updated } = await authApi.updateProfile({ fullName, photoUrl });
+      // Omitted when untouched, so an unchanged photo keeps whatever is stored
+      // rather than being overwritten with its own display path.
+      const { user: updated } = await authApi.updateProfile(
+        photoDirty ? { fullName, photoUrl } : { fullName },
+      );
       updateUser(updated);
+      setPhotoUrl(updated.photoUrl || "");
+      setPhotoDirty(false);
       toast("Profile details updated successfully", "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Failed to update profile", "error");
@@ -191,9 +210,11 @@ export const Profile = () => {
     try {
       const publicUrl = await uploadImage(file, settingsApi.presignOrganizationLogo);
       setLogoUrl(publicUrl);
+      setLogoDirty(true);
       toast("Logo uploaded. Click 'Save logo' to apply.", "success");
     } catch (err) {
       setLogoPreview(user?.organizationLogoUrl || null);
+      setLogoDirty(false);
       toast(err instanceof Error ? err.message : "Failed to upload logo", "error");
     } finally {
       setUploadingLogo(false);
@@ -203,9 +224,16 @@ export const Profile = () => {
   const handleRemoveLogo = () => {
     setLogoPreview(null);
     setLogoUrl("");
+    // Clearing is itself a change: without this, "Save logo" would omit the
+    // field and the removed logo would come straight back on reload.
+    setLogoDirty(true);
   };
 
   const handleSaveLogo = async () => {
+    if (!logoDirty) {
+      toast("Upload a logo or paste a URL first", "info");
+      return;
+    }
     if (logoUrl && !isHttpUrl(logoUrl)) {
       toast("Logo must be an http(s) URL — use Upload Logo for local files", "error");
       return;
@@ -214,6 +242,11 @@ export const Profile = () => {
     try {
       const { organization } = await settingsApi.updateOrganization({ logoUrl });
       updateUser({ organizationLogoUrl: organization.logoUrl });
+      // The server answers with the display form (a media path for an upload),
+      // which is what the preview needs and what the URL box must not hold.
+      setLogoPreview(organization.logoUrl);
+      setLogoUrl("");
+      setLogoDirty(false);
       toast("Organization logo updated", "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Failed to update logo", "error");
@@ -228,20 +261,19 @@ export const Profile = () => {
       <div className="relative overflow-hidden rounded-3xl bg-brand-gradient-tile p-6 text-white shadow-raised md:p-8">
         <div className="relative z-10 flex flex-col items-center gap-6 md:flex-row md:items-start">
           <div className="relative">
-            {photoUrl ? (
-              <img
-                src={photoUrl}
-                alt={user?.fullName ? `${user.fullName} profile photo` : "Profile photo"}
-                className="h-24 w-24 rounded-2xl border-4 border-white/20 object-cover shadow-rest"
-              />
-            ) : (
-              <div
-                className="flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-white/20 bg-white/10 text-2xl font-bold text-white shadow-rest backdrop-blur-md"
-                aria-hidden="true"
-              >
-                {initials}
-              </div>
-            )}
+            <ImageSource
+              src={photoUrl}
+              alt={user?.fullName ? `${user.fullName} profile photo` : "Profile photo"}
+              className="h-24 w-24 rounded-2xl border-4 border-white/20 object-cover shadow-rest"
+              fallback={
+                <div
+                  className="flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-white/20 bg-white/10 text-2xl font-bold text-white shadow-rest backdrop-blur-md"
+                  aria-hidden="true"
+                >
+                  {initials}
+                </div>
+              }
+            />
             {uploadingAvatar && (
               <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40">
                 <Loader2 className="h-5 w-5 animate-spin text-white" />
@@ -313,6 +345,7 @@ export const Profile = () => {
                     aria-pressed={photoUrl === url}
                     onClick={() => {
                       setPhotoUrl(url);
+                      setPhotoDirty(true);
                       setShowPhotoPicker(false);
                       toast("Avatar selected! Click 'Save Changes' to update.", "info");
                     }}
@@ -338,8 +371,11 @@ export const Profile = () => {
                 <Input
                   id="avatar-url"
                   type="url"
-                  value={photoUrl}
-                  onChange={(e) => setPhotoUrl(e.target.value)}
+                  value={isMediaPath(photoUrl) ? "" : photoUrl}
+                  onChange={(e) => {
+                    setPhotoUrl(e.target.value);
+                    setPhotoDirty(true);
+                  }}
                   placeholder="https://example.com/avatar.jpg"
                   className="rounded-xl border-white/20 bg-white/10 pl-8 text-xs text-white placeholder:text-white/50"
                 />
@@ -639,7 +675,7 @@ export const Profile = () => {
               <div className="flex items-start gap-4">
                 {logoPreview ? (
                   <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 border-gray-200">
-                    <img
+                    <ImageSource
                       src={logoPreview}
                       alt="Organization logo preview"
                       className="h-full w-full object-cover"
@@ -691,6 +727,7 @@ export const Profile = () => {
                       onChange={(e) => {
                         setLogoUrl(e.target.value);
                         setLogoPreview(e.target.value || null);
+                        setLogoDirty(true);
                       }}
                       placeholder="Or paste an image URL"
                       className="input-premium text-xs"

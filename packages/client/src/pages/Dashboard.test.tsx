@@ -82,6 +82,12 @@ describe("Dashboard for non-admin roles", () => {
     listUsers.mockImplementation(forbidden);
   });
 
+  // Dashboard pulls in date-fns and a large lucide surface, so the first
+  // render in this file pays a heavy module-import cost. Under a full parallel
+  // run that has exceeded the 5s default and failed as a timeout rather than
+  // an assertion; the work being waited on is unchanged.
+  const HEAVY_RENDER_TIMEOUT = 20000;
+
   for (const role of ["volunteer", "event_manager"] as const) {
     it(`renders assigned rooms for ${role} when admin-only endpoints are forbidden`, async () => {
       currentUser.role = role;
@@ -92,7 +98,7 @@ describe("Dashboard for non-admin roles", () => {
       });
       expect(screen.queryByText("Insufficient permissions")).not.toBeInTheDocument();
       expect(screen.queryByText("Try Again")).not.toBeInTheDocument();
-    });
+    }, HEAVY_RENDER_TIMEOUT);
   }
 
   it("does not request the admin-only endpoints at all", async () => {
