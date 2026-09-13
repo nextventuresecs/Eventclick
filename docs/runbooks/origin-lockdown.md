@@ -17,11 +17,11 @@ skip Cloudflare's WAF and Bot Fight Mode entirely.
 
 Two layers now close that:
 
-| Layer | What it does | Can Docker bypass it? |
-|---|---|---|
-| **AWS security group** | Only Cloudflare's ranges can open a TCP connection to 80/443 | No |
-| **nginx `cloudflare-realip.conf`** | Honours `CF-Connecting-IP` only when the TCP peer is a Cloudflare range | n/a (inside the container) |
-| `ufw` on the host | **Does not protect 80/443.** Docker publishes container ports with its own iptables rules, ahead of ufw's | Yes |
+| Layer                              | What it does                                                                                              | Can Docker bypass it?      |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------- |
+| **AWS security group**             | Only Cloudflare's ranges can open a TCP connection to 80/443                                              | No                         |
+| **nginx `cloudflare-realip.conf`** | Honours `CF-Connecting-IP` only when the TCP peer is a Cloudflare range                                   | n/a (inside the container) |
+| `ufw` on the host                  | **Does not protect 80/443.** Docker publishes container ports with its own iptables rules, ahead of ufw's | Yes                        |
 
 The security group is the one that matters. The nginx list stops a spoofed
 header from ever being believed if the security group is misconfigured later.
@@ -97,6 +97,6 @@ downloads short or contains a line that is not a CIDR.
 
 ## Change log
 
-| Date | Change | Security group | Operator | Verified |
-|---|---|---|---|---|
-| _pending_ | Restrict 80/443 to Cloudflare ranges | _sg-id_ | | |
+| Date       | Change                               | Security group       | Operator  | Verified                                 |
+| ---------- | ------------------------------------ | -------------------- | --------- | ---------------------------------------- |
+| 14/09/2026 | Restrict 80/443 to Cloudflare ranges | sg-008d23b2cd016359c | prathmesh | Yes: 44 rules added, 0.0.0.0/0 and ::/0 removed on 80/443; through Cloudflare 200, direct to origin on 80 and 443 timed out |

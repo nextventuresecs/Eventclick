@@ -1,6 +1,6 @@
 # Anyone who reaches the origin directly can pick their own client IP
 
-**Status:** shipped (code); security group change pending, see runbook
+**Status:** shipped (code); security group restricted to Cloudflare ranges on 2026-09-14 and verified (see runbook change log)
 **Touches:** `packages/client/common.conf`, `packages/client/cloudflare-realip.conf`, `packages/client/Dockerfile.prod`, `scripts/update-cloudflare-ips.sh`, `.github/workflows/deploy.yml`, `scripts/setup-ec2.sh`, `docs/cloudflare-setup.md`
 **Ships with:** `fix/origin-lockdown` — closes #143
 
@@ -70,8 +70,8 @@ change, verification, refresh, and rollback.
   correct once nginx itself only believes Cloudflare.
 - **The security group is not in code.** There is no infrastructure-as-code in
   this repo. The change is a manual console step, documented in the runbook
-  with a change-log table. It is the control that actually closes the hole;
-  this PR's nginx change is defense in depth until it is applied.
+  with a change-log table. It is the control that actually closes the hole
+  (applied 2026-09-14); this PR's nginx change is defense in depth behind it.
 - **No Authenticated Origin Pulls (mTLS).** Worth doing later; with the
   security group restricted it adds little today.
 
@@ -89,9 +89,10 @@ change, verification, refresh, and rollback.
   ranges matching Cloudflare's published lists on 2026-09-14.
 - **Not run locally:** Docker Desktop was unavailable on the development
   machine, so the nginx checks above ran first in CI.
-- **After the security group change:** direct `curl` to the EC2 IP on 80 and
-  443 must fail to connect; `https://app.eventclick.live/api/v1/health` must
-  return 200. Record the result in the runbook change log.
+- **Security group (applied 2026-09-14, `sg-008d23b2cd016359c`):** 44
+  Cloudflare rules added, `0.0.0.0/0` and `::/0` removed on 80/443.
+  `https://app.eventclick.live/api/v1/health` through Cloudflare returned 200;
+  direct `curl` to the EC2 IP on 80 and 443 timed out.
 
 ## 6. Learnings
 
