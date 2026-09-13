@@ -229,7 +229,7 @@ Go to **Analytics & Logs** → **Traffic** for real-time dashboards.
 ### "522 Connection Timed Out"
 
 - EC2 security group doesn't allow port 80/443 from Cloudflare IPs
-- Fix: Add inbound rule for `0.0.0.0/0` on port 80 (Cloudflare acts as proxy)
+- Fix: allow 80/443 inbound **only** from Cloudflare's IP ranges (https://www.cloudflare.com/ips/). Never open them to `0.0.0.0/0`: that lets anyone bypass Cloudflare and spoof `CF-Connecting-IP`. See `docs/runbooks/origin-lockdown.md`.
 
 ### "521 Web Server Is Down"
 
