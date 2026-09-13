@@ -28,9 +28,10 @@ instance (Gotenberg PDF rendering, Postgres, Redis).
 with Google (`packages/server/src/services/google.service.ts`) and Google
 Analytics on the marketing site. Needs its own legal review.
 
-**Sentry retention:** _record the event retention setting from Sentry
-organization settings here_ (relevant to #151: user IDs sent to Sentry persist
-until this retention expires).
+**Sentry plan and retention:** Developer (free) plan as of 2026-09-14. Event
+retention follows the plan's limit shown on Sentry's Subscription page
+(relevant to #151: user IDs sent to Sentry persist until retention expires).
+Re-check this line when the plan changes.
 
 ---
 
@@ -127,4 +128,4 @@ it on the effective date.
 
 | Notice sent | Recipients (count) | Effective date | Changes | Objections | Outcome recorded |
 |---|---|---|---|---|---|
-| _pending_ | | | Add Sentry; broaden Cloudflare; correct AWS region and purpose; broaden Resend purpose; remove Gotenberg (landing-page commit `d552eed`) | | |
+| n/a (2026-09-14) | 0 | Immediate | Add Sentry (EU, Germany); broaden Cloudflare; correct AWS region and purpose; broaden Resend purpose; remove Gotenberg (eventclick-landing-page PR #2) | None possible | Production had no users on 2026-09-14, so there was no controller to notify: no customer had accepted the DPA. The corrected list applies from publication, and every future customer accepts the DPA with it. The 30-day objection gate on #151 therefore does not apply to this change. |
