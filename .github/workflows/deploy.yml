@@ -199,6 +199,9 @@ jobs:
           CERT_DIR="$(mktemp -d)"
           openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj "/CN=nginx-config-check" \
             -keyout "$CERT_DIR/origin-key.pem" -out "$CERT_DIR/origin-cert.pem" 2>/dev/null
+          # mktemp -d creates the directory as 0700. The client image runs nginx
+          # as a non-root user, which then cannot open the certificate at all.
+          chmod 755 "$CERT_DIR"
           chmod 644 "$CERT_DIR"/*.pem
           docker run --rm --add-host server:127.0.0.1 \
             -v "$CERT_DIR:/etc/ssl/cloudflare:ro" \
