@@ -19,7 +19,7 @@ The public page and this register must list the same subprocessors.
 | Cloudflare, Inc. | DNS, TLS, CDN, DDoS/WAF for all traffic; access control for internal tools; R2 media storage | Global | Cloudflare Customer DPA (account: the one holding `eventclick.live`) | _to record_ | |
 | Amazon Web Services | Hosting, compute, databases, queues, logs, email receiving | India (ap-south-1); Japan (ap-northeast-1) inbound email | AWS GDPR DPA (part of AWS Service Terms) | _to record_ | |
 | Resend | Account, notification, broadcast, and contact emails | USA | Resend DPA | _to record_ | |
-| Sentry (Functional Software, Inc.) | Error and performance diagnostics; pseudonymous user IDs (after the Ops Console change, #151) | _confirm: Organization Settings → General → Data Storage Location_ | Sentry DPA (Organization Settings → Legal & Compliance) | _to record_ | |
+| Sentry (Functional Software, Inc.) | Error and performance diagnostics; pseudonymous user IDs (after the Ops Console change, #151) | EU (Germany): DSN ingests at `ingest.de.sentry.io`, verified 2026-09-14 | Sentry DPA (Organization Settings → Legal & Compliance) | _to record_ | |
 
 **Not subprocessors:** self-hosted components running on Eventclick's own EC2
 instance (Gotenberg PDF rendering, Postgres, Redis).
