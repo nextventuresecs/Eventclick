@@ -275,12 +275,17 @@ jobs:
       - name: Initialize Database Roles
         run: PGPASSWORD=test psql -U test -h localhost -p 5432 -d eventclick_test -v ON_ERROR_STOP=1 -f scripts/init-db.sql
 
+      # MinIO no longer serves images from Docker Hub: anonymous pulls of
+      # minio/minio fail with "pull access denied", which failed this job on
+      # every run from 2026-09-13. MinIO's quay.io registry still publishes
+      # them. Pinned, so the next registry change fails loudly here instead of
+      # drifting under :latest.
       - name: Start MinIO S3 Container
         run: |
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=minioadmin \
             -e MINIO_ROOT_PASSWORD=minioadmin \
-            minio/minio:latest server /data
+            quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z server /data
           
           echo "Waiting for MinIO..."
           for i in {1..30}; do
