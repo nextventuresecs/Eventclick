@@ -121,6 +121,11 @@ log "Configuring firewall..."
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow 22/tcp    comment 'SSH'
+# NOTE: ufw does not filter ports published by Docker. Docker writes its own
+# iptables rules ahead of ufw's, so the client container's 80/443 are reachable
+# whatever these two lines say. The AWS security group is the real control and
+# must allow 80/443 from Cloudflare's ranges only. See
+# docs/runbooks/origin-lockdown.md.
 ufw allow 80/tcp    comment 'HTTP'
 ufw allow 443/tcp   comment 'HTTPS'
 

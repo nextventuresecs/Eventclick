@@ -62,6 +62,54 @@ jobs:
       # clearing them needs a breaking `npm audit fix --force`.
       - run: npm audit --audit-level=high
 
+  # The production nginx config is otherwise only ever parsed when the client
+  # container starts on EC2. This job loads the same three files into the same
+  # nginx base image the client Dockerfile uses, checks they parse, and proves
+  # the Cloudflare real-IP restriction holds: a request from a peer outside
+  # Cloudflare's ranges that claims CF-Connecting-IP must be logged with its
+  # real address, not the claimed one. See docs/runbooks/origin-lockdown.md.
+  nginx-config:
+    name: nginx Config Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Start nginx with the production config
+        run: |
+          CERT_DIR="$(mktemp -d)"
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj "/CN=nginx-config-check" \
+            -keyout "$CERT_DIR/origin-key.pem" -out "$CERT_DIR/origin-cert.pem" 2>/dev/null
+          chmod 644 "$CERT_DIR"/*.pem
+          # Same base tag as packages/client/Dockerfile.prod's runner stage.
+          docker run -d --name nginx-check -p 8080:8080 \
+            --add-host server:127.0.0.1 \
+            -v "$CERT_DIR:/etc/ssl/cloudflare:ro" \
+            -v "$PWD/packages/client/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+            -v "$PWD/packages/client/common.conf:/etc/nginx/snippets/common.conf:ro" \
+            -v "$PWD/packages/client/cloudflare-realip.conf:/etc/nginx/snippets/cloudflare-realip.conf:ro" \
+            nginx:1.29-alpine
+          docker exec nginx-check nginx -t
+
+      - name: Spoofed CF-Connecting-IP from a non-Cloudflare peer is ignored
+        run: |
+          for i in $(seq 1 20); do
+            curl -fsS -o /dev/null http://localhost:8080/ -H 'CF-Connecting-IP: 203.0.113.77' && break
+            sleep 1
+          done
+          sleep 1
+          docker logs nginx-check 2>/dev/null | grep ' "GET / ' > access.log || true
+          cat access.log
+          if [ ! -s access.log ]; then
+            echo "::error::No access log line for the test request"; exit 1
+          fi
+          if grep -q '^203\.0\.113\.77 ' access.log; then
+            echo "::error::nginx believed CF-Connecting-IP from a non-Cloudflare peer"; exit 1
+          fi
+
+      - name: nginx logs on failure
+        if: failure()
+        run: docker logs nginx-check || true
+
   unit-tests:
     name: Unit and Integration Tests
     runs-on: ubuntu-latest

@@ -189,6 +189,22 @@ jobs:
           vuln-type: 'os,library'
           severity: 'HIGH,CRITICAL'
 
+      # nginx only parses its config when the container starts on the EC2 box,
+      # where a broken include or a typo takes the whole site down. Parse it
+      # here instead, before deploy. The origin certificate and the `server`
+      # upstream exist only in production, so the check supplies throwaway
+      # stand-ins for both: a one-day self-signed cert and a hosts entry.
+      - name: Validate client nginx config
+        run: |
+          CERT_DIR="$(mktemp -d)"
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj "/CN=nginx-config-check" \
+            -keyout "$CERT_DIR/origin-key.pem" -out "$CERT_DIR/origin-cert.pem" 2>/dev/null
+          chmod 644 "$CERT_DIR"/*.pem
+          docker run --rm --add-host server:127.0.0.1 \
+            -v "$CERT_DIR:/etc/ssl/cloudflare:ro" \
+            "${{ needs.build.outputs.client_image }}:${{ needs.build.outputs.sha_short }}" \
+            nginx -t
+
   # ── Job 4: Deploy to EC2 via SSM (no SSH / port 22 needed) ─────────────
   deploy:
     name: Deploy to EC2 (Production)
