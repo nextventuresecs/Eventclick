@@ -32,7 +32,10 @@ Run it from a workstation with admin credentials. On the prod host it exits: the
 EC2 instance role cannot create alarms, on purpose.
 
 Confirm the subscription from the email AWS sends ("AWS Notification -
-Subscription Confirmation"). Until then nothing is delivered. Then:
+Subscription Confirmation"). Until then nothing is delivered. Click only
+**Confirm subscription**: if the listing later shows the subscription as
+`Deleted`, an unsubscribe link was opened (by a person or a mail scanner); rerun
+the script with the same `ALERT_EMAIL` to subscribe again. Then:
 
 ```bash
 scripts/setup-queue-alarms.sh --test

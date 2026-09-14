@@ -74,7 +74,7 @@ echo "Topic: $TOPIC_ARN"
 
 if [[ -n "${ALERT_EMAIL:-}" ]]; then
   existing=$(aws_ sns list-subscriptions-by-topic --topic-arn "$TOPIC_ARN" \
-    --query "Subscriptions[?Protocol=='email' && Endpoint=='${ALERT_EMAIL}'].SubscriptionArn" --output text)
+    --query "Subscriptions[?Protocol=='email' && Endpoint=='${ALERT_EMAIL}' && SubscriptionArn!='Deleted'].SubscriptionArn" --output text)
   if [[ -n "$existing" ]]; then
     echo "Already subscribed ($existing): $ALERT_EMAIL"
   else
@@ -83,7 +83,7 @@ if [[ -n "${ALERT_EMAIL:-}" ]]; then
   fi
 else
   count=$(aws_ sns list-subscriptions-by-topic --topic-arn "$TOPIC_ARN" \
-    --query "length(Subscriptions[?SubscriptionArn!='PendingConfirmation'])" --output text)
+    --query "length(Subscriptions[?SubscriptionArn!='PendingConfirmation' && SubscriptionArn!='Deleted'])" --output text)
   echo "ALERT_EMAIL not set; topic has ${count} confirmed subscription(s)."
   [[ "$count" -gt 0 ]] || echo "WARNING: nobody will receive these alarms until an address is subscribed and confirmed." >&2
 fi
