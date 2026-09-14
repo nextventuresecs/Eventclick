@@ -1,6 +1,7 @@
 import { Client } from "pg";
 import argon2 from "argon2";
 import { createClient } from "redis";
+import { E2E_MAINTAINER_EMAIL, E2E_NON_MAINTAINER_EMAIL } from "./ops";
 
 const API_BASE = process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000";
 
@@ -130,6 +131,20 @@ export default async function globalSetup() {
     console.log("[globalSetup] creating volunteer user");
     await createUserInDb(client, volunteerEmail, volunteerPassword!, "E2E Volunteer", "volunteer", orgId);
     await client.query("COMMIT");
+
+    // Ops Console (#147). maintainers survives the truncate above (see the
+    // comment there), so converge rather than insert.
+    console.log("[globalSetup] converging e2e maintainers");
+    await client.query(
+      `INSERT INTO maintainers (email, display_name, added_by)
+       VALUES ($1, 'E2E Maintainer', 'e2e@nvces.test')
+       ON CONFLICT (email) DO UPDATE SET is_active = true, deactivated_at = NULL`,
+      [E2E_MAINTAINER_EMAIL],
+    );
+    await client.query(
+      `UPDATE maintainers SET is_active = false, deactivated_at = NOW() WHERE email = $1 AND is_active`,
+      [E2E_NON_MAINTAINER_EMAIL],
+    );
   } catch (error: any) {
     await client.query("ROLLBACK");
     console.error("[globalSetup] db setup error:", error.message);
