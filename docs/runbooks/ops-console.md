@@ -192,6 +192,46 @@ SELECT created_at, maintainer_email, action, target_type, target_id, reason, res
 FROM maintainer_access_log ORDER BY created_at DESC LIMIT 50;
 ```
 
+## Health and usage on the home page (#149)
+
+The home page answers "is prod healthy right now?" and "which orgs are using
+Eventclick?". Each load writes one `health.view` and one `usage.view` row, so
+there is no auto-refresh: use **Refresh**.
+
+**Health badge.** Computed by `computeOverall` in
+`packages/server/src/ops/health.ts`:
+
+| Badge | Meaning | First look |
+|---|---|---|
+| Unhealthy (red) | A `/api/v1/health/deep` check is not `ok`; or a PDF job has sat in `pending`/`processing` for 15+ minutes; or the DLQ holds messages; or 5+ failed emails or notifications in the last hour | The failing chip names the dependency. Stuck PDFs: `pdf-worker` logs and Gotenberg. DLQ: `dlq-consumer` logs. Failed emails: Resend dashboard |
+| Unknown (grey) | A probe could not answer (timed out after 5s, or errored) and nothing is red | `ops health probe failed` in the `ops-server` log stream names the probe |
+| Degraded (amber) | A PDF job failed in the last 24h, or 1-4 failed emails or notifications in the last hour | Usually one customer's bad input; check Sentry |
+| Healthy (green) | None of the above | |
+
+"Running since" is the ops-server container's start time. Every deploy
+recreates it, so it is the last deploy unless someone restarted ops-server
+alone.
+
+**Usage.** An org is active in a window when its latest member login, room
+creation or attendance submission falls inside it. Soft-deleted orgs, users,
+rooms and entries are not counted. The table shows the 200 most recently active
+orgs; the totals count all of them.
+
+### DLQ probe: IAM (one-time, manual)
+
+Without this the DLQ probe reads `Unavailable` and the badge is at best
+Unknown. `docs/iam/ops-console-policy.json` is the canonical policy for the
+EC2 instance role; #150 appends log statements to the same file.
+
+1. Replace `<ACCOUNT_ID>` and `<DLQ_NAME>` with the ARN of the queue in SSM
+   `SQS_DLQ_URL` (`aws sqs get-queue-attributes --queue-url <url> --attribute-names QueueArn`).
+2. IAM → Roles → the EC2 instance role → Add permissions → Create inline
+   policy → JSON → paste → name it `eventclick-ops-console`.
+3. Reload the home page: the dead-letter queue section shows a message count.
+
+Optional: set SSM `OPS_SENTRY_ORG_URL` (e.g. `https://<org>.sentry.io`) and
+redeploy to get a "View release in Sentry" link.
+
 ## Local development
 
 ```bash
@@ -218,6 +258,8 @@ Record the date, who ran it, and the result in the change log.
 | 6 | On the host: `docker compose -f docker-compose.prod.yml --profile ops config` and `ss -ltn \| grep 4100` | No `ports` on either service; nothing listening on 4100 on the host |
 | 7 | `docker exec eventclick_pdf_worker_prod wget -qO- http://ops-server:4100/ops-api/v1/whoami` | 401 |
 | 8 | 100 whoami loads, then `docker stats --no-stream eventclick_ops_server_prod` | Under 160MiB |
+| 9 | Home page after the IAM policy is attached (#149) | Health shows 7 dependency chips and a DLQ message count; usage lists orgs; one `health.view` and one `usage.view` row per load |
+| 10 | Browser devtools, Network tab, on home page load (#149) | `/ops-api/v1/usage` completes in under 1s |
 
 **Browser console on the console page.** Cloudflare Web Analytics, if enabled
 for the zone, injects an inline loader and

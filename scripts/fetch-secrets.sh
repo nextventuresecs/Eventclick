@@ -327,3 +327,6 @@ log "All ${#REQUIRED_KEYS[@]} required secrets verified ✅"
 # than blocking every tenant deploy on a maintainer tool.
 #   MAINTAINER_RO_DB_PASSWORD, MAINTAINER_AUDIT_DB_PASSWORD, CF_ACCESS_TEAM_DOMAIN,
 #   CF_ACCESS_AUD, CLOUDFLARE_TUNNEL_TOKEN
+# Optional, never required (#149): OPS_SENTRY_ORG_URL (e.g. https://<org>.sentry.io)
+# links the running release from the health panel. The DLQ probe reuses
+# SQS_DLQ_URL above; AWS_REGION is already required.
