@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { ACCESS_LOGOUT_PATH, externalLinks } from "@/lib/links";
+import { SearchBox } from "@/components/SearchBox";
 
-const PLANNED = ["Users", "Health", "Logs"];
+// Users are reached through search; these arrive in #149 and #150.
+const PLANNED = ["Health", "Logs"];
 
 export function Layout({ children, email }: { children: ReactNode; email?: string }) {
   return (
@@ -11,9 +14,9 @@ export function Layout({ children, email }: { children: ReactNode; email?: strin
           <span className="font-semibold tracking-tight text-brand">Ops Console</span>
 
           <nav aria-label="Console" className="flex flex-wrap items-center gap-1">
-            <a href="/" className="rounded px-2 py-1 text-sm font-medium hover:bg-ground">
+            <Link to="/" className="rounded px-2 py-1 text-sm font-medium hover:bg-ground">
               Home
-            </a>
+            </Link>
             {PLANNED.map((label) => (
               <span
                 key={label}
@@ -25,6 +28,8 @@ export function Layout({ children, email }: { children: ReactNode; email?: strin
               </span>
             ))}
           </nav>
+
+          <SearchBox />
 
           <nav aria-label="External tools" className="flex flex-wrap items-center gap-1 sm:ml-auto">
             {externalLinks().map((link) => (

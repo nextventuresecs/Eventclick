@@ -30,11 +30,16 @@ export function createOpsApi(deps: OpsApiDeps = {}) {
   const fetchImpl = deps.fetchImpl ?? ((input, init) => fetch(input, init));
   const reload = deps.reload ?? (() => window.location.reload());
 
-  async function get<T>(path: string): Promise<T> {
+  async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
     const res = await fetchImpl(`${OPS_API_PREFIX}${path}`, {
+      method,
       credentials: "same-origin",
       redirect: "manual",
-      headers: { Accept: "application/json" },
+      headers:
+        body === undefined
+          ? { Accept: "application/json" }
+          : { Accept: "application/json", "Content-Type": "application/json" },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
 
     if (res.type === "opaqueredirect" || res.status === 401) {
@@ -50,7 +55,10 @@ export function createOpsApi(deps: OpsApiDeps = {}) {
     return (await res.json()) as T;
   }
 
-  return { get };
+  const get = <T>(path: string) => request<T>("GET", path);
+  const post = <T>(path: string, body: unknown) => request<T>("POST", path, body);
+
+  return { get, post };
 }
 
 export interface WhoAmI {
