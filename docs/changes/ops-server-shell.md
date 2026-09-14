@@ -108,6 +108,22 @@ rolls back the tenant deploy over them. The deploy workflow scans the pinned
 
 **Deviations from the issue text**
 
+- **Start condition for the new services.** The issue adds `ops-server` and
+  `cloudflared` to compose unconditionally. Without its SSM parameters
+  `ops-server` exits at startup and `cloudflared` loops on an empty token, so
+  every deploy between merge and the manual Cloudflare setup would carry two
+  failing containers. They sit under compose profile `ops`, and `deploy.sh`
+  starts them only when all five parameters exist, without rolling back the
+  tenant deploy if they fail. A plain `docker compose up -d --remove-orphans`
+  does not treat profiled services as orphans (checked on Compose v2).
+- **Non-maintainer page requests get server-rendered HTML.** The issue asks for
+  both "no static bundle served (403 on `/`)" and "the Not authorized screen"
+  for an Access-approved email not in `maintainers`. The SPA screen lives in the
+  bundle, so both cannot hold. `/` returns a 403 script-free HTML page; the SPA
+  screen still covers a maintainer deactivated mid-session.
+- **Scan exceptions for `cloudflared`.** The issue adds a blocking scan; the
+  latest image fails it on three upstream findings, so they are ignored with
+  an expiry (section 3).
 - ADR numbering: `0001` was taken by #146. One new ADR, `0002`, covers identity
   and the separate process; the role separation is already `0001`.
 - `ops/types.d.ts` holds the `req.maintainer` declaration and the `Maintainer`
