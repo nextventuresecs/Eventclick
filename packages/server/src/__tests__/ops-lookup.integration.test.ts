@@ -133,12 +133,11 @@ beforeAll(async () => {
     return;
   }
 
-  ({
-    rows: [{ id: maintainerId }],
-  } = await owner.query<{ id: string }>(
+  const inserted = await owner.query<{ id: string }>(
     "INSERT INTO maintainers (email, display_name, added_by) VALUES ($1, 'Lookup Test', 'ci@nvces.test') RETURNING id",
     [MAINTAINER_EMAIL],
-  ));
+  );
+  maintainerId = inserted.rows[0]!.id;
 
   await owner.query(
     `INSERT INTO organizations (id, name, slug, contact_email, is_active, created_at, updated_at)
