@@ -105,9 +105,8 @@ beforeAll(async () => {
   }
 
   expect(await cli(["add", "--email", EMAIL, "--name", "Ops Shell Test", "--added-by", "ci@nvces.test"])).toBe(0);
-  ({
-    rows: [{ id: maintainerId }],
-  } = await owner.query("SELECT id FROM maintainers WHERE email = $1", [EMAIL]));
+  const { rows } = await owner.query<{ id: string }>("SELECT id FROM maintainers WHERE email = $1", [EMAIL]);
+  maintainerId = rows[0]!.id;
 
   await owner.query(`CREATE ROLE ${DENIED_ROLE} LOGIN PASSWORD '${DENIED_PASSWORD}'`);
   denied = new Pool({ connectionString: loginUrl(DENIED_ROLE, DENIED_PASSWORD), max: 1 });
