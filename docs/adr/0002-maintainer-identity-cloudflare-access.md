@@ -16,8 +16,10 @@ zone is already on Cloudflare.
 
 ## Decision
 
-- **Identity:** Cloudflare Access with **email one-time PIN**, an explicit
-  email allowlist, 8-hour sessions. The console is reachable only through a
+- **Identity:** Cloudflare Access with **email one-time PIN** plus Access
+  **independent MFA** (an enrolled authenticator app, security key or
+  biometric, required for every sign-in), an explicit email allowlist, 8-hour
+  sessions. The console is reachable only through a
   Cloudflare Tunnel; `ops-server` publishes no port.
 - **Verified twice.** Access is the outer gate. `ops-server` verifies the
   `Cf-Access-Jwt-Assertion` JWT itself (RS256, issuer = team domain, audience =
@@ -44,8 +46,15 @@ zone is already on Cloudflare.
 
 ## Consequences
 
-- Maintainer security rests on each maintainer's email inbox. The runbook
-  requires 2FA on those inboxes; this cannot be enforced technically.
+- A compromised maintainer inbox alone does not open the console: sign-in also
+  needs the maintainer's enrolled authenticator. (Amended 2026-09-14: this
+  first read "security rests on each inbox", before independent MFA was
+  enabled on the account.)
+- MFA enrollment runs through the Access App Launcher, so the App Launcher must
+  stay enabled, restricted to the same maintainer emails. A lost authenticator
+  is an administrator reset, not an MFA exemption.
+- Cloudflare-injected scripts (Web Analytics) are blocked by ops-server's CSP;
+  the zone should exclude the ops hostname rather than the CSP allow them.
 - Adding a maintainer is two steps (Access policy + `maintainers` CLI);
   removal from the table alone is immediate.
 - The IdP can change later (Workspace, GitHub org) as Access configuration only;
