@@ -1,4 +1,4 @@
-import { SENSITIVE_FIELD_NAMES } from "./logger";
+import { SENSITIVE_FIELD_NAMES } from "./redact";
 
 export const SCRUB_PLACEHOLDER = "[REDACTED]";
 
