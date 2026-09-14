@@ -139,11 +139,15 @@ and you would rather re-run them, stop the drain first or it will settle them
 before you move them:
 
 ```bash
-# on the host: stop the worker so nothing drains while you move messages
+# 1. on the host: stop the worker so nothing drains while you move messages
 docker compose -f docker-compose.prod.yml stop pdf-worker
+
+# 2. on a workstation with admin credentials (the instance role cannot move messages)
 aws sqs start-message-move-task --region ap-south-1 \
   --source-arn arn:aws:sqs:ap-south-1:940278682995:eventclick-pdf-dlq \
   --destination-arn arn:aws:sqs:ap-south-1:940278682995:eventclick-pdf-queue
+
+# 3. on the host, once the DLQ reads 0
 docker compose -f docker-compose.prod.yml up -d --no-deps pdf-worker
 ```
 
