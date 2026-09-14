@@ -114,6 +114,11 @@ else
   warn "Docker already installed, skipping"
 fi
 
+# CloudWatch log retention is not set here: the awslogs driver creates
+# /eventclick/prod/containers on the first container start, with retention
+# "never expire". After the first deploy, set 30 days with admin credentials
+# (not this instance's role): see docs/runbooks/log-retention.md.
+
 # ═══════════════════════════════════════════════════════════════════════════
 # 4. Configure Firewall (UFW)
 # ═══════════════════════════════════════════════════════════════════════════
