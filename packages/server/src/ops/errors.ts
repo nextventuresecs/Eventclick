@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import type { ErrorRequestHandler } from "express";
 
 const STATEMENT_TIMEOUT = "57014";
@@ -13,6 +14,12 @@ export function opsErrorHandler(deps: {
   return (err, _req, res, next) => {
     if (res.headersSent) {
       next(err);
+      return;
+    }
+
+    // Bad params, query or body parsed with zod in a handler.
+    if (err instanceof ZodError) {
+      res.status(400).json({ error: "VALIDATION_ERROR" });
       return;
     }
 

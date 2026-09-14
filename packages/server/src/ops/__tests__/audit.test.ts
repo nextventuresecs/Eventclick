@@ -1,12 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import express, { type NextFunction, type Request, type Response } from "express";
 import request from "supertest";
-import { createRespondAudited, type AuditPool } from "../audit";
+import { z } from "zod";
+import { createRespondAudited, type AuditPool, type AuditedRead } from "../audit";
 import { opsErrorHandler } from "../errors";
 
 const MAINTAINER = { id: "7d5b3c1e-0000-4000-8000-000000000001", email: "maint@nvces.test", displayName: "Maint" };
 
-function build(options: { auditPool: AuditPool; read: () => Promise<{ body: unknown; resultCount?: number }> }) {
+function build(options: { auditPool: AuditPool; read: AuditedRead<unknown> }) {
   const logger = { error: vi.fn(), warn: vi.fn() };
   const respondAudited = createRespondAudited({ pool: options.auditPool, logger });
   const app = express();
@@ -92,6 +93,52 @@ describe("respondAudited", () => {
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: "INTERNAL" });
     expect(auditPool.query).not.toHaveBeenCalled();
+  });
+
+  it("lets the read supply audit fields it discovers, such as the target's organisation", async () => {
+    const auditPool = { query: vi.fn(async () => ({ rows: [] })) };
+    const { app } = build({
+      auditPool,
+      read: async () => ({
+        body: { ok: true },
+        resultCount: 1,
+        audit: { targetType: "user", targetId: "u-1", organizationId: "o-1" },
+      }),
+    });
+
+    expect((await request(app).get("/probe")).status).toBe(200);
+    const [, values] = auditPool.query.mock.calls[0] as unknown as [string, unknown[]];
+    expect(values.slice(2, 6)).toEqual(["session.whoami", "user", "u-1", "o-1"]);
+  });
+
+  it("maps a not-found read to 404 and writes no audit row", async () => {
+    const auditPool = { query: vi.fn(async () => ({ rows: [] })) };
+    const { app } = build({
+      auditPool,
+      read: async () => {
+        throw Object.assign(new Error("no such user"), { status: 404 });
+      },
+    });
+
+    const res = await request(app).get("/probe");
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "NOT_FOUND" });
+    expect(auditPool.query).not.toHaveBeenCalled();
+  });
+
+  it("maps a zod validation error to 400 VALIDATION_ERROR", async () => {
+    const auditPool = { query: vi.fn(async () => ({ rows: [] })) };
+    const { app } = build({
+      auditPool,
+      read: async () => {
+        z.object({ id: z.uuid() }).parse({ id: "nope" });
+        return { body: {} };
+      },
+    });
+
+    const res = await request(app).get("/probe");
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: "VALIDATION_ERROR" });
   });
 
   it("maps a statement timeout to 504 QUERY_TIMEOUT", async () => {
