@@ -145,16 +145,26 @@ const ORG_SUMMARY_SQL = `
          (SELECT count(*) FROM event_rooms r WHERE r.organization_id = o.id AND r.deleted_at IS NULL)::int AS room_count
   FROM organizations o`;
 
-export async function findOrgById(pool: ReadPool, id: string): Promise<OrgSummary | null> {
+async function orgSummary(pool: ReadPool, id: string): Promise<OrgSummary | null> {
   const { rows } = await pool.query(`${ORG_SUMMARY_SQL} WHERE o.id = $1`, [id]);
   return rows[0] ? toOrgSummary(rows[0] as OrgRow) : null;
 }
 
+// Both lookups resolve the org with a cheap indexed read first, so a UUID search
+// that only matches a user never runs the summary aggregates.
+async function resolveOrgId(pool: ReadPool, column: "id" | "slug", value: string): Promise<string | null> {
+  const { rows } = await pool.query(`SELECT id FROM organizations WHERE ${column} = $1`, [value]);
+  return (rows[0] as { id: string } | undefined)?.id ?? null;
+}
+
+export async function findOrgById(pool: ReadPool, id: string): Promise<OrgSummary | null> {
+  const found = await resolveOrgId(pool, "id", id);
+  return found ? orgSummary(pool, found) : null;
+}
+
 export async function findOrgBySlug(pool: ReadPool, slug: string): Promise<OrgSummary | null> {
-  // $1 is the org id inside the CTEs; resolve the slug to an id first.
-  const { rows } = await pool.query("SELECT id FROM organizations WHERE slug = $1", [slug]);
-  const id = (rows[0] as { id: string } | undefined)?.id;
-  return id ? findOrgById(pool, id) : null;
+  const found = await resolveOrgId(pool, "slug", slug);
+  return found ? orgSummary(pool, found) : null;
 }
 
 export async function findMemberships(pool: ReadPool, userId: string): Promise<OpsMembership[]> {
