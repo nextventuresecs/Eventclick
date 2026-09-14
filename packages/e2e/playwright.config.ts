@@ -78,12 +78,12 @@ export default defineConfig({
           ],
         },
       },
-      testIgnore: [/auth\.setup\.ts/, /ops-shell\.spec\.ts/],
+      testIgnore: [/auth\.setup\.ts/, /ops-shell\.spec\.ts/, /ops-lookup\.spec\.ts/],
     },
     {
       // No tenant login: ops-server authenticates through its own bypass.
       name: "ops",
-      testMatch: /ops-shell\.spec\.ts/,
+      testMatch: [/ops-shell\.spec\.ts/, /ops-lookup\.spec\.ts/],
     },
   ],
   webServer: [
