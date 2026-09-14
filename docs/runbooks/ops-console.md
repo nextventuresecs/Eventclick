@@ -223,8 +223,9 @@ Without this the DLQ probe reads `Unavailable` and the badge is at best
 Unknown. `docs/iam/ops-console-policy.json` is the canonical policy for the
 EC2 instance role; #150 appends log statements to the same file.
 
-1. Replace `<ACCOUNT_ID>` and `<DLQ_NAME>` with the ARN of the queue in SSM
-   `SQS_DLQ_URL` (`aws sqs get-queue-attributes --queue-url <url> --attribute-names QueueArn`).
+1. The file holds the ARN of the queue in SSM `SQS_DLQ_URL`
+   (`eventclick-pdf-dlq`). If that queue changes, update the ARN first
+   (`aws sqs get-queue-attributes --queue-url <url> --attribute-names QueueArn`).
 2. IAM → Roles → the EC2 instance role → Add permissions → Create inline
    policy → JSON → paste → name it `eventclick-ops-console`.
 3. Reload the home page: the dead-letter queue section shows a message count.
@@ -278,4 +279,5 @@ relax the CSP.
 | 2026-09-14 | Maintainers added: jagtaprathmesh19@gmail.com, agriclick.llp@gmail.com | jagtaprathmesh19@gmail.com |
 | 2026-09-14 | Independent MFA required; App Launcher enabled for enrollment; authenticator enrolled (jagtaprathmesh19@gmail.com) | jagtaprathmesh19@gmail.com |
 | 2026-09-14 | Verification 1 (302 to Access) and 4 (session page shows email, name, release `1eb8fbb`) passed | jagtaprathmesh19@gmail.com |
+| 2026-09-15 | Inline policy `eventclick-ops-console` (DLQ `GetQueueAttributes` only) on `EventclickEC2Role`, confirmed with the IAM policy simulator; SSM `OPS_SENTRY_ORG_URL` = `https://eventclick.sentry.io` | jagtaprathmesh19@gmail.com |
 | | Verification 2, 3, 5, 6, 7, 8 | |
