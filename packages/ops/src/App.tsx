@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { OpsApiError, opsApi, type WhoAmI } from "@/lib/api";
+import { ApiProvider, type OpsApi } from "@/lib/apiContext";
 import { Layout } from "@/components/Layout";
 import { Home } from "@/pages/Home";
 import { NotAuthorized } from "@/pages/NotAuthorized";
+import { SearchResults } from "@/pages/SearchResults";
+import { UserDetailPage } from "@/pages/UserDetail";
+import { OrgDetailPage } from "@/pages/OrgDetail";
 
 type State =
   | { kind: "loading" }
@@ -11,7 +15,7 @@ type State =
   | { kind: "forbidden" }
   | { kind: "error"; code: string };
 
-export function App({ api = opsApi }: { api?: Pick<typeof opsApi, "get"> }) {
+export function App({ api = opsApi }: { api?: OpsApi }) {
   const [state, setState] = useState<State>({ kind: "loading" });
 
   useEffect(() => {
@@ -49,13 +53,18 @@ export function App({ api = opsApi }: { api?: Pick<typeof opsApi, "get"> }) {
   }
 
   return (
-    <BrowserRouter>
-      <Layout email={email}>
-        <Routes>
-          <Route path="/" element={home} />
-          <Route path="*" element={<p className="text-sm text-muted">Page not found.</p>} />
-        </Routes>
-      </Layout>
-    </BrowserRouter>
+    <ApiProvider api={api}>
+      <BrowserRouter>
+        <Layout email={email}>
+          <Routes>
+            <Route path="/" element={home} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/users/:id" element={<UserDetailPage />} />
+            <Route path="/orgs/:id" element={<OrgDetailPage />} />
+            <Route path="*" element={<p className="text-sm text-muted">Page not found.</p>} />
+          </Routes>
+        </Layout>
+      </BrowserRouter>
+    </ApiProvider>
   );
 }

@@ -11,9 +11,24 @@ describe("ops api wrapper", () => {
 
     await expect(api.get("/whoami")).resolves.toEqual({ ok: true });
     expect(fetchImpl).toHaveBeenCalledWith("/ops-api/v1/whoami", {
+      method: "GET",
       credentials: "same-origin",
       redirect: "manual",
       headers: { Accept: "application/json" },
+    });
+  });
+
+  it("posts JSON bodies", async () => {
+    const fetchImpl = vi.fn(async () => json(200, { email: "a@b.c", fullName: "A" }));
+    const api = createOpsApi({ fetchImpl, reload: vi.fn() });
+
+    await api.post("/users/u1/unmask", { reason: "Customer ticket 1" });
+    expect(fetchImpl).toHaveBeenCalledWith("/ops-api/v1/users/u1/unmask", {
+      method: "POST",
+      credentials: "same-origin",
+      redirect: "manual",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: "Customer ticket 1" }),
     });
   });
 

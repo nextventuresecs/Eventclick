@@ -11,7 +11,7 @@ const whoami = {
 
 describe("App", () => {
   it("shows the signed-in maintainer, release, sign out and external tools", async () => {
-    render(<App api={{ get: vi.fn(async () => whoami) as never }} />);
+    render(<App api={{ get: vi.fn(async () => whoami), post: vi.fn() } as never} />);
 
     expect(await screen.findByText("abc1234")).toBeInTheDocument();
     expect(screen.getAllByText("maint@nvces.test").length).toBeGreaterThan(0);
@@ -22,13 +22,13 @@ describe("App", () => {
   });
 
   it("renders the Not authorized screen on 403", async () => {
-    render(<App api={{ get: vi.fn(async () => Promise.reject(new OpsApiError(403, "FORBIDDEN"))) as never }} />);
+    render(<App api={{ get: vi.fn(async () => Promise.reject(new OpsApiError(403, "FORBIDDEN"))), post: vi.fn() } as never} />);
     expect(await screen.findByRole("heading", { name: "Not authorized" })).toBeInTheDocument();
   });
 
   it("renders a panel error on 503", async () => {
     render(
-      <App api={{ get: vi.fn(async () => Promise.reject(new OpsApiError(503, "AUDIT_UNAVAILABLE"))) as never }} />,
+      <App api={{ get: vi.fn(async () => Promise.reject(new OpsApiError(503, "AUDIT_UNAVAILABLE"))), post: vi.fn() } as never} />,
     );
     expect(await screen.findByRole("alert")).toHaveTextContent("AUDIT_UNAVAILABLE");
   });
