@@ -5,7 +5,7 @@
       "Sid": "OpsConsoleDlqDepth",
       "Effect": "Allow",
       "Action": "sqs:GetQueueAttributes",
-      "Resource": "arn:aws:sqs:ap-south-1:<ACCOUNT_ID>:<DLQ_NAME>"
+      "Resource": "arn:aws:sqs:ap-south-1:940278682995:eventclick-pdf-dlq"
     }
   ]
 }
