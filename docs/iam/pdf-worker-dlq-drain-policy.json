@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PdfWorkerDrainsPdfDlq",
+      "Effect": "Allow",
+      "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage"],
+      "Resource": "arn:aws:sqs:ap-south-1:940278682995:eventclick-pdf-dlq"
+    }
+  ]
+}
