@@ -68,6 +68,14 @@ export function createOpsApp(deps: OpsAppDeps) {
         res.setHeader("x-request-id", id);
         return id;
       },
+      // pino-http installs its own req/res serializers, which log every
+      // header, and ignores the logger's. Headers here carry the Access JWT,
+      // the CF_Authorization cookie and maintainer IPs; the request id and
+      // path are enough to correlate with maintainer_access_log.
+      serializers: {
+        req: (req: { id?: unknown; method?: string; url?: string }) => ({ id: req.id, method: req.method, url: req.url }),
+        res: (res: { statusCode?: number }) => ({ statusCode: res.statusCode }),
+      },
       customLogLevel: (_req, res, err) => {
         if (err || res.statusCode >= 500) return "error";
         if (res.statusCode >= 400) return "warn";
