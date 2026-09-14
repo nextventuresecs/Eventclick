@@ -19,8 +19,8 @@ import { main as maintainersCli } from "../scripts/maintainers";
  * Login URLs are derived from DATABASE_URL (host/port/db differ between CI and
  * local docker) with the dev-default passwords init-db.sql falls back to.
  *
- * Skips, loudly in the test name, when no migrated database is reachable.
- * CI always has one.
+ * Skips, loudly in the test name, when no migrated database is reachable —
+ * except under CI, where that is a failure.
  */
 const ownerUrl = process.env.DATABASE_URL ?? "";
 
@@ -70,6 +70,9 @@ beforeAll(async () => {
     await audit.query("SELECT 1");
   } catch (err) {
     skipReason = (err as { code?: string; message?: string }).code ?? String((err as Error).message);
+    // CI provisions these roles; skipping there would turn a broken PII
+    // boundary into a green check.
+    if (process.env.CI) throw new Error(`ops grants suite cannot run in CI: ${skipReason}`);
     return;
   }
 
