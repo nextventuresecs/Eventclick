@@ -14,7 +14,7 @@
 Maintainer browser
   │ https://ops.eventclick.live
   ▼
-Cloudflare Access (email one-time PIN, 8h session, email allowlist)
+Cloudflare Access (email one-time PIN + independent MFA, 8h session, email allowlist)
   │ adds Cf-Access-Jwt-Assertion header
   ▼
 Cloudflare Tunnel ──(outbound-only)── cloudflared container
@@ -61,7 +61,21 @@ In the Cloudflare account that holds the `eventclick.live` zone
      maintainer's address. No Bypass, no Service Auth, no "Everyone" rules.
 5. Open the application → **Overview → Application Audience (AUD) Tag**. Copy
    it to SSM `/eventclick/prod/CF_ACCESS_AUD`.
-6. **DNS:** confirm the only `ops` record is the proxied CNAME the tunnel
+6. **Access controls → Access settings → Multi-factor authentication**
+   (Cloudflare's *independent MFA*, not tied to the login method): require it,
+   allow **Authenticator application** (security keys / biometrics optional),
+   authentication duration **8 hours**. Settings apply to every Access
+   application unless an application or policy overrides them; do not add an
+   override that disables MFA for the Ops Console.
+7. **Access controls → Access settings → App Launcher:** enable it with a
+   policy of Action **Allow**, Include → **Emails** → the same maintainer list,
+   login method One-time PIN. It is **off by default**, and it is the only place
+   users can enroll an MFA device; without it, sign-in stops at "No
+   authentication methods set up" and "Set up MFA" leads to "Please contact your
+   administrator to enable the Access App Launcher". The App Launcher is exempt
+   from the MFA requirement so users can reach it to enroll. It lists only
+   applications the user is allowed into.
+8. **DNS:** confirm the only `ops` record is the proxied CNAME the tunnel
    created (`<tunnel-id>.cfargotunnel.com`). No `A` record for `ops` may point at
    the EC2 IP.
 
@@ -81,8 +95,10 @@ and the tenant deploy proceeds normally.
 
 Both steps. Either one alone does not grant access.
 
-1. **Access policy:** Zero Trust → Access → Applications → Ops Console →
-   Policies → Maintainers → add the email.
+1. **Access policies:** Zero Trust → Access controls → Applications → Ops
+   Console → Policies → Maintainers → add the email. Add it to the **App
+   Launcher** policy too (Access controls → Access settings), or they cannot
+   enroll MFA.
 2. **`maintainers` table**, on the EC2 host (via SSM Session Manager):
 
    ```bash
@@ -95,17 +111,27 @@ Both steps. Either one alone does not grant access.
    The `migrate` service is used because it is the one carrying the owner
    `DATABASE_URL`; the maintainer roles cannot write to `maintainers`.
 
-The maintainer's own inbox must have two-factor authentication. The one-time
-PIN goes to that inbox, so its security is the console's security. This cannot
-be enforced technically; confirm it when adding someone.
+3. **MFA enrollment, by the new maintainer:** open
+   `https://<team>.cloudflareaccess.com/AddMfaDevice` (or App Launcher →
+   Account → MFA devices → Add an MFA device), sign in with the email PIN,
+   choose **Authenticator application**, scan the QR code and confirm with the
+   6-digit code. Only one authenticator app can be enrolled at a time: to move
+   to a new phone, delete the old one first (a security key can be added as a
+   backup). Then open `https://ops.eventclick.live`: PIN, then authenticator
+   code.
+
+Sign-in is email PIN plus an enrolled authenticator, so a compromised inbox
+alone no longer opens the console. Still ask maintainers to keep 2FA on their
+inbox: it is where the PIN goes.
 
 ## Removing a maintainer
 
 1. **Immediately:** `maintainers.js deactivate --email <e>` (same invocation as
    above). ops-server checks the table on every request, so the next request
    returns 403 with no restart.
-2. **Then:** remove the email from the Access policy, and in Zero Trust →
-   Users revoke their active session.
+2. **Then:** remove the email from the Ops Console and App Launcher policies,
+   delete their MFA devices, and in Zero Trust → Users revoke their active
+   session.
 
 Rows are never deleted: `maintainer_access_log` references the maintainer.
 `reactivate --email <e> --added-by <you>` restores access.
@@ -139,7 +165,11 @@ everything it shows is reachable directly.
      password or grants. By design no data is returned until this is fixed.
    - `ops access token rejected` with `ERR_JWT_CLAIM_VALIDATION_FAILED` → AUD tag
      or team domain in SSM does not match the Access application.
-4. Instant shutdown if the console itself is the problem: disable the Access
+4. A maintainer who lost their authenticator: an administrator deletes their
+   MFA device in Zero Trust (the user's entry under Users), then they re-enroll
+   through `/AddMfaDevice`. Do not disable MFA for the application to work
+   around it.
+5. Instant shutdown if the console itself is the problem: disable the Access
    application, or delete the tunnel's public hostname. Seconds, no deploy.
 
 ## Local development
@@ -169,9 +199,21 @@ Record the date, who ran it, and the result in the change log.
 | 7 | `docker exec eventclick_pdf_worker_prod wget -qO- http://ops-server:4100/ops-api/v1/whoami` | 401 |
 | 8 | 100 whoami loads, then `docker stats --no-stream eventclick_ops_server_prod` | Under 160MiB |
 
+**Browser console on the console page.** Cloudflare Web Analytics, if enabled
+for the zone, injects an inline loader and
+`static.cloudflareinsights.com/beacon.min.js` into proxied HTML. ops-server's
+CSP (`script-src 'self'`) blocks both, which is intended: no third-party script
+runs on the maintainer console. To remove the two console errors, exclude
+`ops.eventclick.live` from Web Analytics in the Cloudflare dashboard. Do not
+relax the CSP.
+
 ## Change log
 
 | Date | Change | By |
 |---|---|---|
-| | Cloudflare team domain, tunnel, Access application created | |
-| | Production verification 1-8 | |
+| 2026-09-14 | Team domain `eventclick-ops.cloudflareaccess.com`, tunnel, Access application created; five SSM parameters added | jagtaprathmesh19@gmail.com |
+| 2026-09-14 | Deploy of `1eb8fbb`: `Ops Console started ✅`, ops healthz ok in the deploy workflow | jagtaprathmesh19@gmail.com |
+| 2026-09-14 | Maintainers added: jagtaprathmesh19@gmail.com, agriclick.llp@gmail.com | jagtaprathmesh19@gmail.com |
+| 2026-09-14 | Independent MFA required; App Launcher enabled for enrollment; authenticator enrolled (jagtaprathmesh19@gmail.com) | jagtaprathmesh19@gmail.com |
+| 2026-09-14 | Verification 1 (302 to Access) and 4 (session page shows email, name, release `1eb8fbb`) passed | jagtaprathmesh19@gmail.com |
+| | Verification 2, 3, 5, 6, 7, 8 | |
