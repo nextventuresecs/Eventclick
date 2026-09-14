@@ -121,7 +121,7 @@ rolls back the tenant deploy over them. The deploy workflow scans the pinned
 
 **Verification**
 
-- Server: 492 tests (unit + integration on a migrated `postgis/postgis:16-3.4-alpine`
+- Server: 493 tests (unit + integration on a migrated `postgis/postgis:16-3.4-alpine`
   with `init-db.sql` roles), `tsc --noEmit`, eslint 0 errors. Ops frontend: 9
   tests, typecheck, lint, build. Root turbo lint/typecheck/build green;
   `npm audit --audit-level=high` passes.
