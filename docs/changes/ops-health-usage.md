@@ -68,22 +68,32 @@ and fail independently. Manual refresh only: every load writes audit rows.
 
 ## 4. Verification
 
-- Unit: `computeOverall` truth table, `runProbe` deadline and error mapping,
-  `probeApp` against a real HTTP server (200, 503 body, hang, bad status), SQS
-  reader with a mocked SDK (ok, error, disabled), env parsing.
-- Integration (real Postgres, maintainer login roles): all seven checks and a
-  disabled DLQ; app timeout with backlog still populated in under 6s; backlog
-  windows and red/amber by failed-email count; usage activity windows, ordering,
-  soft-delete exclusion; exactly one audit row per call.
-- Frontend: health renders while usage errors (and retries alone), and the
-  reverse.
-- E2E: `ops-home.spec.ts`, home shows the health strip and the seeded org, and
-  the org link opens its detail page.
-- Local `EXPLAIN (ANALYZE, BUFFERS)` as `maintainer_ro` with 300 orgs, 12k
-  users, 12k rooms: 9.9ms execution. **Prod timing (criterion 9) is not yet
-  measured**; see runbook verification row 10.
-- Manual, local browser: red badge from a mock 503 with `gotenberg` failing,
-  amber email count, usage ordering, Sentry link, no console errors.
+**Automated** (by acceptance criterion):
+
+| Criterion | Test |
+|---|---|
+| 1, 5, 8 | Integration: seven checks, DLQ disabled, one `health.view` row |
+| 2 | Unit only: `probeApp` treats a 503 body with `gotenberg` failing as data; `computeOverall` is red on any check not `ok` |
+| 3 | Integration: tenant stand-in that never answers → `TIMEOUT`, backlog populated, under 6s |
+| 4 | Integration: backlog windows; 2 failed emails amber, 5 red; stuck PDF job counted (as deltas, the database is shared) |
+| 6, 7, 8 | Integration: activity windows, ordering, soft-deleted org excluded, one `usage.view` row with `result_count` |
+| 10 | `docs/iam/ops-console-policy.json`: one statement, `sqs:GetQueueAttributes`, one ARN (placeholders filled at attach time) |
+| 11 | Frontend: health renders while usage errors and retries alone, and the reverse |
+
+Plus unit tests for `runProbe` (deadline, error mapping), the SQS reader with
+a mocked SDK (ok, error, disabled) and env parsing; and `ops-home.spec.ts`.
+
+**Observed, not automated:**
+
+- `ops-home.spec.ts` and the existing `ops-shell.spec.ts` maintainer test run
+  locally with a minimal Playwright config against a local ops-server (no
+  global setup, tenant stand-in). The first full-stack run is in CI.
+- Local browser: red badge from a stand-in 503 with `gotenberg` failing, amber
+  email count, usage ordering, Sentry link, no console errors, one audit row
+  per panel per load.
+- `EXPLAIN (ANALYZE, BUFFERS)` as `maintainer_ro` with 300 orgs, 12k users, 12k
+  rooms: 9.9ms. **Prod timing (criterion 9) is not measured**; runbook
+  verification row 10. Criterion 2 against a real stopped Gotenberg is not run.
 
 ## 5. Manual steps
 
