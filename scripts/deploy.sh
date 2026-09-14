@@ -56,6 +56,8 @@ rollback() {
     dc stop server
     docker tag "$PREV_SERVER_IMAGE" "ghcr.io/${GHCR_NAMESPACE}/server:${IMAGE_TAG}"
     dc up -d --no-deps server
+    # pdf-worker runs the server image; keep the two on the same version.
+    dc up -d --no-deps pdf-worker
     log "Server rollback complete."
   fi
   if [[ "$PREV_CLIENT_IMAGE" != "none" ]]; then
@@ -451,6 +453,27 @@ log "Deep health smoke test passed ✅"
 log "Restarting client..."
 dc up -d --no-deps client
 sleep 3
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 5.4 PDF worker
+# ═══════════════════════════════════════════════════════════════════════════
+# Runs the server image (worker-entry.js), so it must be recreated on every
+# deploy or it keeps running whatever image it was first started with. Until
+# this step existed it was never restarted, and the DLQ drain added to it in
+# #161 never reached prod. It has no HTTP port and so no healthcheck: a worker
+# that is still running with no restarts after a short wait counts as started.
+# Not fatal, like the Ops Console below: the tenant server and client are live
+# and healthy, and PDF jobs wait in SQS until the worker is fixed.
+log "Restarting pdf-worker..."
+dc up -d --no-deps pdf-worker
+sleep 15
+WORKER_STATE=$(docker inspect --format='{{.State.Status}} {{.RestartCount}}' eventclick_pdf_worker_prod 2>/dev/null || echo "missing -")
+if [[ "$WORKER_STATE" == "running 0" ]]; then
+  log "pdf-worker running ✅"
+else
+  warn "pdf-worker not running cleanly (status, restarts: ${WORKER_STATE}). PDF jobs and the DLQ drain are stalled until it is fixed."
+  dc logs --tail 40 pdf-worker 2>&1 | tee -a "$DEPLOY_LOG" || true
+fi
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 5.5 Ops Console (#147)

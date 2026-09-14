@@ -122,6 +122,12 @@ that, but it changes how every email is sent, so it is not in this PR.
   the connecting role, as CI does, so RLS policies are not exercised.
 - After deploy: `pdf-worker` logs show `dlq.loop_start`, and no `dlq.drain_failed`
   (an IAM or credentials problem would appear there).
+- **Follow-up, 2026-09-15:** the first deploy after merge did not reach
+  `pdf-worker`. Its CloudWatch stream had been silent since 2026-08-08, and
+  `scripts/deploy.sh` recreated only `server`, `client` and the ops services,
+  so the worker kept the image it was first started with. `deploy.sh` now
+  recreates `pdf-worker` after the client (non-fatal, with a running and
+  zero-restarts check) and again on rollback.
 
 ## 7. Rollback
 
