@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import { ACCESS_LOGOUT_PATH, externalLinks } from "@/lib/links";
 import { SearchBox } from "@/components/SearchBox";
 
-// Users are reached through search; these arrive in #149 and #150.
-const PLANNED = ["Health", "Logs"];
+// Users are reached through search; health and usage live on Home (#149); logs arrive in #150.
+const PLANNED = ["Logs"];
 
 export function Layout({ children, email }: { children: ReactNode; email?: string }) {
   return (

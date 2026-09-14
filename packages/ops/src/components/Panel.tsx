@@ -45,11 +45,14 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-export function Badge({ tone, children }: { tone: "ok" | "warn" | "bad"; children: ReactNode }) {
+export type BadgeTone = "ok" | "warn" | "bad" | "neutral";
+
+export function Badge({ tone, children }: { tone: BadgeTone; children: ReactNode }) {
   const tones = {
     ok: "bg-emerald-50 text-emerald-800 border-emerald-200",
     warn: "bg-amber-50 text-amber-800 border-amber-200",
     bad: "bg-red-50 text-red-800 border-red-200",
+    neutral: "bg-slate-50 text-slate-700 border-slate-200",
   };
   return <span className={`rounded border px-1.5 py-0.5 text-xs font-medium ${tones[tone]}`}>{children}</span>;
 }

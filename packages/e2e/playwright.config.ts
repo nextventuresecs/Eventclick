@@ -30,6 +30,8 @@ const opsServerEnv = (bypassEmail: string, baseUrl: string): Record<string, stri
   OPS_PORT: new URL(baseUrl).port,
   OPS_AUTH_BYPASS_EMAIL: bypassEmail,
   OPS_STATIC_DIR: path.resolve(__dirname, "../ops/dist"),
+  // The health strip reads the tenant dev server's /api/v1/health/deep (#149).
+  OPS_APP_INTERNAL_URL: process.env.PLAYWRIGHT_API_BASE_URL || "http://localhost:4000",
   MAINTAINER_RO_DATABASE_URL: opsDatabaseUrl(
     "maintainer_ro_login",
     process.env.MAINTAINER_RO_DB_PASSWORD || "local_dev_maint_ro",
@@ -78,12 +80,12 @@ export default defineConfig({
           ],
         },
       },
-      testIgnore: [/auth\.setup\.ts/, /ops-shell\.spec\.ts/, /ops-lookup\.spec\.ts/],
+      testIgnore: [/auth\.setup\.ts/, /ops-shell\.spec\.ts/, /ops-lookup\.spec\.ts/, /ops-home\.spec\.ts/],
     },
     {
       // No tenant login: ops-server authenticates through its own bypass.
       name: "ops",
-      testMatch: [/ops-shell\.spec\.ts/, /ops-lookup\.spec\.ts/],
+      testMatch: [/ops-shell\.spec\.ts/, /ops-lookup\.spec\.ts/, /ops-home\.spec\.ts/],
     },
   ],
   webServer: [
