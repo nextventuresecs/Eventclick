@@ -107,6 +107,16 @@ unmount. No export, CSV or copy-all control.
   matching page views would show a UI regression; 429 `UNMASK_LIMIT` in
   `ops-server` logs shows the limit biting.
 
+**Deviations from the issue text**
+
+- The header drops the disabled **Users** placeholder: users are reached
+  through search and org pages, so a "Users" item that can never list users
+  would suggest a directory that deliberately does not exist. Health and Logs
+  stay as placeholders for #149 and #150.
+- Search classification order is UUID → email → slug → request hint, which is
+  what the issue's tie-break sentence requires; its numbered list reads as if
+  the request-id rule came before the slug lookup.
+
 **Verification**
 
 - Server: 523 tests, including 8 integration tests for criteria 1-11 on a

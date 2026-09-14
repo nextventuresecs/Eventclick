@@ -94,7 +94,10 @@ const auditRows = async (requestId: string) =>
     )
   ).rows;
 
-/** Criterion 5: no raw email, local part, domain or name of any fixture in the response text. */
+/**
+ * Criterion 5: no raw email, local part, domain or name of any fixture in the response text.
+ * Never apply this to an unmask response, which returns PRIMARY's raw values by design.
+ */
 const expectNoRawPii = (text: string) => {
   for (const p of ALL_PEOPLE) {
     const [local, domain] = p.email.split("@") as [string, string];
