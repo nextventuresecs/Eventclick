@@ -12,13 +12,14 @@ import { findUserById } from "../services/auth";
 import { db } from "../db";
 import { runInBackgroundTenantContext } from "../db/backgroundTenantContext";
 import { pdfJobs } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { notificationService } from "../services/notification.service";
 import { s3, buildPublicUrl } from "../services/storage.service";
 import { dispatchEmail, attemptEmailDelivery } from "../services/email-delivery.service";
 import { notifyReportGenerated } from "../services/report-notification.service";
 import { recordAuditSafely } from "../services/audit.service";
 import { sqsClient } from "./sqs.client";
+import { decidePdfJobClaim, type PdfJobClaim } from "./pdfJobClaim";
 
 // SQS client is now the single shared instance from sqs.client.ts.
 // Do NOT construct a second SQSClient here — a prior duplicate with an
@@ -110,7 +111,11 @@ async function processMessage(msg: { Body?: string; ReceiptHandle?: string; Mess
     const payload = JSON.parse(msg.Body);
 
     if (payload.type === "generate_pdf") {
-      await processPdfJob(payload, msg.ReceiptHandle);
+      const settled = await processPdfJob(payload, msg.ReceiptHandle);
+      // Deferred: another worker holds the job. Leave the message; it
+      // reappears after the visibility timeout, and after the queue's max
+      // receive count it redrives to the DLQ, which fails the job.
+      if (!settled) return;
     } else {
       logger.warn({ messageId: msg.MessageId, payload, event: "sqs.unknown_message_type" }, "Unknown SQS message type");
       await deleteMessage(msg.ReceiptHandle);
@@ -123,7 +128,7 @@ async function processMessage(msg: { Body?: string; ReceiptHandle?: string; Mess
   }
 }
 
-async function processPdfJob(payload: any, receiptHandle: string): Promise<void> {
+async function processPdfJob(payload: any, receiptHandle: string): Promise<boolean> {
   const { roomId, orgId, userId, jobId: payloadJobId } = payload;
   const queueUrl = env.SQS_PDF_QUEUE_URL;
 
@@ -141,57 +146,9 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
     // throws a row-security-policy violation rather than silently no-op'ing).
     // Same bug class as jobs/eventStartNotifier.ts / attendanceWindowNotifier.ts
     // before their fix — see db/backgroundTenantContext.ts.
-    const skip = await runInBackgroundTenantContext(orgId, userId, async () => {
-      // 1. Idempotency
-      const [existing] = await db
-        .select()
-        .from(pdfJobs)
-        .where(eq(pdfJobs.jobId, jobId))
-        .limit(1);
-
-      if (existing) {
-        if (existing.status === "completed") {
-          logger.info({ jobId, roomId, event: "sqs.pdf_already_completed" }, "PDF job already completed, skipping");
-          return true;
-        }
-
-        if (existing.status === "failed") {
-          const attempts = existing.attempts || 0;
-          if (attempts >= (existing.maxAttempts || 3)) {
-            logger.warn({ jobId, roomId, attempts, event: "sqs.pdf_max_attempts_exceeded" }, "PDF job exceeded max attempts");
-            return true;
-          }
-          await db
-            .update(pdfJobs)
-            .set({ status: "pending", attempts: attempts + 1, updatedAt: new Date() })
-            .where(eq(pdfJobs.jobId, jobId));
-        }
-
-        if (existing.status === "processing") {
-          logger.info({ jobId, roomId, event: "sqs.pdf_already_processing" }, "PDF job already being processed, skipping duplicate");
-          return true;
-        }
-      } else {
-        await db.insert(pdfJobs).values({
-          jobId,
-          roomId,
-          orgId,
-          userId,
-          status: "pending",
-          attempts: 1,
-          maxAttempts: 3,
-        });
-      }
-
-      // 2. Mark processing
-      await db
-        .update(pdfJobs)
-        .set({ status: "processing", updatedAt: new Date() })
-        .where(eq(pdfJobs.jobId, jobId));
-
-      return false;
-    });
-    if (skip) return;
+    const claim = await claimPdfJob({ jobId, roomId, orgId, userId });
+    if (claim.action === "defer") return false;
+    if (claim.action === "skip" || claim.action === "abandon") return true;
 
     const user = await findUserById(userId);
     if (!user) {
@@ -292,6 +249,7 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
     }
 
     logger.info({ jobId, durationMs: Date.now() - startedAt, event: "sqs.pdf_completed" }, "PDF job completed successfully");
+    return true;
   } catch (err) {
     logger.error({ err, roomId, jobId, durationMs: Date.now() - startedAt, event: "sqs.pdf_failed" }, "Error processing PDF job");
 
@@ -339,6 +297,92 @@ async function processPdfJob(payload: any, receiptHandle: string): Promise<void>
     aborted.aborted = true;
     heartbeatCleanup();
   }
+}
+
+/**
+ * Decides and records who processes a PDF job, in the job's tenant context.
+ * Returns `defer` when another worker holds the job or wins the claim.
+ */
+export async function claimPdfJob(job: { jobId: string; roomId: string; orgId: string; userId: string }): Promise<PdfJobClaim> {
+  const { jobId, roomId, orgId, userId } = job;
+  return runInBackgroundTenantContext(orgId, userId, async (): Promise<PdfJobClaim> => {
+    // 1. Idempotency
+    const [existing] = await db
+      .select()
+      .from(pdfJobs)
+      .where(eq(pdfJobs.jobId, jobId))
+      .limit(1);
+
+    const decision = decidePdfJobClaim(existing, new Date());
+
+    switch (decision.action) {
+      case "insert":
+        await db.insert(pdfJobs).values({
+          jobId,
+          roomId,
+          orgId,
+          userId,
+          status: "processing",
+          attempts: 1,
+          maxAttempts: 3,
+        });
+        return decision;
+
+      case "skip":
+        logger.info({ jobId, roomId, reason: decision.reason, event: "sqs.pdf_skipped" }, "PDF job needs no processing, skipping");
+        return decision;
+
+      case "defer":
+        logger.info({ jobId, roomId, event: "sqs.pdf_already_processing" }, "PDF job is being processed by another worker, deferring duplicate");
+        return decision;
+
+      case "abandon": {
+        const [failed] = await db
+          .update(pdfJobs)
+          .set({ status: "failed", errorMessage: "Worker stopped mid-render and no attempts remain", updatedAt: new Date() })
+          .where(and(eq(pdfJobs.jobId, jobId), eq(pdfJobs.status, "processing"), eq(pdfJobs.attempts, decision.attempts)))
+          .returning({ id: pdfJobs.id });
+        if (!failed) return { action: "defer" } as const;
+        logger.warn({ jobId, roomId, attempts: decision.attempts, event: "sqs.pdf_abandoned" }, "Abandoned PDF job has no attempts left, marking failed");
+        await notificationService.createNotification({
+          userId,
+          organizationId: orgId,
+          type: "report_failed",
+          title: "Report Generation Failed",
+          message: `Your event report for room ${roomId} could not be generated after ${decision.attempts} attempts. Please try again.`,
+          metadata: { roomId, jobId, error: "worker_stopped" },
+        });
+        return decision;
+      }
+
+      case "retry":
+      case "process": {
+        // Conditional on status and attempts being as read: the first claim
+        // changes one of them, so two workers redelivered the same job
+        // cannot both claim it.
+        const [claimed] = await db
+          .update(pdfJobs)
+          .set({
+            status: "processing",
+            ...(decision.action === "retry" ? { attempts: decision.attempts } : {}),
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(pdfJobs.jobId, jobId),
+              eq(pdfJobs.status, existing!.status),
+              eq(pdfJobs.attempts, existing!.attempts ?? 0),
+            ),
+          )
+          .returning({ id: pdfJobs.id });
+        if (!claimed) return { action: "defer" } as const;
+        if (decision.action === "retry" && existing!.status === "processing") {
+          logger.warn({ jobId, roomId, attempts: decision.attempts, event: "sqs.pdf_reclaimed" }, "Reclaimed PDF job abandoned mid-render");
+        }
+        return decision;
+      }
+    }
+  });
 }
 
 async function deliverReportToUser(
