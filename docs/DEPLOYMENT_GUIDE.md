@@ -64,3 +64,10 @@ docker exec Eventclick_server_prod wget -qO- http://localhost:4000/api/v1/health
 # Check Nginx access logs
 docker compose -f docker-compose.prod.yml logs -f client
 ```
+
+### After the first deploy to a new environment
+
+The first container start creates the CloudWatch log group
+`/eventclick/prod/containers` with retention set to never expire. Set it to 30
+days by following [the log retention runbook](runbooks/log-retention.md). Read
+its warning first: lowering retention permanently deletes older events.
