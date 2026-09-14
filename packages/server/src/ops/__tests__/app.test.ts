@@ -146,6 +146,39 @@ describe("ops app", () => {
     expect(asset.headers["cache-control"]).toBe("public, max-age=3600");
   });
 
+  it("logs requests without headers, cookies or the Access token", async () => {
+    const lines: string[] = [];
+    const logger = pino({ level: "info" }, { write: (line: string) => lines.push(line) });
+    const app = createOpsApp({
+      env: {
+        NODE_ENV: "production",
+        CF_ACCESS_TEAM_DOMAIN: TEAM,
+        CF_ACCESS_AUD: AUD,
+        OPS_STATIC_DIR: staticDir,
+        SENTRY_RELEASE: undefined,
+        OPS_AUTH_BYPASS_EMAIL: undefined,
+      },
+      readPool: { query: vi.fn(async () => ({ rows: [MAINTAINER_ROW] })) },
+      auditPool: { query: vi.fn(async () => ({ rows: [] })) },
+      logger,
+      keys,
+    });
+    const auth = await token("maint@nvces.test");
+
+    await request(app)
+      .get("/ops-api/v1/whoami")
+      .set("Cf-Access-Jwt-Assertion", auth)
+      .set("Cookie", "CF_Authorization=cookie-secret")
+      .set("cf-connecting-ip", "203.0.113.9");
+
+    const log = lines.join("\n");
+    expect(log).toContain("/ops-api/v1/whoami");
+    expect(log).not.toContain(auth);
+    expect(log).not.toContain("cookie-secret");
+    expect(log).not.toContain("203.0.113.9");
+    expect(log).not.toContain("headers");
+  });
+
   it("rate limits a maintainer at 120 requests a minute", async () => {
     const { app } = build();
     const auth = await token("maint@nvces.test");
