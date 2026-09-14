@@ -175,6 +175,7 @@ jobs:
 
       - run: npm run test --workspace=@application/shared
       - run: npm run test --workspace=client
+      - run: npm run test --workspace=@application/ops
       
       - name: Initialize Database Roles
         run: PGPASSWORD=test psql -U test -h localhost -p 5432 -d eventclick_test -v ON_ERROR_STOP=1 -f scripts/init-db.sql

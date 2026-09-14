@@ -189,6 +189,39 @@ jobs:
           vuln-type: 'os,library'
           severity: 'HIGH,CRITICAL'
 
+      # cloudflared is the Ops Console's only ingress (#147). Scan the exact tag
+      # docker-compose.prod.yml pins, read from that file so the two cannot
+      # drift. Known findings with no newer cloudflared release to move to are
+      # listed, with an expiry that forces a re-check, in the ignore file.
+      - name: Checkout compose file and scan policy
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            docker-compose.prod.yml
+            .github/trivy
+          sparse-checkout-cone-mode: false
+
+      - name: Resolve pinned cloudflared image
+        id: cloudflared
+        run: |
+          IMAGE=$(grep -oE 'cloudflare/cloudflared:[0-9][0-9.]+' docker-compose.prod.yml | head -1)
+          if [ -z "$IMAGE" ]; then
+            echo "❌ No pinned cloudflare/cloudflared:<version> in docker-compose.prod.yml"
+            exit 1
+          fi
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Scan cloudflared image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ steps.cloudflared.outputs.image }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
+          trivyignores: .github/trivy/cloudflared.trivyignore
+
       # nginx only parses its config when the container starts on the EC2 box,
       # where a broken include or a typo takes the whole site down. Parse it
       # here instead, before deploy. The origin certificate and the `server`
@@ -411,6 +444,56 @@ jobs:
           done
 
           echo "❌ Origin health check failed after 5 attempts"
+          exit 1
+
+      # ── Ops Console origin health (#147) ──
+      # deploy.sh starts ops-server only once its SSM parameters exist, so an
+      # absent container is reported and passes. A present but unhealthy one
+      # fails this step; the tenant deploy above is already verified and live.
+      - name: Verify Ops Console Health via SSM
+        if: success()
+        run: |
+          INSTANCE_ID="${{ secrets.EC2_INSTANCE_ID }}"
+          for ATTEMPT in 1 2 3; do
+            echo "--- Ops health check attempt ${ATTEMPT}/3 ---"
+            CMD_ID=$(aws ssm send-command \
+              --instance-ids "$INSTANCE_ID" \
+              --document-name "AWS-RunShellScript" \
+              --timeout-seconds 30 \
+              --parameters '{"commands":["if docker inspect eventclick_ops_server_prod >/dev/null 2>&1; then docker exec eventclick_ops_server_prod wget -qO- http://localhost:4100/ops-api/v1/healthz; else echo OPS_NOT_DEPLOYED; fi"]}' \
+              --query "Command.CommandId" \
+              --output text)
+
+            for POLL in $(seq 1 8); do
+              sleep 5
+              CMD_STATUS=$(aws ssm get-command-invocation \
+                --command-id "$CMD_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "Status" \
+                --output text 2>/dev/null || echo "Pending")
+
+              if [[ "$CMD_STATUS" == "Success" ]]; then
+                BODY=$(aws ssm get-command-invocation \
+                  --command-id "$CMD_ID" \
+                  --instance-id "$INSTANCE_ID" \
+                  --query "StandardOutputContent" \
+                  --output text)
+                echo "Response: ${BODY}"
+                if [[ "$BODY" == *OPS_NOT_DEPLOYED* ]]; then
+                  echo "⚠️  ops-server not deployed (SSM parameters pending) — see docs/runbooks/ops-console.md"
+                fi
+                exit 0
+              fi
+
+              if [[ "$CMD_STATUS" == "Failed" || "$CMD_STATUS" == "TimedOut" || "$CMD_STATUS" == "Cancelled" ]]; then
+                echo "Attempt ${ATTEMPT} — SSM status: ${CMD_STATUS}"
+                break
+              fi
+            done
+            sleep 10
+          done
+
+          echo "❌ ops-server is deployed but its healthz did not answer"
           exit 1
 
       # ── Cloudflare-facing check (non-blocking, informational only) ──
