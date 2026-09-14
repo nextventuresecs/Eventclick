@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import type { RequestHandler } from "express";
+import type { RequestHandler, Response } from "express";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import type { Maintainer } from "../types";
 
@@ -17,7 +17,17 @@ export interface RequireMaintainerDeps {
   audience?: string;
   /** Overridable for tests. Defaults to the Access JWKS, fetched and cached by jose. */
   keys?: JWTVerifyGetKey;
+  /** How to answer an authenticated non-maintainer. Defaults to 403 JSON. */
+  onForbidden?: (res: Response) => void;
 }
+
+/** One key set per process: jose caches keys and refetches on an unknown `kid`. */
+export const accessKeySet = (teamDomain: string): JWTVerifyGetKey =>
+  createRemoteJWKSet(new URL("/cdn-cgi/access/certs", teamDomain));
+
+const forbiddenJson = (res: Response) => {
+  res.status(403).json({ error: "FORBIDDEN" });
+};
 
 const ACCESS_HEADER = "cf-access-jwt-assertion";
 
@@ -39,8 +49,7 @@ export function createRequireMaintainer(deps: RequireMaintainerDeps): RequestHan
     if (!teamDomain || !audience) {
       throw new Error("requireMaintainer needs teamDomain and audience unless bypassEmail is set");
     }
-    // Built once: jose caches the key set and refetches on an unknown `kid`.
-    keys = createRemoteJWKSet(new URL("/cdn-cgi/access/certs", teamDomain));
+    keys = accessKeySet(teamDomain);
   }
 
   return async (req, res, next) => {
@@ -91,7 +100,7 @@ export function createRequireMaintainer(deps: RequireMaintainerDeps): RequestHan
 
     if (!row) {
       logger.warn({ emailSha256: sha256(email) }, "ops access refused: not an active maintainer");
-      res.status(403).json({ error: "FORBIDDEN" });
+      (deps.onForbidden ?? forbiddenJson)(res);
       return;
     }
 
