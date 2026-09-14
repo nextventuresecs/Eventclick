@@ -84,7 +84,7 @@ Database (Drizzle):
 A separate maintainer-only process, `ops-server` (`src/ops-entry.ts`), from the same image, reached only through Cloudflare Tunnel + Access. Read `docs/runbooks/ops-console.md` and `docs/adr/0001-*` / `0002-*` before touching it.
 
 - **Boundary (lint-enforced):** code under `src/ops/` may import from the rest of `src/` only `utils/redact` and type-only `db/schema/*`. Never the tenant `db` proxy, `config/env`, `utils/logger`, routes, middleware or services. Tenant code never imports `src/ops/`.
-- Reads use `opsReadPool` (`maintainer_ro_login`, column grants from migration 0013) with raw parameterised `pg`; name columns, `SELECT *` fails on partially granted tables.
+- Reads use the read pool from `src/ops/db.ts` (`maintainer_ro_login`, column grants from migration 0013) with raw parameterised `pg`; name columns, `SELECT *` fails on partially granted tables.
 - Every data response goes through `respondAudited` (`src/ops/audit.ts`), the only writer under `src/ops/`: read, insert the access-log row, then respond; insert failure returns 503 with no body.
 - Local: `OPS_AUTH_BYPASS_EMAIL=<maintainer> npm run dev:ops --workspace=server` (:4100) and `npm run dev --workspace=@application/ops` (:3100).
 
