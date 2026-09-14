@@ -28,6 +28,9 @@ sent wakes them again.
 ALERT_EMAIL=<maintainer address> scripts/setup-queue-alarms.sh
 ```
 
+Run it from a workstation with admin credentials. On the prod host it exits: the
+EC2 instance role cannot create alarms, on purpose.
+
 Confirm the subscription from the email AWS sends ("AWS Notification -
 Subscription Confirmation"). Until then nothing is delivered. Then:
 

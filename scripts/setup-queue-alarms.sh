@@ -47,6 +47,17 @@ ALARMS=(
 
 aws_() { aws --region "$REGION" "$@"; }
 
+# The instance role deliberately cannot create or change alarms: a compromised
+# host must not be able to silence its own alerts. Fail with the fix rather
+# than an AuthorizationError halfway through.
+CALLER=$(aws_ sts get-caller-identity --query Arn --output text)
+if [[ "$CALLER" == *":assumed-role/EventclickEC2Role/"* ]]; then
+  echo "Running as the EC2 instance role ($CALLER)." >&2
+  echo "Run this from a workstation with admin credentials, not on the prod host." >&2
+  exit 1
+fi
+echo "Caller: $CALLER"
+
 if [[ "${1:-}" == "--test" ]]; then
   for name in "${ALARMS[@]}"; do
     aws_ cloudwatch set-alarm-state --alarm-name "$name" --state-value ALARM \
