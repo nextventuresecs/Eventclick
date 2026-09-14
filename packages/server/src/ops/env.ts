@@ -35,6 +35,20 @@ const OpsEnvSchema = z
     ),
     OPS_STATIC_DIR: z.preprocess(blankToUndefined, z.string().default("packages/ops/dist")),
     SENTRY_RELEASE: z.preprocess(blankToUndefined, z.string().optional()),
+    // Health probes (#149). The tenant server on the compose network; its
+    // /api/v1/health/deep is read, never exposed.
+    OPS_APP_INTERNAL_URL: z.preprocess(
+      blankToUndefined,
+      z.url().transform((u) => u.replace(/\/+$/, "")).default("http://server:4000"),
+    ),
+    // Unset disables the DLQ probe rather than reporting it red.
+    OPS_SQS_DLQ_URL: z.preprocess(blankToUndefined, z.url().optional()),
+    AWS_REGION: z.preprocess(blankToUndefined, z.string().default("ap-south-1")),
+    // e.g. https://<org>.sentry.io; links the running release when both are set.
+    OPS_SENTRY_ORG_URL: z.preprocess(
+      blankToUndefined,
+      z.url().transform((u) => u.replace(/\/+$/, "")).optional(),
+    ),
     LOG_LEVEL: z.preprocess(blankToUndefined, z.enum(LOG_LEVELS).optional()),
   })
   .superRefine((env, ctx) => {

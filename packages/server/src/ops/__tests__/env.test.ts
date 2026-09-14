@@ -59,5 +59,23 @@ describe("ops env", () => {
     expect(result.data.OPS_STATIC_DIR).toBe("packages/ops/dist");
     expect(result.data.LOG_LEVEL).toBe("info");
     expect(result.data.SENTRY_RELEASE).toBeUndefined();
+    expect(result.data.OPS_APP_INTERNAL_URL).toBe("http://server:4000");
+    expect(result.data.AWS_REGION).toBe("ap-south-1");
+    expect(result.data.OPS_SQS_DLQ_URL).toBeUndefined();
+    expect(result.data.OPS_SENTRY_ORG_URL).toBeUndefined();
+  });
+
+  it("reads the health probe settings, treating blanks as unset", () => {
+    const result = parseOpsEnv({
+      ...base,
+      OPS_APP_INTERNAL_URL: "http://server:4000/",
+      OPS_SQS_DLQ_URL: " ",
+      OPS_SENTRY_ORG_URL: "https://nvces.sentry.io/",
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.OPS_APP_INTERNAL_URL).toBe("http://server:4000");
+    expect(result.data.OPS_SQS_DLQ_URL).toBeUndefined();
+    expect(result.data.OPS_SENTRY_ORG_URL).toBe("https://nvces.sentry.io");
   });
 });
