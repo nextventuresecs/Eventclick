@@ -98,4 +98,4 @@ only; expired events cannot be recovered.
 
 | Date | Retention | storedBytes before | storedBytes after | Legal-hold check | By |
 |---|---|---|---|---|---|
-| 2026-09-15 (measured, not yet applied) | never expire | 110,973,072 (oldest events 2026-06-24) | — | not yet run | — |
+| 2026-09-15 (measured, not yet applied) | never expire | 110,973,072 (oldest events 2026-06-24) | — | done 2026-09-15: 0 organisations on legal hold | — |
