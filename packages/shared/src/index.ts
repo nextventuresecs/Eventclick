@@ -1014,3 +1014,6 @@ export type BrandingUploadRequestInput = z.infer<typeof BrandingUploadRequestSch
 // single upload limit above rather than being a second copy of it.
 export const MAX_BRANDING_UPLOAD_BYTES = MAX_UPLOAD_BYTES;
 export const BRANDING_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
+// ─── Ops Console (maintainer tool, #148) ───────────
+export * from "./ops";

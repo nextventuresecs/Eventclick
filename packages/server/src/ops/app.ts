@@ -8,9 +8,13 @@ import type { JWTVerifyGetKey } from "jose";
 import type { OpsEnv } from "./env";
 import type { OpsLogger } from "./logger";
 import { accessKeySet, createRequireMaintainer, type MaintainerLookup } from "./middleware/requireMaintainer";
+import type { ReadPool } from "./lookup";
 import { createRespondAudited, type AuditPool } from "./audit";
 import { opsErrorHandler } from "./errors";
 import { whoamiRouter } from "./routes/whoami";
+import { searchRouter } from "./routes/search";
+import { usersRouter } from "./routes/users";
+import { orgsRouter } from "./routes/orgs";
 
 export const OPS_API_PREFIX = "/ops-api/v1";
 
@@ -34,7 +38,7 @@ export interface OpsAppDeps {
     OpsEnv,
     "NODE_ENV" | "OPS_AUTH_BYPASS_EMAIL" | "CF_ACCESS_TEAM_DOMAIN" | "CF_ACCESS_AUD" | "OPS_STATIC_DIR" | "SENTRY_RELEASE"
   >;
-  readPool: MaintainerLookup;
+  readPool: MaintainerLookup & ReadPool;
   auditPool: AuditPool;
   logger: OpsLogger;
   /** Tests only: a local key set in place of the Access JWKS. */
@@ -145,6 +149,9 @@ export function createOpsApp(deps: OpsAppDeps) {
 
   const api = express.Router();
   api.use(whoamiRouter({ respondAudited, release: env.SENTRY_RELEASE ?? null }));
+  api.use(searchRouter({ respondAudited, readPool: deps.readPool }));
+  api.use(usersRouter({ respondAudited, readPool: deps.readPool }));
+  api.use(orgsRouter({ respondAudited, readPool: deps.readPool }));
   api.use((_req, res) => {
     res.status(404).json({ error: "NOT_FOUND" });
   });

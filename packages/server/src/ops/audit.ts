@@ -17,7 +17,12 @@ export interface AuditEntry {
   reason?: string;
 }
 
-export type AuditedRead<T> = () => Promise<{ body: T; resultCount?: number }>;
+export type AuditedRead<T> = () => Promise<{
+  body: T;
+  resultCount?: number;
+  /** Fields only the read can know (the target user's organisation). Merged over `entry`. */
+  audit?: Omit<Partial<AuditEntry>, "action">;
+}>;
 
 const INSERT_SQL = `INSERT INTO maintainer_access_log
   (maintainer_id, maintainer_email, action, target_type, target_id, organization_id, query, reason, result_count, request_id, ip_address, user_agent)
@@ -53,18 +58,19 @@ export function createRespondAudited(deps: {
     const maintainer = req.maintainer;
     if (!maintainer) throw new Error("respondAudited called without an authenticated maintainer");
 
-    const { body, resultCount } = await read();
+    const { body, resultCount, audit } = await read();
+    const row: AuditEntry = { ...entry, ...audit, action: entry.action };
 
     try {
       await deps.pool.query(INSERT_SQL, [
         maintainer.id,
         maintainer.email,
-        entry.action,
-        entry.targetType ?? null,
-        entry.targetId ?? null,
-        entry.organizationId ?? null,
-        entry.query ? JSON.stringify(entry.query) : null,
-        entry.reason ?? null,
+        row.action,
+        row.targetType ?? null,
+        row.targetId ?? null,
+        row.organizationId ?? null,
+        row.query ? JSON.stringify(row.query) : null,
+        row.reason ?? null,
         resultCount ?? null,
         String((req as Request & { id?: unknown }).id ?? ""),
         header(req, "cf-connecting-ip", 64),
