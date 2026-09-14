@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 import type { JWTVerifyGetKey } from "jose";
 import type { OpsEnv } from "./env";
 import type { OpsLogger } from "./logger";
-import { createRequireMaintainer, type MaintainerLookup } from "./middleware/requireMaintainer";
+import { accessKeySet, createRequireMaintainer, type MaintainerLookup } from "./middleware/requireMaintainer";
 import { createRespondAudited, type AuditPool } from "./audit";
 import { opsErrorHandler } from "./errors";
 import { whoamiRouter } from "./routes/whoami";
@@ -17,6 +17,17 @@ export const OPS_API_PREFIX = "/ops-api/v1";
 // Cloudflare's ray id is a hex string plus a colo suffix; anything else on the
 // docker network could send an arbitrary value, and request_id is varchar(64).
 const CF_RAY = /^[A-Za-z0-9-]{1,64}$/;
+
+const NOT_AUTHORIZED_PAGE = `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>Not authorized · Ops Console</title></head>
+<body>
+<h1>Not authorized</h1>
+<p>This email signed in, but it is not an active Ops Console maintainer. Ask an existing maintainer to add you, then sign in again.</p>
+<p><a href="/cdn-cgi/access/logout">Sign out</a></p>
+</body>
+</html>
+`;
 
 export interface OpsAppDeps {
   env: Pick<
@@ -98,13 +109,24 @@ export function createOpsApp(deps: OpsAppDeps) {
     res.json({ status: "ok" });
   });
 
-  const requireMaintainer = createRequireMaintainer({
+  const authOptions = {
     pool: deps.readPool,
     logger,
     bypassEmail: env.OPS_AUTH_BYPASS_EMAIL,
     teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
     audience: env.CF_ACCESS_AUD,
-    keys: deps.keys,
+    keys:
+      deps.keys ??
+      (env.OPS_AUTH_BYPASS_EMAIL || !env.CF_ACCESS_TEAM_DOMAIN ? undefined : accessKeySet(env.CF_ACCESS_TEAM_DOMAIN)),
+  };
+  const requireMaintainer = createRequireMaintainer(authOptions);
+  // Page requests from someone Access let in but who is not a maintainer get a
+  // static explanation instead of JSON. It carries no script and no bundle.
+  const requireMaintainerPage = createRequireMaintainer({
+    ...authOptions,
+    onForbidden: (res) => {
+      res.status(403).setHeader("Cache-Control", "no-store").type("html").send(NOT_AUTHORIZED_PAGE);
+    },
   });
 
   // In-memory store: there is exactly one ops-server instance.
@@ -135,7 +157,7 @@ export function createOpsApp(deps: OpsAppDeps) {
   // The bundle is gated too: an unauthenticated caller learns nothing about
   // the console, not even its route names.
   const staticDir = path.resolve(env.OPS_STATIC_DIR);
-  app.use(requireMaintainer, limiter);
+  app.use(requireMaintainerPage, limiter);
   app.use(express.static(staticDir, { index: false, maxAge: "1h" }));
   app.use((req, res, next) => {
     if (req.method !== "GET" && req.method !== "HEAD") {

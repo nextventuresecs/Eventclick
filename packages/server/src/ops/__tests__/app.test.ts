@@ -115,7 +115,12 @@ describe("ops app", () => {
     const auth = await token("stranger@nvces.test");
     const root = await request(app).get("/").set("Cf-Access-Jwt-Assertion", auth);
     expect(root.status).toBe(403);
-    expect(root.text).not.toContain("Ops Console");
+    // A server-rendered page, not the SPA: no bundle, no script at all.
+    expect(root.headers["content-type"]).toMatch(/^text\/html/);
+    expect(root.text).toContain("Not authorized");
+    expect(root.text).toContain('href="/cdn-cgi/access/logout"');
+    expect(root.text).not.toMatch(/<script|assets\//i);
+    expect(root.headers["cache-control"]).toBe("no-store");
     const asset = await request(app).get("/assets/app-abc123.js").set("Cf-Access-Jwt-Assertion", auth);
     expect(asset.status).toBe(403);
     const whoami = await request(app).get("/ops-api/v1/whoami").set("Cf-Access-Jwt-Assertion", auth);
