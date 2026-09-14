@@ -55,16 +55,18 @@ rollback() {
     log "Rolling back server..."
     dc stop server
     docker tag "$PREV_SERVER_IMAGE" "ghcr.io/${GHCR_NAMESPACE}/server:${IMAGE_TAG}"
-    dc up -d --no-deps server
+    # --pull never: these services set pull_policy: always, which would pull
+    # the new IMAGE_TAG straight back over the retagged previous image.
+    dc up -d --no-deps --pull never server
     # pdf-worker runs the server image; keep the two on the same version.
-    dc up -d --no-deps pdf-worker
+    dc up -d --no-deps --pull never pdf-worker
     log "Server rollback complete."
   fi
   if [[ "$PREV_CLIENT_IMAGE" != "none" ]]; then
     log "Rolling back client..."
     dc stop client
     docker tag "$PREV_CLIENT_IMAGE" "ghcr.io/${GHCR_NAMESPACE}/client:${IMAGE_TAG}"
-    dc up -d --no-deps client
+    dc up -d --no-deps --pull never client
     log "Client rollback complete."
   fi
   warn "Rollback finished. Check deploy log: ${DEPLOY_LOG}"
