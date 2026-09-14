@@ -15,6 +15,10 @@ import { whoamiRouter } from "./routes/whoami";
 import { searchRouter } from "./routes/search";
 import { usersRouter } from "./routes/users";
 import { orgsRouter } from "./routes/orgs";
+import { healthRouter } from "./routes/health";
+import { usageRouter } from "./routes/usage";
+import type { HealthDeps } from "./health";
+import { createSqsDlqReader } from "./probes/dlq";
 
 export const OPS_API_PREFIX = "/ops-api/v1";
 
@@ -37,12 +41,15 @@ export interface OpsAppDeps {
   env: Pick<
     OpsEnv,
     "NODE_ENV" | "OPS_AUTH_BYPASS_EMAIL" | "CF_ACCESS_TEAM_DOMAIN" | "CF_ACCESS_AUD" | "OPS_STATIC_DIR" | "SENTRY_RELEASE"
-  >;
+  > &
+    Partial<Pick<OpsEnv, "OPS_APP_INTERNAL_URL" | "OPS_SQS_DLQ_URL" | "AWS_REGION" | "OPS_SENTRY_ORG_URL">>;
   readPool: MaintainerLookup & ReadPool;
   auditPool: AuditPool;
   logger: OpsLogger;
   /** Tests only: a local key set in place of the Access JWKS. */
   keys?: JWTVerifyGetKey;
+  /** Tests only: probe seams. */
+  health?: Pick<HealthDeps, "fetchImpl" | "timeoutMs" | "dlqReader">;
 }
 
 export function createOpsApp(deps: OpsAppDeps) {
@@ -152,6 +159,22 @@ export function createOpsApp(deps: OpsAppDeps) {
   api.use(searchRouter({ respondAudited, readPool: deps.readPool }));
   api.use(usersRouter({ respondAudited, readPool: deps.readPool }));
   api.use(orgsRouter({ respondAudited, readPool: deps.readPool }));
+  api.use(
+    healthRouter({
+      respondAudited,
+      health: {
+        readPool: deps.readPool,
+        appInternalUrl: env.OPS_APP_INTERNAL_URL ?? "http://server:4000",
+        dlqUrl: env.OPS_SQS_DLQ_URL,
+        dlqReader: env.OPS_SQS_DLQ_URL ? createSqsDlqReader(env.AWS_REGION ?? "ap-south-1") : undefined,
+        release: env.SENTRY_RELEASE ?? null,
+        sentryOrgUrl: env.OPS_SENTRY_ORG_URL,
+        logger,
+        ...deps.health,
+      },
+    }),
+  );
+  api.use(usageRouter({ respondAudited, readPool: deps.readPool }));
   api.use((_req, res) => {
     res.status(404).json({ error: "NOT_FOUND" });
   });
