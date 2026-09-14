@@ -17,27 +17,29 @@ export type QueryState<T> =
   | { status: "error"; httpStatus: number; code: string };
 
 /**
- * GET an ops-api path, refetching when it changes. Results live in component
- * state only: nothing is cached across navigation or written to storage.
+ * GET an ops-api path, refetching when it or `refreshKey` changes. Results live
+ * in component state only: nothing is cached across navigation or written to
+ * storage.
  */
-export function useOpsQuery<T>(path: string | null): QueryState<T> {
+export function useOpsQuery<T>(path: string | null, refreshKey = 0): QueryState<T> {
   const api = useApi();
-  // Tagged with the path it answers, so a changed path reads as loading
-  // without a synchronous reset inside the effect.
-  const [result, setResult] = useState<{ path: string; state: QueryState<T> } | null>(null);
+  const key = path === null ? null : `${refreshKey}:${path}`;
+  // Tagged with the request it answers, so a changed path or a refresh reads
+  // as loading without a synchronous reset inside the effect.
+  const [result, setResult] = useState<{ key: string; state: QueryState<T> } | null>(null);
 
   useEffect(() => {
-    if (path === null) return;
+    if (path === null || key === null) return;
     let cancelled = false;
     api
       .get<T>(path)
       .then((data) => {
-        if (!cancelled) setResult({ path, state: { status: "ready", data } });
+        if (!cancelled) setResult({ key, state: { status: "ready", data } });
       })
       .catch((err: unknown) => {
         if (cancelled) return;
         setResult({
-          path,
+          key,
           state:
             err instanceof OpsApiError
               ? { status: "error", httpStatus: err.status, code: err.code }
@@ -47,7 +49,7 @@ export function useOpsQuery<T>(path: string | null): QueryState<T> {
     return () => {
       cancelled = true;
     };
-  }, [api, path]);
+  }, [api, path, key]);
 
-  return result && result.path === path ? result.state : { status: "loading" };
+  return result && result.key === key ? result.state : { status: "loading" };
 }

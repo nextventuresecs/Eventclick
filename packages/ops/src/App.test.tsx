@@ -9,9 +9,14 @@ const whoami = {
   serverTime: "2026-09-14T05:00:00.000Z",
 };
 
+const byPath = (async (path: string) => {
+  if (path === "/whoami") return whoami;
+  return Promise.reject(new OpsApiError(503, "AUDIT_UNAVAILABLE"));
+}) as never;
+
 describe("App", () => {
   it("shows the signed-in maintainer, release, sign out and external tools", async () => {
-    render(<App api={{ get: vi.fn(async () => whoami), post: vi.fn() } as never} />);
+    render(<App api={{ get: vi.fn(byPath), post: vi.fn() } as never} />);
 
     expect(await screen.findByText("abc1234")).toBeInTheDocument();
     expect(screen.getAllByText("maint@nvces.test").length).toBeGreaterThan(0);
