@@ -41,7 +41,15 @@ vi.mock("../../db", () => ({
           };
         }
         Object.assign(mockDeliveryRow, values);
-        return { where: () => Promise.resolve(undefined) };
+        // Awaitable directly, or with .returning() (markEmailDeliveryFailed).
+        // The SENT/DELIVERED guard lives in the WHERE clause, so it is
+        // covered against Postgres in email-delivery-failed.integration.test.ts.
+        return {
+          where: () =>
+            Object.assign(Promise.resolve(undefined), {
+              returning: () => Promise.resolve([{ id: mockDeliveryRow.id }]),
+            }),
+        };
       },
     }),
   },
@@ -275,7 +283,7 @@ describe("email-delivery.service", () => {
     it("sets status to FAILED with the given reason", async () => {
       mockDeliveryRow = freshRow();
 
-      await markEmailDeliveryFailed("delivery-1", "Exceeded max receive count");
+      expect(await markEmailDeliveryFailed("delivery-1", "Exceeded max receive count")).toBe(true);
 
       expect(mockDeliveryRow.status).toBe("FAILED");
       expect(mockDeliveryRow.failureReason).toBe("Exceeded max receive count");

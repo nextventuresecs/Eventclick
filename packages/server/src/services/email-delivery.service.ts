@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, notInArray, sql } from "drizzle-orm";
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { authDb } from "../db";
 import { emailDeliveries, type EmailDelivery } from "../db/schema/emailDeliveries";
@@ -177,12 +177,18 @@ export async function attemptEmailDelivery(deliveryId: string): Promise<void> {
 /**
  * Terminal failure — called by the DLQ consumer once a delivery has
  * exhausted SQS's redrive policy. Does not attempt to send.
+ *
+ * Never downgrades a delivery that went out: a message can reach the DLQ
+ * after a successful send when its SQS delete failed, and that email must
+ * stay SENT/DELIVERED. Returns whether the row was marked FAILED.
  */
-export async function markEmailDeliveryFailed(deliveryId: string, reason: string): Promise<void> {
-  await authDb
+export async function markEmailDeliveryFailed(deliveryId: string, reason: string): Promise<boolean> {
+  const updated = await authDb
     .update(emailDeliveries)
     .set({ status: "FAILED", failureReason: reason })
-    .where(eq(emailDeliveries.id, deliveryId));
+    .where(and(eq(emailDeliveries.id, deliveryId), notInArray(emailDeliveries.status, ["SENT", "DELIVERED"])))
+    .returning({ id: emailDeliveries.id });
+  return updated.length > 0;
 }
 
 export type { EmailDelivery };

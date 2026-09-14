@@ -86,9 +86,9 @@ async function settle(msg: DlqMessage): Promise<void> {
   if (payload.type === "generate_pdf") {
     await failPdfJob(payload, msg.MessageId);
   } else if (typeof payload.deliveryId === "string") {
-    await markEmailDeliveryFailed(payload.deliveryId, DLQ_FAILURE_MESSAGE);
+    const markedFailed = await markEmailDeliveryFailed(payload.deliveryId, DLQ_FAILURE_MESSAGE);
     logger.error(
-      { event: "dlq.email_failed_permanently", deliveryId: payload.deliveryId, messageId: msg.MessageId },
+      { event: "dlq.email_failed_permanently", deliveryId: payload.deliveryId, messageId: msg.MessageId, markedFailed },
       "Email delivery permanently failed after exceeding the queue's redrive policy",
     );
   } else {

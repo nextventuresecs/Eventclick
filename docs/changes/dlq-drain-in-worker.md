@@ -43,6 +43,11 @@ would have kept it red.
   before handling. Unparseable and unknown messages are logged and deleted:
   nothing could ever process them, and keeping them would pin the DLQ depth.
 - The Lambda `handler` export is removed.
+- **Sent emails are never downgraded.** `markEmailDeliveryFailed` updated
+  unconditionally. A message can reach the DLQ after a successful send when
+  its SQS delete failed, and the drain would have marked a delivered email
+  FAILED. It now skips `SENT` and `DELIVERED` rows and reports whether it
+  changed anything.
 
 ## 3. Infra (applied 2026-09-15)
 
@@ -105,6 +110,9 @@ that, but it changes how every email is sent, so it is not in this PR.
   fails, without spinning; email, unparseable and unknown messages; multi-batch
   drain; the loop runs immediately, skips overlapping ticks, survives a failed
   drain and stops.
+- Integration (`__tests__/email-delivery-failed.integration.test.ts`, real
+  Postgres): PENDING and FAILED become FAILED; SENT and DELIVERED are left
+  alone. Removing the guard fails both of those.
 - Unit (`queues/__tests__/pdfJobClaim.test.ts`, 9 tests): the claim decision
   table, including the stale boundary.
 - Integration (`__tests__/pdf-job-claim.integration.test.ts`, real Postgres):
