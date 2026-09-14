@@ -37,7 +37,7 @@ Env: copy `.env.example` → `.env`. `packages/server/src/config/env.ts` validat
 
 ## Architecture
 
-Turborepo monorepo, npm workspaces under `packages/*`. Three packages: `server`, `client`, `shared`.
+Turborepo monorepo, npm workspaces under `packages/*`. Packages: `server`, `client`, `shared`, plus `ops` (Ops Console frontend) and `e2e`.
 
 ### `@application/shared` is compiled, and the server resolves its build output
 
@@ -78,6 +78,15 @@ Database (Drizzle):
 - `db` in `src/db/index.ts` is **not** a plain drizzle instance — it is a `Proxy` that resolves, per call, to whatever tenant-scoped connection `tenantContextStorage` (an `AsyncLocalStorage`) currently holds, falling back to the bare pool when there is none. Use it everywhere rather than constructing a client, but understand what it resolves to (next point).
 
 - **Read this before writing any query that runs outside an HTTP request.** RLS policies match on `current_setting('app.current_tenant')`, which `middleware/tenantContext.ts` sets with `SET LOCAL` — transaction-scoped, on one pinned connection, for the life of the request. Code with no ambient request (SQS workers, `setInterval` jobs, debounced or `setTimeout`-deferred callbacks that outlive the request that scheduled them) has no such context, so `db` falls back to the bare pool with **no tenant set**: reads match zero rows and writes fail the row-security policy. Wrap that work in `runInBackgroundTenantContext(orgId, userId, fn)` from `src/db/backgroundTenantContext.ts`. Never reuse an ambient context across an `await` that outlives the response — the pinned connection is committed and released on `res.on("finish")` and may already be serving another request. `queues/worker.ts` and `services/org-broadcast.service.ts` show the two sides of this.
+
+### Ops Console (`packages/server/src/ops`, `packages/ops`)
+
+A separate maintainer-only process, `ops-server` (`src/ops-entry.ts`), from the same image, reached only through Cloudflare Tunnel + Access. Read `docs/runbooks/ops-console.md` and `docs/adr/0001-*` / `0002-*` before touching it.
+
+- **Boundary (lint-enforced):** code under `src/ops/` may import from the rest of `src/` only `utils/redact` and type-only `db/schema/*`. Never the tenant `db` proxy, `config/env`, `utils/logger`, routes, middleware or services. Tenant code never imports `src/ops/`.
+- Reads use `opsReadPool` (`maintainer_ro_login`, column grants from migration 0013) with raw parameterised `pg`; name columns, `SELECT *` fails on partially granted tables.
+- Every data response goes through `respondAudited` (`src/ops/audit.ts`), the only writer under `src/ops/`: read, insert the access-log row, then respond; insert failure returns 503 with no body.
+- Local: `OPS_AUTH_BYPASS_EMAIL=<maintainer> npm run dev:ops --workspace=server` (:4100) and `npm run dev --workspace=@application/ops` (:3100).
 
 ### Client (`packages/client`)
 

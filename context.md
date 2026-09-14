@@ -4,11 +4,27 @@ Eventclick (Eventclick) is a real-time Org transparency and verification platfor
 
 ---
 
+## 📖 Glossary
+
+| Term | Meaning |
+|---|---|
+| **Maintainer** | NVCES internal staff member allowed into the Ops Console. Not a row in `users`, has no `organizationId`. Listed in the `maintainers` table and in the Cloudflare Access policy. |
+| **Org Admin** | Existing tenant role `admin` (`USER_ROLES` in `packages/shared/src/index.ts`). Unrelated to maintainers. |
+| **Ops Console** | The maintainer website (`packages/ops`) + its API process (`ops-server`, `packages/server/src/ops-entry.ts`), at `ops.eventclick.live`. Deliberately NOT called "admin" to avoid colliding with the tenant `admin` role and `/api/v1/admin/*` routes. |
+| **Unmask** | Revealing a masked email/name for one user record, with a stated reason, audited. |
+| **Maintainer Access Log** | Append-only table `maintainer_access_log` recording every maintainer read. If a row cannot be written, the read is not returned. |
+
+Decisions: `docs/adr/0001-maintainer-access-enforced-by-postgres-grants.md`,
+`docs/adr/0002-maintainer-identity-cloudflare-access.md`. Operations:
+`docs/runbooks/ops-console.md`.
+
+---
+
 ## 🚀 Tech Stack
 
 ### Monorepo Setup
 
-- **Workspaces**: `packages/client`, `packages/server`, `packages/shared`
+- **Workspaces**: `packages/client`, `packages/server`, `packages/shared`, `packages/ops` (Ops Console frontend)
 - **Orchestration**: Turborepo + npm Workspaces
 
 ### Frontend (`packages/client`)
@@ -59,6 +75,7 @@ Eventclick (Eventclick) is a real-time Org transparency and verification platfor
 │   │   │   ├── routes/       # routes (room.routes.ts w/ activity routes)
 │   │   │   └── services/     # services (activity.service.ts, storage.service.ts)
 │   │   └── package.json
+│   ├── ops/             # Ops Console frontend (maintainers only), served by ops-server
 │   └── shared/          # Shared validators, types, and constants
 │       ├── src/
 │       │   └── index.ts      # Shared Zod validation contracts (ActivityDefinitionSchema, etc.)
