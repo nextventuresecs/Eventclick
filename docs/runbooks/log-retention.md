@@ -98,4 +98,4 @@ only; expired events cannot be recovered.
 
 | Date | Retention | storedBytes before | storedBytes after | Legal-hold check | By |
 |---|---|---|---|---|---|
-| 2026-09-15 (measured, not yet applied) | never expire | 110,973,072 (oldest events 2026-06-24) | — | done 2026-09-15: 0 organisations on legal hold | — |
+| 2026-09-15 | never expire → **30 days** (verified with describe-log-groups) | 110,973,072 (oldest events 2026-06-24) | pending: CloudWatch expires old events over 1–2 days; re-measure after 2026-09-17 | done 2026-09-15: 0 organisations on legal hold | maintainer (admin credentials) |
