@@ -168,4 +168,4 @@ those at max attempts are skipped.
 
 | Date | Change | By |
 |---|---|---|
-| 2026-09-15 | Script and runbook added (#163). Not yet applied. | — |
+| 2026-09-15 | Script and runbook added (#163). Applied: topic `eventclick-alerts` created, one confirmed email subscription (maintainer inbox), 2 metric filters, 6 alarms; `eventclick-dlq-old-messages` now targets the real topic. `--test` at 05:08 IST: all 6 alarms show "Successfully executed action" in alarm history. | maintainer (admin credentials) |
