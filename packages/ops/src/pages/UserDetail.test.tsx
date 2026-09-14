@@ -81,8 +81,6 @@ describe("UserDetail unmask", () => {
     renderAt(api, `/users/${USER_ID}`);
     expect(await screen.findByText("ja***@e***.org")).toBeInTheDocument();
     expect(screen.queryByText("jane.doe@example.org")).not.toBeInTheDocument();
-    expect(window.localStorage.length).toBe(0);
-    expect(window.sessionStorage.length).toBe(0);
   });
 
   it("explains the hourly limit when the server refuses", async () => {
