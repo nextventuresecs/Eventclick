@@ -172,6 +172,26 @@ everything it shows is reachable directly.
 5. Instant shutdown if the console itself is the problem: disable the Access
    application, or delete the tunnel's public hostname. Seconds, no deploy.
 
+## Looking up a user or organisation (#148)
+
+Search needs an identifier you already have: a **full email**, a user or org
+**ID**, an org **slug**, or a **request ID**. There is no partial or fuzzy
+search, by design. Results show masked emails (`ja***@e***.org`) and names
+(`J. D.`).
+
+**Unmask** on a user page shows the real email and name after you give a
+reason of 10-500 characters (a ticket reference is ideal). It is recorded with
+the reason, limited to 20 per maintainer per hour, and the values disappear
+when you leave the page. Every search and page view is recorded, including
+searches that find nothing.
+
+To review what maintainers looked at (owner connection):
+
+```sql
+SELECT created_at, maintainer_email, action, target_type, target_id, reason, result_count
+FROM maintainer_access_log ORDER BY created_at DESC LIMIT 50;
+```
+
 ## Local development
 
 ```bash
