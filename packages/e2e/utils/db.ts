@@ -12,6 +12,12 @@ const TABLES_TO_PRESERVE = [
   "email_verifications",
   "sessions",
   "password_resets",
+  // Append-only by trigger (migration 0013): TRUNCATE is refused for every
+  // role. maintainers is excluded too, because TRUNCATE ... CASCADE on it
+  // reaches maintainer_access_log through the foreign key. No e2e test
+  // writes to either table.
+  "maintainers",
+  "maintainer_access_log",
 ];
 
 export async function truncateAllTables() {

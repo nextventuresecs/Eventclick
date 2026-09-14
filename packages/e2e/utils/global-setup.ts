@@ -90,7 +90,14 @@ export default async function globalSetup() {
         AND tablename NOT LIKE 'spatial_ref_sys'
         AND tablename != 'schema_migrations'
     `);
-    const tables = result.rows.map((r) => `"${r.tablename}"`).join(", ");
+    // The append-only trigger (migration 0013) refuses TRUNCATE on
+    // maintainer_access_log for every role, and CASCADE from maintainers
+    // reaches it. No e2e test writes to either table.
+    const tables = result.rows
+      .map((r) => r.tablename)
+      .filter((t) => t !== "maintainers" && t !== "maintainer_access_log")
+      .map((t) => `"${t}"`)
+      .join(", ");
     if (tables) {
       await client.query(`TRUNCATE TABLE ${tables} RESTART IDENTITY CASCADE`);
       console.log("[globalSetup] tables truncated");

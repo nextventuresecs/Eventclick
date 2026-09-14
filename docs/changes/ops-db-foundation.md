@@ -80,6 +80,10 @@ tenant runtime variables. Exit 0 ok, 1 refused, 2 usage.
   must replace the trigger function in its own reviewed migration. There is no
   session-setting bypass, because any role able to set it could erase evidence.
 - **Existing default privileges for `app_user` / `auth_svc_role` stay.**
+- **The e2e reset skips both maintainer tables.** `packages/e2e` truncates
+  every public table between runs; the trigger refuses TRUNCATE (statement
+  level, so even on an empty table), and CASCADE from `maintainers` reaches the
+  log. The first CI run caught this. The harness changed, not the trigger.
 
 ## 5. Verification
 
