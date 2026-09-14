@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "OpsConsoleDlqDepth",
+      "Effect": "Allow",
+      "Action": "sqs:GetQueueAttributes",
+      "Resource": "arn:aws:sqs:ap-south-1:<ACCOUNT_ID>:<DLQ_NAME>"
+    }
+  ]
+}

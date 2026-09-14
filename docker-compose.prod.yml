@@ -382,6 +382,13 @@ services:
       CF_ACCESS_AUD: ${CF_ACCESS_AUD:-}
       OPS_STATIC_DIR: packages/ops/dist
       SENTRY_RELEASE: ${IMAGE_TAG:-}
+      # Health panel (#149): the tenant server's deep health check over the
+      # compose network, and DLQ depth through the instance role (needs the
+      # eventclick-ops-console inline policy, docs/iam/ops-console-policy.json).
+      OPS_APP_INTERNAL_URL: http://server:4000
+      OPS_SQS_DLQ_URL: ${SQS_DLQ_URL:-}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      OPS_SENTRY_ORG_URL: ${OPS_SENTRY_ORG_URL:-}
       # OPS_AUTH_BYPASS_EMAIL is deliberately absent. ops-server refuses to
       # start in production if it is ever set.
     depends_on:
