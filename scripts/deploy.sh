@@ -309,6 +309,52 @@ docker exec -i -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER
 EOSQL
 log "Database roles verified."
 
+# Ops Console roles (#146). Migration 0013 owns the NOLOGIN group roles and
+# every privilege on them; they are created here only so the login roles can
+# join them before `migrate` runs on a database that has never seen 0013.
+# No default privileges for these roles, deliberately: they get exactly the
+# column grants 0013 lists and nothing a future table would add.
+#
+# Passwords are converged on every deploy, so rotating one is: update SSM,
+# redeploy. Until both SSM parameters exist the login roles are skipped with a
+# warning rather than failing the deploy — nothing connects as them before the
+# ops-server (#147) ships.
+[[ "$-" == *x* ]] && XTRACE_ON=1 || XTRACE_ON=0
+set +x
+MAINTAINER_RO_DB_PASSWORD="${MAINTAINER_RO_DB_PASSWORD:-}"
+MAINTAINER_AUDIT_DB_PASSWORD="${MAINTAINER_AUDIT_DB_PASSWORD:-}"
+if [[ -z "$MAINTAINER_RO_DB_PASSWORD" || -z "$MAINTAINER_AUDIT_DB_PASSWORD" ]]; then
+  warn "MAINTAINER_RO_DB_PASSWORD / MAINTAINER_AUDIT_DB_PASSWORD not in SSM — skipping Ops Console login roles."
+fi
+docker exec -i -e PGPASSWORD="${DB_PASSWORD}" "$DB_CONTAINER" psql -U "${DB_USER}" -d "${DB_NAME}" \
+  -v ON_ERROR_STOP=1 \
+  -v maint_ro_pw="${MAINTAINER_RO_DB_PASSWORD}" \
+  -v maint_audit_pw="${MAINTAINER_AUDIT_DB_PASSWORD}" \
+  <<'SQL'
+SELECT 'CREATE ROLE maintainer_ro NOLOGIN BYPASSRLS'
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'maintainer_ro')
+\gexec
+SELECT 'CREATE ROLE maintainer_audit_writer NOLOGIN NOBYPASSRLS'
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'maintainer_audit_writer')
+\gexec
+
+SELECT format('CREATE ROLE maintainer_ro_login LOGIN BYPASSRLS PASSWORD %L IN ROLE maintainer_ro', :'maint_ro_pw')
+WHERE :'maint_ro_pw' <> '' AND NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'maintainer_ro_login')
+\gexec
+SELECT format('ALTER ROLE maintainer_ro_login WITH LOGIN BYPASSRLS PASSWORD %L', :'maint_ro_pw')
+WHERE :'maint_ro_pw' <> '' AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'maintainer_ro_login')
+\gexec
+
+SELECT format('CREATE ROLE maintainer_audit_login LOGIN NOBYPASSRLS PASSWORD %L IN ROLE maintainer_audit_writer', :'maint_audit_pw')
+WHERE :'maint_audit_pw' <> '' AND NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'maintainer_audit_login')
+\gexec
+SELECT format('ALTER ROLE maintainer_audit_login WITH LOGIN NOBYPASSRLS PASSWORD %L', :'maint_audit_pw')
+WHERE :'maint_audit_pw' <> '' AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'maintainer_audit_login')
+\gexec
+SQL
+[[ $XTRACE_ON -eq 1 ]] && set -x
+log "Ops Console roles verified."
+
 if ! dc up migrate --abort-on-container-exit; then
   err "Database migration failed!"
   err "Aborting deployment. Fix migrations before retrying."

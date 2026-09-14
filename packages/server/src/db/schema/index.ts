@@ -19,3 +19,5 @@ export * from "./notifications";
 export * from "./pushSubscriptions";
 export * from "./pdfJobs";
 export * from "./auditLogs";
+export * from "./maintainers";
+export * from "./maintainerAccessLog";

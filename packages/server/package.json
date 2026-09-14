@@ -15,7 +15,8 @@
     "db:generate": "drizzle-kit generate:pg",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "ops:maintainers": "tsx src/scripts/maintainers.ts"
   },
   "keywords": [],
   "author": "",
