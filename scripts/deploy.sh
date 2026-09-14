@@ -453,6 +453,42 @@ dc up -d --no-deps client
 sleep 3
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 5.5 Ops Console (#147)
+# ═══════════════════════════════════════════════════════════════════════════
+# Started only when every ops secret is present, and never fatal: the tenant
+# server and client are already live and healthy at this point, and a broken
+# maintainer console must not roll them back. Without the secrets ops-server
+# would exit at startup (missing CF_ACCESS_*) and cloudflared would loop on an
+# empty token, so they are skipped with a warning instead.
+OPS_MISSING=()
+for key in MAINTAINER_RO_DB_PASSWORD MAINTAINER_AUDIT_DB_PASSWORD CF_ACCESS_TEAM_DOMAIN CF_ACCESS_AUD CLOUDFLARE_TUNNEL_TOKEN; do
+  [[ -n "${!key:-}" ]] || OPS_MISSING+=("$key")
+done
+
+if [[ ${#OPS_MISSING[@]} -gt 0 ]]; then
+  warn "Ops Console not started — missing in SSM: ${OPS_MISSING[*]} (see docs/runbooks/ops-console.md)."
+else
+  log "Restarting ops-server..."
+  dc --profile ops up -d --no-deps ops-server
+
+  OPS_STATUS="starting"
+  for i in $(seq 1 20); do
+    OPS_STATUS=$(docker inspect --format='{{.State.Health.Status}}' eventclick_ops_server_prod 2>/dev/null || echo "missing")
+    [[ "$OPS_STATUS" == "healthy" ]] && break
+    sleep 3
+  done
+
+  if [[ "$OPS_STATUS" == "healthy" ]]; then
+    log "ops-server healthy ✅ — starting cloudflared..."
+    dc --profile ops up -d --no-deps cloudflared
+    log "Ops Console started ✅"
+  else
+    warn "ops-server not healthy (status: ${OPS_STATUS}); leaving cloudflared untouched. Tenant deploy is unaffected."
+    dc --profile ops logs --tail 40 ops-server 2>&1 | tee -a "$DEPLOY_LOG" || true
+  fi
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════
 # 6. Final verification
 # ═══════════════════════════════════════════════════════════════════════════
 log "Final verification..."

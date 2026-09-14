@@ -6,6 +6,8 @@ WORKDIR /app
 COPY package.json package-lock.json turbo.json tsconfig.json ./
 COPY packages/server/package.json  ./packages/server/
 COPY packages/shared/package.json  ./packages/shared/
+# ops: its Vite/React devDependencies are needed to build the Ops Console.
+COPY packages/ops/package.json     ./packages/ops/
 
 # Install production + dev deps (needed for TypeScript compile)
 RUN npm ci
@@ -17,11 +19,14 @@ WORKDIR /app
 # Copy source
 COPY packages/server ./packages/server
 COPY packages/shared ./packages/shared
+COPY packages/ops    ./packages/ops
 
 # Compile TypeScript → dist/
 RUN npm run build --workspace=packages/shared
 RUN npm run build --workspace=packages/server
 RUN cp -r packages/server/src/templates packages/server/dist/templates
+# Ops Console frontend, served by ops-server (ops-entry.js) from this image.
+RUN npm run build --workspace=packages/ops
 
 # ─── Stage 3: runner ──────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
@@ -43,6 +48,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY package.json package-lock.json turbo.json tsconfig.json ./
 COPY packages/server/package.json  ./packages/server/
 COPY packages/shared/package.json  ./packages/shared/
+# packages/ops is deliberately absent: it ships as static files in dist/, and
+# its React/Vite dependencies have no business in the runtime image.
 
 RUN npm ci --omit=dev && npm cache clean --force && rm -rf /usr/local/lib/node_modules/npm
 
@@ -50,6 +57,7 @@ RUN npm ci --omit=dev && npm cache clean --force && rm -rf /usr/local/lib/node_m
 COPY --from=build  /app/packages/server/dist      ./packages/server/dist
 COPY --from=build  /app/packages/server/drizzle      ./packages/server/drizzle
 COPY --from=build  /app/packages/shared/dist      ./packages/shared/dist
+COPY --from=build  /app/packages/ops/dist         ./packages/ops/dist
 
 USER Eventclick
 

@@ -211,6 +211,7 @@ SECRET_KEYS=(
   "APP_DB_PASSWORD"
   "MAINTAINER_RO_DB_PASSWORD"
   "MAINTAINER_AUDIT_DB_PASSWORD"
+  "CLOUDFLARE_TUNNEL_TOKEN"
   "SENTRY_SERVER_DSN"
 )
 
@@ -320,3 +321,9 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
 fi
 
 log "All ${#REQUIRED_KEYS[@]} required secrets verified ✅"
+
+# Ops Console (#147) parameters are deliberately not in REQUIRED_KEYS: until
+# they exist, deploy.sh skips ops-server and cloudflared with a warning rather
+# than blocking every tenant deploy on a maintainer tool.
+#   MAINTAINER_RO_DB_PASSWORD, MAINTAINER_AUDIT_DB_PASSWORD, CF_ACCESS_TEAM_DOMAIN,
+#   CF_ACCESS_AUD, CLOUDFLARE_TUNNEL_TOKEN

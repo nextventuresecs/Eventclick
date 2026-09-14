@@ -1,0 +1,22 @@
+# Findings in the pinned cloudflare/cloudflared image (docker-compose.prod.yml)
+# that cannot be fixed by moving to a newer cloudflared release, because none
+# exists yet. Each entry expires; when it does, the deploy scan fails again and
+# someone must re-check for a release that bundles the fix, bump the pin, and
+# delete the entry (or re-justify and extend it).
+#
+# Recorded 2026-09-14 against cloudflared 2026.9.1 (latest, built 2026-09-11).
+# Our usage is `cloudflared tunnel --no-autoupdate run` with a remote-managed
+# token: no SSH server, no gRPC xDS server.
+
+# golang.org/x/crypto/ssh source-address restrictions (fixed in x/crypto 0.55.0).
+# Affects SSH servers; cloudflared's `access ssh` / SSH proxying is not used.
+CVE-2026-56854 exp:2026-10-14
+
+# google.golang.org/grpc memory exhaustion from fragmented HTTP/2 DATA frames
+# sent to a gRPC endpoint (fixed in 1.83.1). The tunnel exposes no listener;
+# its only peer is Cloudflare's edge over an outbound connection.
+CVE-2026-84304 exp:2026-10-14
+
+# google.golang.org/grpc xDS server crash (fixed in 1.83.2). The tunnel does not
+# run a gRPC xDS server.
+CVE-2026-84445 exp:2026-10-14
