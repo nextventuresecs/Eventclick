@@ -42,6 +42,7 @@
     "google-auth-library": "^10.6.2",
     "helmet": "^8.1.0",
     "import-in-the-middle": "^1.15.0",
+    "jose": "^6.2.12",
     "jsonwebtoken": "^9.0.3",
     "livekit-server-sdk": "^2.15.1",
     "nanoid": "^3.3.11",
