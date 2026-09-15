@@ -108,8 +108,15 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<void> 
       { deliveryId: row.id, type: params.type, event: "email.inline_fallback" },
       "SQS_QUEUE_URL not configured — sending email inline",
     );
+    // The row was inserted just above, so no lease can be held and the attempt
+    // never defers. A permanent rejection is marked FAILED inside; a retryable
+    // one throws, and with no queue message nothing retries it: the row stays
+    // PENDING until the outbox sweeper (#162) re-enqueues it.
     await attemptEmailDelivery(row.id).catch((err) => {
-      logger.error({ err, deliveryId: row.id }, "Inline email delivery failed");
+      logger.error(
+        { err, deliveryId: row.id, type: params.type, event: "email.inline_failed_not_retried" },
+        "Inline email delivery failed — no queue, so it is not retried",
+      );
     });
     return;
   }
