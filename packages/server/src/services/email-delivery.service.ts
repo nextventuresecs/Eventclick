@@ -39,24 +39,37 @@ export interface DispatchEmailParams {
   payload: Record<string, unknown>;
 }
 
-const sendEmailByType = (type: string, email: string, payload: Record<string, unknown>): Promise<void> => {
+/**
+ * One idempotency key per delivery row, so every retry of the same delivery is
+ * the same request to Resend. See SendEmailOptions in email.service.ts.
+ */
+export const emailIdempotencyKey = (deliveryId: string) => `email-delivery/${deliveryId}`;
+
+const sendEmailByType = (
+  deliveryId: string,
+  type: string,
+  email: string,
+  payload: Record<string, unknown>,
+): Promise<void> => {
+  const options = { idempotencyKey: emailIdempotencyKey(deliveryId) };
   switch (type) {
     case "verification":
-      return sendVerificationEmail(email, payload.token as string);
+      return sendVerificationEmail(email, payload.token as string, options);
     case "reset-password":
-      return sendPasswordResetEmail(email, payload.token as string);
+      return sendPasswordResetEmail(email, payload.token as string, options);
     case "report-ready":
-      return sendReportReadyEmail(email, payload.s3Url as string, payload.roomLabel as string);
+      return sendReportReadyEmail(email, payload.s3Url as string, payload.roomLabel as string, options);
     case "invite":
-      return sendInviteEmail(email, payload.token as string, payload.orgName as string);
+      return sendInviteEmail(email, payload.token as string, payload.orgName as string, options);
     case "event-started":
-      return sendEventStartedEmail(email, payload.roomTitle as string, payload.watchUrl as string);
+      return sendEventStartedEmail(email, payload.roomTitle as string, payload.watchUrl as string, options);
     case "event-ended":
       return sendEventEndedEmail(
         email,
         payload.roomTitle as string,
         payload.recordingUrl as string | undefined,
         payload.summaryUrl as string | undefined,
+        options,
       );
     case "org-broadcast":
       return sendOrgBroadcastEmail(
@@ -65,6 +78,7 @@ const sendEmailByType = (type: string, email: string, payload: Record<string, un
         payload.body as string,
         payload.orgName as string,
         payload.priority as "normal" | "urgent",
+        options,
       );
     case "event-cancelled":
       return sendEventCancelledEmail(
@@ -73,6 +87,7 @@ const sendEmailByType = (type: string, email: string, payload: Record<string, un
         payload.reason as "cancelled" | "expired",
         payload.scheduledStart as string,
         payload.cancellationReason as string | null | undefined,
+        options,
       );
     default:
       throw new Error(`Unknown email type: ${type}`);
@@ -206,7 +221,7 @@ export async function attemptEmailDelivery(deliveryId: string): Promise<EmailDel
   }
 
   try {
-    await sendEmailByType(row.emailType, row.recipientEmail, row.payload as Record<string, unknown>);
+    await sendEmailByType(deliveryId, row.emailType, row.recipientEmail, row.payload as Record<string, unknown>);
     // Unguarded on purpose: if the DLQ drain marked this row FAILED while the
     // send was in flight, the email still went out, and SENT is the truth.
     await authDb
