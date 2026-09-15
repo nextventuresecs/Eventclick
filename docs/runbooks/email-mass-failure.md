@@ -52,7 +52,7 @@ Pick `failedSince` from the first failure in step 1. On the host:
 ```bash
 docker exec eventclick_server_prod node -e "
 require('./packages/server/dist/services/email-delivery.service')
-  .requeueFailedEmailDeliveries({ type: 'verification', failedSince: new Date('2026-09-15T08:00:00Z'), limit: 500 })
+  .requeueFailedEmailDeliveries({ type: 'verification', failedSince: new Date('2026-09-15T08:00:00Z'), limit: 50 })
   .then((r) => { console.log(JSON.stringify(r)); process.exit(0); })
   .catch((e) => { console.error(e); process.exit(1); });"
 ```
@@ -64,8 +64,30 @@ What it does and skips:
 - Skips rows whose link has expired, counted from when the email was created: `verification` and `invite` 24 hours, `reset-password` 1 hour. Those users need a new email: resend-verification, or a new reset request.
 - Skips rows attempted in the last 2 minutes (a send may still be in flight). Run again later for those.
 - Each re-sent row gets a new idempotency key, so Resend treats it as a new request.
-- With `SQS_QUEUE_URL` unset (production today) rows are sent inline, one at a time, so a large batch takes a while. With the queue on, they are enqueued for the email worker.
+- With `SQS_QUEUE_URL` unset (production today) rows are sent inline, one at a time, with **no retry**: a row Resend rate-limits (`rate_limit_exceeded`) or that hits any other transient error is left `PENDING`, and nothing picks it up until the outbox sweeper (#162 step 3) exists. Keep `limit` small (50) and check step 4 between runs. With the queue on, rows are enqueued for the email worker, which retries with backoff, and `limit: 500` is fine.
 
 ## 4. Verify
 
-Rerun the step 1 query: the count for that type and reason should drop to the expired and in-flight rows only. `email_deliveries.send_epoch` is above 0 on every re-sent row.
+Rerun the step 1 query: the count for that type and reason should drop to the expired and in-flight rows only.
+
+Then look for re-sent rows that did not go out. Inline sending does not retry, so these stay `PENDING`:
+
+```bash
+docker exec eventclick_postgres_prod sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+    SELECT email_type, failure_reason, count(*)
+    FROM email_deliveries
+    WHERE status = '\''PENDING'\'' AND send_epoch > 0 AND last_attempt_at < now() - interval '\''5 minutes'\''
+    GROUP BY 1, 2"'
+```
+
+Rows here were requeued and then failed transiently. Until the sweeper exists, set them back to `FAILED` with `failed_at = now()` and run step 3 again after a pause:
+
+```bash
+docker exec eventclick_postgres_prod sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+    UPDATE email_deliveries SET status = '\''FAILED'\'', failed_at = now()
+    WHERE status = '\''PENDING'\'' AND send_epoch > 0 AND last_attempt_at < now() - interval '\''5 minutes'\''"'
+```
+
+Step 3 skips rows attempted in the last 2 minutes, so wait before re-running it.
