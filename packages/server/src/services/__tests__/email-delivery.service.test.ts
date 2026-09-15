@@ -115,7 +115,7 @@ describe("email-delivery.service", () => {
 
       await attemptEmailDelivery("delivery-1");
 
-      expect(mockSendVerificationEmail).toHaveBeenCalledWith("user@example.com", "tok-123");
+      expect(mockSendVerificationEmail).toHaveBeenCalledWith("user@example.com", "tok-123", { idempotencyKey: "email-delivery/delivery-1" });
       expect(mockDeliveryRow.status).toBe("SENT");
     });
 
@@ -176,6 +176,40 @@ describe("email-delivery.service", () => {
       expect(mockDeliveryRow.status).toBe("PENDING");
     });
 
+    it("repeats the same idempotency key when a retry follows a send whose SENT write failed", async () => {
+      mockDeliveryRow = freshRow();
+      mockSendVerificationEmail.mockResolvedValue(undefined);
+      // Fail only the SENT write, once: the email has already gone out.
+      const assign = Object.assign;
+      let failSentWrite = true;
+      const spy = vi.spyOn(Object, "assign").mockImplementation((target: object, ...sources: any[]) => {
+        if (failSentWrite && sources[0]?.status === "SENT") {
+          failSentWrite = false;
+          throw new Error("connection terminated");
+        }
+        return assign(target, ...sources);
+      });
+
+      try {
+        await expect(attemptEmailDelivery("delivery-1")).rejects.toThrow("connection terminated");
+        expect(await attemptEmailDelivery("delivery-1")).toBe("sent");
+      } finally {
+        spy.mockRestore();
+      }
+
+      const keys = mockSendVerificationEmail.mock.calls.map((call) => call[2]);
+      expect(keys).toEqual([{ idempotencyKey: "email-delivery/delivery-1" }, { idempotencyKey: "email-delivery/delivery-1" }]);
+    });
+
+    it("gives each delivery its own idempotency key", async () => {
+      mockDeliveryRow = freshRow({ id: "delivery-2" });
+      mockSendVerificationEmail.mockResolvedValue(undefined);
+
+      await attemptEmailDelivery("delivery-2");
+
+      expect(mockSendVerificationEmail.mock.calls[0]![2]).toEqual({ idempotencyKey: "email-delivery/delivery-2" });
+    });
+
     it("records the provider's own error, not \"Unknown error\", when Resend rejects", async () => {
       mockDeliveryRow = freshRow();
       // Resend's error is a plain object, not an Error instance.
@@ -232,6 +266,7 @@ describe("email-delivery.service", () => {
         "user@example.com",
         "https://cdn.example/report.pdf",
         "room-42",
+        { idempotencyKey: "email-delivery/delivery-1" },
       );
     });
 
@@ -244,7 +279,7 @@ describe("email-delivery.service", () => {
 
       await attemptEmailDelivery("delivery-1");
 
-      expect(mockSendInviteEmail).toHaveBeenCalledWith("user@example.com", "tok-123", "Acme Org");
+      expect(mockSendInviteEmail).toHaveBeenCalledWith("user@example.com", "tok-123", "Acme Org", { idempotencyKey: "email-delivery/delivery-1" });
     });
 
     // AC3 for #70 ("retried invite-send does not double-email"): the correct
