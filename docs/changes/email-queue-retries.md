@@ -43,7 +43,7 @@ The senders in `email.service.ts` rethrow Resend's `error`, and the Resend SDK r
 
 ## 3. What this affects
 
-- **Production today (inline sending):** a permanent rejection now ends as `FAILED` instead of `PENDING` forever, and `failure_reason` is readable. A retryable inline failure still stays `PENDING` until the sweeper (step 3).
+- **Production today (inline sending):** a permanent rejection now ends as `FAILED` instead of `PENDING` forever, and `failure_reason` is readable. A retryable inline failure still stays `PENDING` until the sweeper (step 3); it now logs `email.inline_failed_not_retried`, which says so and gives step 3 a count to check against.
 - **Ops Console:** a permanent rejection counts in `emailFailed1h` straight away. A bad recipient in a broadcast can turn the backlog badge amber or red where it used to stay green. That is the intent: it was always failing.
 - **Queue path (off until step 5):** with no redrive policy yet, a retryable message keeps retrying at 15-minute intervals until the queue's message retention period expires. The redrive policy and email DLQ in #162 step 6 bound that.
 - **Classification mistakes:** a transient error classified as permanent would lose an email. The permanent set is limited to request-shape errors with a 400/422 status, and anything unrecognised retries. Signal: `email.delivery_failed_permanently` log lines and `FAILED` rows whose `failure_reason` is not about the recipient or content.
