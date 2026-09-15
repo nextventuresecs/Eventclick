@@ -28,15 +28,48 @@ sent wakes them again.
 ALERT_EMAIL=<maintainer address> scripts/setup-queue-alarms.sh
 ```
 
-Confirm the subscription from the email AWS sends ("AWS Notification -
-Subscription Confirmation"). Until then nothing is delivered. Then:
+Run it from a workstation with admin credentials. On the prod host it exits: the
+EC2 instance role cannot create alarms, on purpose.
+
+AWS then sends "AWS Notification - Subscription Confirmation". Until it is
+confirmed nothing is delivered. **Do not click the link in that email.** Right
+click, copy it, and run:
+
+```bash
+scripts/setup-queue-alarms.sh --confirm '<copied link>'
+```
+
+A subscription confirmed by clicking can be removed by anyone who opens the
+unsubscribe link in any alert email: a mail scanner, Gmail's Unsubscribe or
+"Report spam" button, or a forward. That removal needs no credentials and is
+not in CloudTrail; the listing just shows `Deleted` and alerts silently stop.
+This happened on 2026-09-15. `--confirm` sets `AuthenticateOnUnsubscribe`, so
+only an AWS principal allowed `sns:Unsubscribe` can remove it. If the listing
+ever shows `Deleted`, rerun the script with the same `ALERT_EMAIL` and confirm
+again with `--confirm`. Then:
 
 ```bash
 scripts/setup-queue-alarms.sh --test
 ```
 
-forces each alarm to ALARM once. Expect one email per alarm, then an OK email
-at each alarm's next evaluation. Check nothing points at a missing topic:
+forces each alarm to ALARM once. It refuses to run when the topic has no
+confirmed subscription. Expect one email per alarm, then an OK email at each
+alarm's next evaluation.
+
+Alarm history saying "Successfully executed action" only means SNS accepted the
+message, even with nobody subscribed. Prove delivery with the SNS metric, about
+5 minutes after the test (`NumberOfNotificationsDelivered` should match
+`NumberOfMessagesPublished`, and `NumberOfNotificationsFailed` stay 0):
+
+```bash
+aws cloudwatch get-metric-statistics --region ap-south-1 --namespace AWS/SNS \
+  --metric-name NumberOfNotificationsDelivered \
+  --dimensions Name=TopicName,Value=eventclick-alerts \
+  --statistics Sum --period 300 \
+  --start-time <15 minutes ago, UTC> --end-time <now, UTC>
+```
+
+Check nothing points at a missing topic:
 
 ```bash
 aws cloudwatch describe-alarms --region ap-south-1 \
@@ -136,11 +169,15 @@ and you would rather re-run them, stop the drain first or it will settle them
 before you move them:
 
 ```bash
-# on the host: stop the worker so nothing drains while you move messages
+# 1. on the host: stop the worker so nothing drains while you move messages
 docker compose -f docker-compose.prod.yml stop pdf-worker
+
+# 2. on a workstation with admin credentials (the instance role cannot move messages)
 aws sqs start-message-move-task --region ap-south-1 \
   --source-arn arn:aws:sqs:ap-south-1:940278682995:eventclick-pdf-dlq \
   --destination-arn arn:aws:sqs:ap-south-1:940278682995:eventclick-pdf-queue
+
+# 3. on the host, once the DLQ reads 0
 docker compose -f docker-compose.prod.yml up -d --no-deps pdf-worker
 ```
 
@@ -158,4 +195,5 @@ those at max attempts are skipped.
 
 | Date | Change | By |
 |---|---|---|
-| 2026-09-15 | Script and runbook added (#163). Not yet applied. | — |
+| 2026-09-15 | Script and runbook added (#163). Applied: topic `eventclick-alerts` created, one confirmed email subscription (maintainer inbox), 2 metric filters, 6 alarms; `eventclick-dlq-old-messages` now targets the real topic. `--test` at 05:08 IST showed "Successfully executed action" in alarm history, but delivered nothing: the click-confirmed subscription had already been removed through its unauthenticated unsubscribe link (SNS: 12 published, 0 delivered). | maintainer (admin credentials) |
+| 2026-09-15 | Resubscribed and confirmed with `AuthenticateOnUnsubscribe=true`. `--test` at 05:55 IST: SNS delivered 12 of 12 (6 ALARM, 6 OK), 0 failed. Script gains `--confirm` and a no-subscriber guard on `--test`. | maintainer (admin credentials) |
