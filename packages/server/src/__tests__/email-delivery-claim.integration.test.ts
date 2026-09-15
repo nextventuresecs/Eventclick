@@ -133,4 +133,26 @@ describe("attemptEmailDelivery claim against Postgres", () => {
     expect(await attemptEmailDelivery(id)).toBe("sent");
     expect(mockSend).toHaveBeenCalledTimes(2);
   });
+
+  it("fails a permanent provider rejection at once, and a redelivery does not send again", async (ctx) => {
+    if (!available) ctx.skip(`no migrated database: ${skipReason}`);
+    const id = await insertDelivery();
+    mockSend.mockRejectedValueOnce({ name: "validation_error", statusCode: 422, message: "Invalid `to` field." });
+
+    expect(await attemptEmailDelivery(id)).toBe("failed");
+    const { rows } = await authPool.query<{ status: string; failure_reason: string; recent: boolean; leased: boolean | null }>(
+      `SELECT status, failure_reason, failed_at > now() - interval '1 minute' AS recent, claimed_until > now() AS leased
+       FROM email_deliveries WHERE id = $1`,
+      [id],
+    );
+    expect(rows[0]).toEqual({
+      status: "FAILED",
+      failure_reason: "validation_error 422: Invalid `to` field.",
+      recent: true,
+      leased: null,
+    });
+
+    expect(await attemptEmailDelivery(id)).toBe("skipped");
+    expect(mockSend).toHaveBeenCalledTimes(1);
+  });
 });
