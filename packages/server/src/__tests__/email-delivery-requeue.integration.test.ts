@@ -8,8 +8,8 @@ import { authPool } from "../db";
  * rows are re-sent with requeueFailedEmailDeliveries. Tested against Postgres
  * because the selection (status, type, window, link lifetime, lease) is SQL.
  *
- * SQS_QUEUE_URL is unset in tests, so re-sent rows go out inline, as they do
- * in production today.
+ * Re-sent rows go out inline, as they do in production today: the file clears
+ * SQS_QUEUE_URL, which CI sets for the whole job. Only the enqueue test sets it.
  *
  * Skips without a reachable migrated database locally; CI always has one.
  */
@@ -28,6 +28,7 @@ import { env } from "../config/env";
 import { requeueFailedEmailDeliveries } from "../services/email-delivery.service";
 
 const USER_ID = randomUUID();
+const QUEUE_URL_FROM_ENV = env.SQS_QUEUE_URL;
 let available = false;
 let skipReason = "";
 
@@ -48,6 +49,7 @@ const statusOf = async (id: string) =>
   (await authPool.query<{ status: string }>("SELECT status FROM email_deliveries WHERE id = $1", [id])).rows[0]!.status;
 
 beforeAll(async () => {
+  env.SQS_QUEUE_URL = undefined;
   try {
     await authPool.query("SELECT claimed_until FROM email_deliveries LIMIT 0");
     await authPool.query(
@@ -62,6 +64,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  env.SQS_QUEUE_URL = QUEUE_URL_FROM_ENV;
   if (available) await authPool.query("DELETE FROM users WHERE id = $1", [USER_ID]);
   await authPool.end().catch(() => {});
 });
