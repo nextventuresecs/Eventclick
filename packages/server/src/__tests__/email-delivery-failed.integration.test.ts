@@ -58,6 +58,21 @@ describe("markEmailDeliveryFailed against Postgres", () => {
     expect(await statusOf(id)).toEqual({ status: "FAILED", failure_reason: "moved to DLQ" });
   });
 
+  it("keeps the first failed_at when a duplicate DLQ message marks the row again", async (ctx) => {
+    if (!available) ctx.skip(`no migrated database: ${skipReason}`);
+    const id = await insertDelivery("PENDING");
+    await markEmailDeliveryFailed(id, "moved to DLQ");
+    await authPool.query("UPDATE email_deliveries SET failed_at = now() - interval '3 hours' WHERE id = $1", [id]);
+
+    await markEmailDeliveryFailed(id, "moved to DLQ");
+
+    const { rows } = await authPool.query<{ old: boolean }>(
+      "SELECT failed_at < now() - interval '2 hours' AS old FROM email_deliveries WHERE id = $1",
+      [id],
+    );
+    expect(rows[0]!.old).toBe(true);
+  });
+
   it.for(["SENT", "DELIVERED"])("never downgrades a %s delivery", async (status, ctx) => {
     if (!available) ctx.skip(`no migrated database: ${skipReason}`);
     const id = await insertDelivery(status);
