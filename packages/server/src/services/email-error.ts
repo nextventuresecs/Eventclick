@@ -20,9 +20,14 @@ const isProviderError = (err: unknown): err is ProviderError =>
  * request again gets the same answer, so retrying only delays the FAILED row.
  *
  * Deliberately absent, so they retry:
- * - invalid/missing/restricted API key, invalid_access, invalid_region, and
- *   invalid_from_address: our configuration, shared by every email and fixed
- *   by a redeploy. Failing each email fast would lose all of them.
+ * - invalid/missing/restricted API key, invalid_access, invalid_region:
+ *   our configuration, shared by every email and fixed by a redeploy.
+ *   Failing each email fast would lose all of them.
+ * - invalid_from_address: in the SDK's type but not in Resend's current error
+ *   reference. A malformed sender more likely arrives as a 400/422
+ *   validation_error, which this list does treat as permanent, so
+ *   RESEND_FROM_EMAIL is validated at startup instead (config/emailSender.ts).
+ *   An unverified sending domain is a 403, which retries.
  * - rate_limit_exceeded, *_quota_exceeded, application_error (also what the
  *   SDK returns when the request never reached Resend), internal_server_error.
  */
