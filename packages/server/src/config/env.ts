@@ -1,6 +1,7 @@
 import path from "node:path";
 import dotenv from "dotenv";
 import { z } from "zod";
+import { senderAddressSchema } from "./emailSender";
 
 const candidates = [
   path.resolve(process.cwd(), ".env"),
@@ -87,7 +88,7 @@ const EnvSchema = z.object({
 
   // ─── Email ────────────────────────────────────────
   RESEND_API_KEY: z.string(),
-  RESEND_FROM_EMAIL: z.string().default("noreply@eventclick.live"),
+  RESEND_FROM_EMAIL: senderAddressSchema.default("noreply@eventclick.live"),
   // Where marketing-site demo and support requests are delivered. This is a
   // `to:` address, not a sender — `from:` stays RESEND_FROM_EMAIL, which is
   // the verified sending domain.
