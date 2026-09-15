@@ -5,6 +5,7 @@ import { emailDeliveries, type EmailDelivery } from "../db/schema/emailDeliverie
 import { sqsClient } from "../queues/sqs.client";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
+import { describeEmailError, isPermanentEmailError } from "./email-error";
 import {
   sendVerificationEmail,
   sendPasswordResetEmail,
@@ -139,19 +140,22 @@ export const EMAIL_CLAIM_LEASE_SECONDS = 120;
 /**
  * - `sent`: this call sent the email.
  * - `skipped`: nothing to do, ever (already SENT/DELIVERED/FAILED, or no row).
+ * - `failed`: the provider rejected this email in a way a retry cannot fix
+ *   (see isPermanentEmailError); the row is now FAILED.
  * - `deferred`: another consumer holds the claim right now. The caller must
  *   keep its queue message so the delivery is tried again if that consumer
  *   dies without finishing.
  */
-export type EmailDeliveryOutcome = "sent" | "skipped" | "deferred";
+export type EmailDeliveryOutcome = "sent" | "skipped" | "deferred" | "failed";
 
 /**
  * The single send path — called by the SQS consumer loop (worker.ts) and,
  * for local dev without SQS, directly by dispatchEmail above. Idempotent:
  * a delivery already SENT/DELIVERED is skipped without calling the provider
- * again. Throws on failure so the caller's retry mechanism (SQS's native
- * redelivery + redrive policy) can engage — retry/backoff authority lives
- * entirely in SQS, not in the `attempts` column, which is observational only.
+ * again. Throws on a retryable failure so the caller's retry mechanism (SQS
+ * redelivery with backoff, then the redrive policy) can engage — retry
+ * authority lives in SQS, not in the `attempts` column, which is observational
+ * only. A permanent failure is marked FAILED here and returns `failed`.
  */
 export async function attemptEmailDelivery(deliveryId: string): Promise<EmailDeliveryOutcome> {
   // Exclusive claim. The status stays PENDING during the send, so matching on
@@ -204,12 +208,20 @@ export async function attemptEmailDelivery(deliveryId: string): Promise<EmailDel
       .where(eq(emailDeliveries.id, deliveryId));
     return "sent";
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    // Release the claim so the redelivered message can retry straight away
-    // instead of being deferred until the lease runs out.
+    const reason = describeEmailError(err);
+    if (isPermanentEmailError(err)) {
+      await markEmailDeliveryFailed(deliveryId, reason);
+      logger.warn(
+        { deliveryId, type: row.emailType, reason, event: "email.delivery_failed_permanently" },
+        "Email provider rejected the delivery — marked FAILED without retrying",
+      );
+      return "failed";
+    }
+    // Release the claim so the redelivered message is not deferred until the
+    // lease runs out.
     await authDb
       .update(emailDeliveries)
-      .set({ failureReason: message, claimedUntil: null })
+      .set({ failureReason: reason, claimedUntil: null })
       .where(eq(emailDeliveries.id, deliveryId));
     throw err;
   }
@@ -217,7 +229,8 @@ export async function attemptEmailDelivery(deliveryId: string): Promise<EmailDel
 
 /**
  * Terminal failure — called by the DLQ consumer once a delivery has
- * exhausted SQS's redrive policy. Does not attempt to send.
+ * exhausted SQS's redrive policy, and by attemptEmailDelivery for a permanent
+ * provider error. Does not attempt to send.
  *
  * Never downgrades a delivery that went out: a message can reach the DLQ
  * after a successful send when its SQS delete failed, and that email must

@@ -20,6 +20,7 @@ import { notifyReportGenerated } from "../services/report-notification.service";
 import { recordAuditSafely } from "../services/audit.service";
 import { sqsClient } from "./sqs.client";
 import { decidePdfJobClaim, type PdfJobClaim } from "./pdfJobClaim";
+import { emailRetryDelaySeconds } from "./emailBackoff";
 
 // SQS client is now the single shared instance from sqs.client.ts.
 // Do NOT construct a second SQSClient here — a prior duplicate with an
@@ -432,11 +433,11 @@ async function deleteMessage(receiptHandle: string): Promise<void> {
 // ─── Email delivery queue ───────────────────────────────────────────────
 // Separate polling loop from the PDF worker above — different queue, no PDF
 // job-style visibility heartbeat needed (email sends are seconds, not
-// minutes). Retry/backoff authority is SQS's own redelivery + redrive
-// policy: on failure the message is simply left undeleted so it becomes
-// visible again after the queue's visibility timeout; after the queue's
-// maxReceiveCount is exceeded, SQS's redrive policy moves it to the DLQ,
-// which dlq-consumer.ts drains and marks FAILED.
+// minutes). Retry authority is SQS: on a retryable failure the message is left
+// undeleted and hidden for an increasing delay (emailBackoff.ts, keyed on its
+// ApproximateReceiveCount); after the queue's maxReceiveCount is exceeded, the
+// redrive policy moves it to the DLQ, which dlq-consumer.ts drains and marks
+// FAILED. A permanent provider error is marked FAILED at once and deleted.
 //
 // IMPORTANT (deployment note): src/workers/email.lambda.ts is an older,
 // Lambda-based consumer for this same queue with a different message shape
@@ -449,6 +450,16 @@ const EMAIL_MAX_MESSAGES = 5;
 const EMAIL_RECEIVE_WAIT_SECONDS = 20;
 const EMAIL_VISIBILITY_TIMEOUT_SECONDS = 60;
 
+/** The backoff reads ApproximateReceiveCount, which SQS only returns when asked for. */
+export const emailReceiveCommand = (queueUrl: string) =>
+  new ReceiveMessageCommand({
+    QueueUrl: queueUrl,
+    MaxNumberOfMessages: EMAIL_MAX_MESSAGES,
+    WaitTimeSeconds: EMAIL_RECEIVE_WAIT_SECONDS,
+    VisibilityTimeout: EMAIL_VISIBILITY_TIMEOUT_SECONDS,
+    MessageSystemAttributeNames: ["ApproximateReceiveCount"],
+  });
+
 export async function startEmailSqsWorker(): Promise<void> {
   if (!env.SQS_QUEUE_URL) {
     logger.info("SQS_QUEUE_URL not provided, email worker will not start");
@@ -459,14 +470,7 @@ export async function startEmailSqsWorker(): Promise<void> {
 
   while (true) {
     try {
-      const data = await sqsClient.send(
-        new ReceiveMessageCommand({
-          QueueUrl: env.SQS_QUEUE_URL,
-          MaxNumberOfMessages: EMAIL_MAX_MESSAGES,
-          WaitTimeSeconds: EMAIL_RECEIVE_WAIT_SECONDS,
-          VisibilityTimeout: EMAIL_VISIBILITY_TIMEOUT_SECONDS,
-        }),
-      );
+      const data = await sqsClient.send(emailReceiveCommand(env.SQS_QUEUE_URL));
 
       if (!data.Messages || data.Messages.length === 0) continue;
 
@@ -478,7 +482,14 @@ export async function startEmailSqsWorker(): Promise<void> {
   }
 }
 
-export async function processEmailMessage(msg: { Body?: string; ReceiptHandle?: string; MessageId?: string }): Promise<void> {
+type EmailQueueMessage = {
+  Body?: string;
+  ReceiptHandle?: string;
+  MessageId?: string;
+  Attributes?: Partial<Record<string, string>>;
+};
+
+export async function processEmailMessage(msg: EmailQueueMessage): Promise<void> {
   if (!msg.Body || !msg.ReceiptHandle) return;
 
   try {
@@ -498,26 +509,35 @@ export async function processEmailMessage(msg: { Body?: string; ReceiptHandle?: 
       await deferEmailMessage(msg.ReceiptHandle);
       return;
     }
-    // Only delete on success — a thrown error above leaves the message for
-    // SQS to redeliver per the queue's own visibility timeout/redrive policy.
+    // sent, skipped or failed: nothing is left to retry.
     await deleteEmailMessage(msg.ReceiptHandle);
   } catch (err) {
-    logger.error({ err, messageId: msg.MessageId, event: "email_sqs.process_failed" }, "Email delivery attempt failed — leaving message for retry");
+    const receiveCount = msg.Attributes?.ApproximateReceiveCount;
+    const retryInSeconds = emailRetryDelaySeconds(receiveCount);
+    logger.error(
+      { err, messageId: msg.MessageId, receiveCount, retryInSeconds, event: "email_sqs.process_failed" },
+      "Email delivery attempt failed — retrying after backoff",
+    );
+    await hideEmailMessage(msg.ReceiptHandle, retryInSeconds);
   }
 }
 
-async function deferEmailMessage(receiptHandle: string): Promise<void> {
+function deferEmailMessage(receiptHandle: string): Promise<void> {
+  return hideEmailMessage(receiptHandle, EMAIL_CLAIM_LEASE_SECONDS);
+}
+
+async function hideEmailMessage(receiptHandle: string, seconds: number): Promise<void> {
   try {
     await sqsClient.send(
       new ChangeMessageVisibilityCommand({
         QueueUrl: env.SQS_QUEUE_URL,
         ReceiptHandle: receiptHandle,
-        VisibilityTimeout: EMAIL_CLAIM_LEASE_SECONDS,
+        VisibilityTimeout: seconds,
       }),
     );
   } catch (err) {
     // The message still reappears after the receive's visibility timeout.
-    logger.error({ err, receiptHandle }, "Failed to defer email SQS message");
+    logger.error({ err, receiptHandle, seconds }, "Failed to change email SQS message visibility");
   }
 }
 

@@ -176,6 +176,40 @@ describe("email-delivery.service", () => {
       expect(mockDeliveryRow.status).toBe("PENDING");
     });
 
+    it("records the provider's own error, not \"Unknown error\", when Resend rejects", async () => {
+      mockDeliveryRow = freshRow();
+      // Resend's error is a plain object, not an Error instance.
+      mockSendVerificationEmail.mockRejectedValueOnce({ name: "rate_limit_exceeded", statusCode: 429, message: "Too many requests" });
+
+      await expect(attemptEmailDelivery("delivery-1")).rejects.toMatchObject({ name: "rate_limit_exceeded" });
+
+      expect(mockDeliveryRow.failureReason).toBe("rate_limit_exceeded 429: Too many requests");
+      expect(mockDeliveryRow.status).toBe("PENDING");
+    });
+
+    it("marks a permanent provider rejection FAILED at once instead of throwing for a retry", async () => {
+      mockDeliveryRow = freshRow();
+      mockSendVerificationEmail.mockRejectedValueOnce({ name: "validation_error", statusCode: 422, message: "Invalid `to` field." });
+
+      expect(await attemptEmailDelivery("delivery-1")).toBe("failed");
+
+      expect(mockSendVerificationEmail).toHaveBeenCalledTimes(1);
+      expect(mockDeliveryRow).toMatchObject({
+        status: "FAILED",
+        failureReason: "validation_error 422: Invalid `to` field.",
+        claimedUntil: null,
+      });
+      expect(mockDeliveryRow.failedAt).not.toBeNull();
+    });
+
+    it("retries an invalid API key rather than failing every email for good", async () => {
+      mockDeliveryRow = freshRow();
+      mockSendVerificationEmail.mockRejectedValueOnce({ name: "validation_error", statusCode: 401, message: "API key is invalid" });
+
+      await expect(attemptEmailDelivery("delivery-1")).rejects.toMatchObject({ statusCode: 401 });
+      expect(mockDeliveryRow.status).toBe("PENDING");
+    });
+
     it("increments attempts on every try, including a failed one", async () => {
       mockDeliveryRow = freshRow({ attempts: 2 });
       mockSendVerificationEmail.mockRejectedValueOnce(new Error("boom"));
