@@ -99,8 +99,8 @@ const backlogOf = async (): Promise<{ backlog: OpsBacklog; overall: string }> =>
 
 const failedEmails = (n: number, age = "10 minutes") =>
   owner.query(
-    `INSERT INTO email_deliveries (user_id, recipient_email, email_type, payload, status, created_at)
-     SELECT $1, $2, 'verification', '{}', 'FAILED', now() - $3::interval FROM generate_series(1, $4)`,
+    `INSERT INTO email_deliveries (user_id, recipient_email, email_type, payload, status, created_at, failed_at)
+     SELECT $1, $2, 'verification', '{}', 'FAILED', now() - interval '1 day', now() - $3::interval FROM generate_series(1, $4)`,
     [USER_LOGIN, `ops-health-${RUN}@nvces.test`, age, n],
   );
 

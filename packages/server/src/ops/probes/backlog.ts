@@ -4,6 +4,8 @@ import type { ReadPool } from "../lookup";
 // One round trip. Status literals: pdf_jobs.status is lowercase text written by
 // queues/worker.ts; email and notification deliveries share the
 // notification_delivery_status enum (PENDING/SENT/DELIVERED/FAILED).
+// Email failures are windowed on failed_at: a delivery fails only after its
+// SQS retries run out, often more than an hour after created_at.
 const BACKLOG_SQL = `
   SELECT
     (SELECT count(*) FROM pdf_jobs
@@ -11,7 +13,7 @@ const BACKLOG_SQL = `
     (SELECT count(*) FROM pdf_jobs
       WHERE status = 'failed' AND updated_at > now() - interval '24 hours')::int AS pdf_failed_24h,
     (SELECT count(*) FROM email_deliveries
-      WHERE status = 'FAILED' AND created_at > now() - interval '1 hour')::int AS email_failed_1h,
+      WHERE status = 'FAILED' AND failed_at > now() - interval '1 hour')::int AS email_failed_1h,
     (SELECT count(*) FROM notification_deliveries
       WHERE status = 'FAILED' AND created_at > now() - interval '1 hour')::int AS notification_failed_1h`;
 

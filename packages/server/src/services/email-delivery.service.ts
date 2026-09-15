@@ -1,4 +1,4 @@
-import { eq, and, notInArray, sql } from "drizzle-orm";
+import { eq, and, or, isNull, lt, notInArray, sql } from "drizzle-orm";
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { authDb } from "../db";
 import { emailDeliveries, type EmailDelivery } from "../db/schema/emailDeliveries";
@@ -130,6 +130,22 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<void> 
 }
 
 /**
+ * How long a claim holds a delivery. A send is one provider call that takes
+ * seconds; the lease only has to outlast that. If the worker dies mid-send the
+ * row becomes claimable again once the lease runs out.
+ */
+export const EMAIL_CLAIM_LEASE_SECONDS = 120;
+
+/**
+ * - `sent`: this call sent the email.
+ * - `skipped`: nothing to do, ever (already SENT/DELIVERED/FAILED, or no row).
+ * - `deferred`: another consumer holds the claim right now. The caller must
+ *   keep its queue message so the delivery is tried again if that consumer
+ *   dies without finishing.
+ */
+export type EmailDeliveryOutcome = "sent" | "skipped" | "deferred";
+
+/**
  * The single send path — called by the SQS consumer loop (worker.ts) and,
  * for local dev without SQS, directly by dispatchEmail above. Idempotent:
  * a delivery already SENT/DELIVERED is skipped without calling the provider
@@ -137,16 +153,26 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<void> 
  * redelivery + redrive policy) can engage — retry/backoff authority lives
  * entirely in SQS, not in the `attempts` column, which is observational only.
  */
-export async function attemptEmailDelivery(deliveryId: string): Promise<void> {
-  // Atomic claim: read-then-write would let two concurrent consumers (e.g. a
-  // second SQS poller, or the deprecated email.lambda.ts still wired to the
-  // same queue) both observe PENDING and both send. The UPDATE...WHERE
-  // status='PENDING' collapses check-and-claim into one statement — only the
-  // worker whose UPDATE actually matched a row proceeds to send.
+export async function attemptEmailDelivery(deliveryId: string): Promise<EmailDeliveryOutcome> {
+  // Exclusive claim. The status stays PENDING during the send, so matching on
+  // status alone let a second consumer claim the row while the first was still
+  // sending. The lease closes that window: the UPDATE matches only when no
+  // unexpired claim exists, and a concurrent UPDATE re-checks the lease after
+  // the winner commits. Both sides use the database clock.
   const claimed = await authDb
     .update(emailDeliveries)
-    .set({ attempts: sql`${emailDeliveries.attempts} + 1`, lastAttemptAt: new Date() })
-    .where(and(eq(emailDeliveries.id, deliveryId), eq(emailDeliveries.status, "PENDING")))
+    .set({
+      attempts: sql`${emailDeliveries.attempts} + 1`,
+      lastAttemptAt: new Date(),
+      claimedUntil: sql`now() + make_interval(secs => ${EMAIL_CLAIM_LEASE_SECONDS})`,
+    })
+    .where(
+      and(
+        eq(emailDeliveries.id, deliveryId),
+        eq(emailDeliveries.status, "PENDING"),
+        or(isNull(emailDeliveries.claimedUntil), lt(emailDeliveries.claimedUntil, sql`now()`)),
+      ),
+    )
     .returning();
 
   const row = claimed[0];
@@ -155,21 +181,34 @@ export async function attemptEmailDelivery(deliveryId: string): Promise<void> {
     const [existing] = await authDb.select().from(emailDeliveries).where(eq(emailDeliveries.id, deliveryId)).limit(1);
     if (!existing) {
       logger.error({ deliveryId }, "Email delivery row not found — dropping message");
-      return;
+      return "skipped";
     }
-    logger.info(
-      { deliveryId, status: existing.status },
-      "Email delivery already claimed or terminal — skipping (idempotent)",
-    );
-    return;
+    if (existing.status === "PENDING") {
+      logger.info(
+        { deliveryId, claimedUntil: existing.claimedUntil, event: "email.delivery_deferred" },
+        "Email delivery is claimed by another consumer — deferring",
+      );
+      return "deferred";
+    }
+    logger.info({ deliveryId, status: existing.status }, "Email delivery already terminal — skipping (idempotent)");
+    return "skipped";
   }
 
   try {
     await sendEmailByType(row.emailType, row.recipientEmail, row.payload as Record<string, unknown>);
-    await authDb.update(emailDeliveries).set({ status: "SENT" }).where(eq(emailDeliveries.id, deliveryId));
+    await authDb
+      .update(emailDeliveries)
+      .set({ status: "SENT", claimedUntil: null })
+      .where(eq(emailDeliveries.id, deliveryId));
+    return "sent";
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    await authDb.update(emailDeliveries).set({ failureReason: message }).where(eq(emailDeliveries.id, deliveryId));
+    // Release the claim so the redelivered message can retry straight away
+    // instead of being deferred until the lease runs out.
+    await authDb
+      .update(emailDeliveries)
+      .set({ failureReason: message, claimedUntil: null })
+      .where(eq(emailDeliveries.id, deliveryId));
     throw err;
   }
 }
@@ -185,7 +224,7 @@ export async function attemptEmailDelivery(deliveryId: string): Promise<void> {
 export async function markEmailDeliveryFailed(deliveryId: string, reason: string): Promise<boolean> {
   const updated = await authDb
     .update(emailDeliveries)
-    .set({ status: "FAILED", failureReason: reason })
+    .set({ status: "FAILED", failureReason: reason, failedAt: new Date(), claimedUntil: null })
     .where(and(eq(emailDeliveries.id, deliveryId), notInArray(emailDeliveries.status, ["SENT", "DELIVERED"])))
     .returning({ id: emailDeliveries.id });
   return updated.length > 0;
