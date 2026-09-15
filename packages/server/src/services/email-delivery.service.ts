@@ -5,6 +5,7 @@ import { emailDeliveries, type EmailDelivery } from "../db/schema/emailDeliverie
 import { sqsClient } from "../queues/sqs.client";
 import { env } from "../config/env";
 import { logger } from "../utils/logger";
+import { TOKEN_EXPIRY_1H_MS, TOKEN_EXPIRY_24H_MS } from "../config/constants";
 import { describeEmailError, isPermanentEmailError } from "./email-error";
 import {
   sendVerificationEmail,
@@ -40,18 +41,20 @@ export interface DispatchEmailParams {
 }
 
 /**
- * One idempotency key per delivery row, so every retry of the same delivery is
- * the same request to Resend. See SendEmailOptions in email.service.ts.
+ * One idempotency key per delivery row and send epoch, so every retry of the
+ * same delivery is the same request to Resend, and a requeued delivery is a new
+ * one. See SendEmailOptions in email.service.ts.
  */
-export const emailIdempotencyKey = (deliveryId: string) => `email-delivery/${deliveryId}`;
+export const emailIdempotencyKey = (deliveryId: string, sendEpoch = 0) =>
+  sendEpoch > 0 ? `email-delivery/${deliveryId}/${sendEpoch}` : `email-delivery/${deliveryId}`;
 
 const sendEmailByType = (
-  deliveryId: string,
+  idempotencyKey: string,
   type: string,
   email: string,
   payload: Record<string, unknown>,
 ): Promise<void> => {
-  const options = { idempotencyKey: emailIdempotencyKey(deliveryId) };
+  const options = { idempotencyKey };
   switch (type) {
     case "verification":
       return sendVerificationEmail(email, payload.token as string, options);
@@ -117,19 +120,27 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<void> 
 
   if (!row) throw new Error("Failed to create email delivery record");
 
+  await deliverOrEnqueue(row.id, params.type);
+}
+
+/**
+ * Sends a PENDING delivery on its way: enqueued for the email worker when SQS
+ * is configured, otherwise sent inline. Throws only when enqueueing fails.
+ */
+async function deliverOrEnqueue(deliveryId: string, type: string): Promise<void> {
   const queueUrl = env.SQS_QUEUE_URL;
   if (!queueUrl) {
     logger.info(
-      { deliveryId: row.id, type: params.type, event: "email.inline_fallback" },
+      { deliveryId, type, event: "email.inline_fallback" },
       "SQS_QUEUE_URL not configured — sending email inline",
     );
-    // The row was inserted just above, so no lease can be held and the attempt
+    // A freshly dispatched or requeued row holds no lease, so the attempt
     // never defers. A permanent rejection is marked FAILED inside; a retryable
     // one throws, and with no queue message nothing retries it: the row stays
     // PENDING until the outbox sweeper (#162) re-enqueues it.
-    await attemptEmailDelivery(row.id).catch((err) => {
+    await attemptEmailDelivery(deliveryId).catch((err) => {
       logger.error(
-        { err, deliveryId: row.id, type: params.type, event: "email.inline_failed_not_retried" },
+        { err, deliveryId, type, event: "email.inline_failed_not_retried" },
         "Inline email delivery failed — no queue, so it is not retried",
       );
     });
@@ -139,15 +150,15 @@ export async function dispatchEmail(params: DispatchEmailParams): Promise<void> 
   try {
     const command = new SendMessageCommand({
       QueueUrl: queueUrl,
-      MessageBody: JSON.stringify({ deliveryId: row.id }),
+      MessageBody: JSON.stringify({ deliveryId }),
     });
     const response = await sqsClient.send(command);
     logger.info(
-      { messageId: response.MessageId, deliveryId: row.id, type: params.type, event: "sqs.enqueue_success" },
+      { messageId: response.MessageId, deliveryId, type, event: "sqs.enqueue_success" },
       "Enqueued email delivery",
     );
   } catch (error) {
-    logger.error({ error, deliveryId: row.id, event: "sqs.enqueue_failed" }, "Failed to enqueue email delivery");
+    logger.error({ error, deliveryId, event: "sqs.enqueue_failed" }, "Failed to enqueue email delivery");
     throw error;
   }
 }
@@ -221,7 +232,7 @@ export async function attemptEmailDelivery(deliveryId: string): Promise<EmailDel
   }
 
   try {
-    await sendEmailByType(deliveryId, row.emailType, row.recipientEmail, row.payload as Record<string, unknown>);
+    await sendEmailByType(emailIdempotencyKey(deliveryId, row.sendEpoch), row.emailType, row.recipientEmail, row.payload as Record<string, unknown>);
     // Unguarded on purpose: if the DLQ drain marked this row FAILED while the
     // send was in flight, the email still went out, and SENT is the truth.
     await authDb
@@ -267,6 +278,76 @@ export async function markEmailDeliveryFailed(deliveryId: string, reason: string
     .where(and(eq(emailDeliveries.id, deliveryId), notInArray(emailDeliveries.status, ["SENT", "DELIVERED"])))
     .returning({ id: emailDeliveries.id });
   return updated.length > 0;
+}
+
+/**
+ * How long an email's link stays usable, from when the delivery row (and its
+ * token) was created. A FAILED row older than this is not re-sent: it would
+ * deliver a dead link.
+ */
+const LINK_LIFETIME_SECONDS: Partial<Record<EmailType, number>> = {
+  verification: TOKEN_EXPIRY_24H_MS / 1000,
+  invite: TOKEN_EXPIRY_24H_MS / 1000, // admin.service.ts mints invite tokens for 24 hours
+  "reset-password": TOKEN_EXPIRY_1H_MS / 1000,
+};
+
+export interface RequeueFailedEmailDeliveriesParams {
+  type: EmailType;
+  /** Only rows that failed at or after this moment. */
+  failedSince: Date;
+  /** Most rows re-sent by one call, oldest failure first. Call again for the rest. */
+  limit?: number;
+}
+
+const DEFAULT_REQUEUE_LIMIT = 500;
+
+/**
+ * Recovery after a mass failure (a deploy that made the provider reject every
+ * email of one type): puts matching FAILED rows back to PENDING and delivers
+ * them again, the same way dispatchEmail does. Run it after the fix is
+ * deployed; the runbook is docs/runbooks/email-mass-failure.md.
+ *
+ * Skipped: rows whose link has expired (LINK_LIFETIME_SECONDS), and rows
+ * attempted within the claim lease. Each re-send increments send_epoch, so it
+ * goes to the provider under a new idempotency key.
+ */
+export async function requeueFailedEmailDeliveries(
+  params: RequeueFailedEmailDeliveriesParams,
+): Promise<{ requeued: number }> {
+  const lifetime = LINK_LIFETIME_SECONDS[params.type];
+  const limit = params.limit ?? DEFAULT_REQUEUE_LIMIT;
+  // A MATERIALIZED CTE, not UPDATE ... WHERE id IN (SELECT ... LIMIT ... FOR
+  // UPDATE SKIP LOCKED): Postgres can rescan that subquery once per outer row,
+  // and a rescan that re-checks a row this statement already set PENDING skips
+  // it and takes the next one, so the LIMIT stops holding. The CTE runs once.
+  // SKIP LOCKED lets two concurrent recoveries take disjoint rows.
+  const reset = await authDb.execute<{ id: string }>(sql`
+    WITH batch AS MATERIALIZED (
+      SELECT id FROM email_deliveries
+      WHERE status = 'FAILED'
+        AND email_type = ${params.type}
+        AND failed_at >= ${params.failedSince.toISOString()}::timestamptz
+        -- The DLQ drain can mark a row FAILED mid-send; a row attempted within
+        -- the claim lease may still go out, and a re-send under a new
+        -- idempotency key would then deliver twice.
+        AND (last_attempt_at IS NULL OR last_attempt_at < now() - make_interval(secs => ${EMAIL_CLAIM_LEASE_SECONDS}))
+        ${lifetime === undefined ? sql`` : sql`AND created_at > now() - make_interval(secs => ${lifetime})`}
+      ORDER BY failed_at ASC
+      LIMIT ${limit}
+      FOR UPDATE SKIP LOCKED
+    )
+    UPDATE email_deliveries d
+    SET status = 'PENDING', failed_at = NULL, claimed_until = NULL, send_epoch = d.send_epoch + 1
+    FROM batch
+    WHERE d.id = batch.id
+    RETURNING d.id`);
+
+  for (const { id } of reset.rows) {
+    // An enqueue failure is logged (sqs.enqueue_failed) and leaves the row
+    // PENDING, for the outbox sweeper planned in #162 step 3.
+    await deliverOrEnqueue(id, params.type).catch(() => {});
+  }
+  return { requeued: reset.rows.length };
 }
 
 export type { EmailDelivery };

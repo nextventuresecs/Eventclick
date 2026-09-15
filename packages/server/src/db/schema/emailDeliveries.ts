@@ -35,6 +35,9 @@ export const emailDeliveries = pgTable(
     // When the row became FAILED. Ops Console counts recent failures by this,
     // not created_at: a delivery fails only after its retries are exhausted.
     failedAt: timestamp("failed_at", { withTimezone: true }),
+    // Incremented each time a FAILED delivery is requeued, and part of the
+    // provider idempotency key, so a re-send is a new request.
+    sendEpoch: integer("send_epoch").default(0).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
