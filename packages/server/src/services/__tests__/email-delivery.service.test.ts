@@ -298,7 +298,7 @@ describe("email-delivery.service", () => {
 
       expect(mockDeliveryRow.status).toBe("FAILED");
       expect(mockDeliveryRow.failureReason).toBe("Exceeded max receive count");
-      expect(mockDeliveryRow.failedAt).toBeInstanceOf(Date);
+      expect(mockDeliveryRow.failedAt).not.toBeNull();
     });
   });
 });

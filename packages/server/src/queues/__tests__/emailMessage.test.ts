@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { DeleteMessageCommand } from "@aws-sdk/client-sqs";
+import { DeleteMessageCommand, ChangeMessageVisibilityCommand } from "@aws-sdk/client-sqs";
 
 /**
  * The email consumer deletes a message only when the delivery is finished
@@ -14,6 +14,7 @@ vi.mock("../sqs.client", () => ({ sqsClient: { send: (...args: unknown[]) => moc
 vi.mock("../../services/email-delivery.service", () => ({
   attemptEmailDelivery: (...args: unknown[]) => mockAttempt(...args),
   dispatchEmail: vi.fn(),
+  EMAIL_CLAIM_LEASE_SECONDS: 120,
 }));
 vi.mock("../../db", () => ({ db: {} }));
 vi.mock("../../db/backgroundTenantContext", () => ({ runInBackgroundTenantContext: vi.fn() }));
@@ -28,6 +29,8 @@ import { processEmailMessage } from "../worker";
 
 const message = { Body: JSON.stringify({ deliveryId: "delivery-1" }), ReceiptHandle: "rh-1", MessageId: "m-1" };
 const deletes = () => mockSqsSend.mock.calls.filter(([cmd]) => cmd instanceof DeleteMessageCommand);
+const visibilityChanges = () =>
+  mockSqsSend.mock.calls.filter(([cmd]) => cmd instanceof ChangeMessageVisibilityCommand).map(([cmd]) => cmd.input);
 
 describe("processEmailMessage", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -39,10 +42,11 @@ describe("processEmailMessage", () => {
     expect(deletes()).toHaveLength(1);
   });
 
-  it("keeps the message when another consumer holds the delivery", async () => {
+  it("keeps the message, hidden until the lease runs out, when another consumer holds the delivery", async () => {
     mockAttempt.mockResolvedValueOnce("deferred");
     await processEmailMessage(message);
     expect(deletes()).toHaveLength(0);
+    expect(visibilityChanges()).toEqual([expect.objectContaining({ ReceiptHandle: "rh-1", VisibilityTimeout: 120 })]);
   });
 
   it("keeps the message when the send fails", async () => {

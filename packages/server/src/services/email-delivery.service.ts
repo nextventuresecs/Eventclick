@@ -196,6 +196,8 @@ export async function attemptEmailDelivery(deliveryId: string): Promise<EmailDel
 
   try {
     await sendEmailByType(row.emailType, row.recipientEmail, row.payload as Record<string, unknown>);
+    // Unguarded on purpose: if the DLQ drain marked this row FAILED while the
+    // send was in flight, the email still went out, and SENT is the truth.
     await authDb
       .update(emailDeliveries)
       .set({ status: "SENT", claimedUntil: null })
@@ -224,7 +226,9 @@ export async function attemptEmailDelivery(deliveryId: string): Promise<EmailDel
 export async function markEmailDeliveryFailed(deliveryId: string, reason: string): Promise<boolean> {
   const updated = await authDb
     .update(emailDeliveries)
-    .set({ status: "FAILED", failureReason: reason, failedAt: new Date(), claimedUntil: null })
+    // failed_at keeps the first failure: a duplicate DLQ message must not
+    // bring an old failure back into the Ops Console's recent window.
+    .set({ status: "FAILED", failureReason: reason, failedAt: sql`coalesce(${emailDeliveries.failedAt}, now())`, claimedUntil: null })
     .where(and(eq(emailDeliveries.id, deliveryId), notInArray(emailDeliveries.status, ["SENT", "DELIVERED"])))
     .returning({ id: emailDeliveries.id });
   return updated.length > 0;

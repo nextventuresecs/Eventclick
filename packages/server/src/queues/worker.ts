@@ -15,7 +15,7 @@ import { pdfJobs } from "../db/schema";
 import { and, eq } from "drizzle-orm";
 import { notificationService } from "../services/notification.service";
 import { s3, buildPublicUrl } from "../services/storage.service";
-import { dispatchEmail, attemptEmailDelivery } from "../services/email-delivery.service";
+import { dispatchEmail, attemptEmailDelivery, EMAIL_CLAIM_LEASE_SECONDS } from "../services/email-delivery.service";
 import { notifyReportGenerated } from "../services/report-notification.service";
 import { recordAuditSafely } from "../services/audit.service";
 import { sqsClient } from "./sqs.client";
@@ -490,14 +490,34 @@ export async function processEmailMessage(msg: { Body?: string; ReceiptHandle?: 
     }
 
     const outcome = await attemptEmailDelivery(payload.deliveryId);
-    // Another consumer holds the delivery. Keep the message: if that consumer
-    // dies mid-send, this redelivery is what retries it once the lease expires.
-    if (outcome === "deferred") return;
+    if (outcome === "deferred") {
+      // Another consumer holds the delivery. Keep the message: if that consumer
+      // dies mid-send, this message is what retries it. Hide it until the lease
+      // has run out, or it reappears every visibility timeout and each deferral
+      // spends one of the queue's receives before the DLQ.
+      await deferEmailMessage(msg.ReceiptHandle);
+      return;
+    }
     // Only delete on success — a thrown error above leaves the message for
     // SQS to redeliver per the queue's own visibility timeout/redrive policy.
     await deleteEmailMessage(msg.ReceiptHandle);
   } catch (err) {
     logger.error({ err, messageId: msg.MessageId, event: "email_sqs.process_failed" }, "Email delivery attempt failed — leaving message for retry");
+  }
+}
+
+async function deferEmailMessage(receiptHandle: string): Promise<void> {
+  try {
+    await sqsClient.send(
+      new ChangeMessageVisibilityCommand({
+        QueueUrl: env.SQS_QUEUE_URL,
+        ReceiptHandle: receiptHandle,
+        VisibilityTimeout: EMAIL_CLAIM_LEASE_SECONDS,
+      }),
+    );
+  } catch (err) {
+    // The message still reappears after the receive's visibility timeout.
+    logger.error({ err, receiptHandle }, "Failed to defer email SQS message");
   }
 }
 
