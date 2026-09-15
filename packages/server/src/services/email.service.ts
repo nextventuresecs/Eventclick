@@ -7,6 +7,19 @@ import { renderBrandedEmail } from "../utils/email-template";
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 /**
+ * Passed through to Resend as its request options.
+ *
+ * `idempotencyKey`: Resend treats a repeat send with the same key, within 24
+ * hours, as the first one and does not deliver it again. The email-delivery
+ * queue passes one per delivery row, so a retry after the email already went
+ * out (the SENT write failed, or a hung call outlived the claim lease) cannot
+ * reach the recipient twice. A repeat with a different body is rejected with
+ * 409 invalid_idempotent_request, so a retry must render the same email; the
+ * only time-dependent part of the template is the footer year.
+ */
+export type SendEmailOptions = { idempotencyKey?: string };
+
+/**
  * Escapes text destined for an HTML email body.
  *
  * Applied to every interpolated value, not just admin free text. Room titles
@@ -26,6 +39,7 @@ const escapeHtml = (value: string): string =>
 export const sendPasswordResetEmail = async (
   email: string,
   token: string,
+  options?: SendEmailOptions,
 ): Promise<void> => {
   const resetLink = `${env.APP_URL}/reset-password?token=${token}`;
 
@@ -45,7 +59,7 @@ export const sendPasswordResetEmail = async (
         footnote:
           "If you did not request this, you can safely ignore this email — your password will not change.",
       }),
-    });
+    }, options);
 
     if (error) {
       logger.error({ email, error, event: "email.password_reset_failed" }, "Failed to send password reset email");
@@ -67,6 +81,7 @@ export const sendReportReadyEmail = async (
   email: string,
   s3Url: string,
   roomLabel: string,
+  options?: SendEmailOptions,
 ): Promise<void> => {
   const downloadLink = s3Url;
 
@@ -81,7 +96,7 @@ export const sendReportReadyEmail = async (
         cta: { label: "Download report", url: downloadLink },
         footnote: "This link expires in 1 hour.",
       }),
-    });
+    }, options);
 
     if (error) {
       logger.error({ email, roomLabel, error, event: "email.report_ready_failed" }, "Failed to send report ready email");
@@ -102,6 +117,7 @@ export const sendReportReadyEmail = async (
 export const sendVerificationEmail = async (
   email: string,
   token: string,
+  options?: SendEmailOptions,
 ): Promise<void> => {
   const verifyLink = `${env.APP_URL}/verify-email?token=${token}`;
 
@@ -117,7 +133,7 @@ export const sendVerificationEmail = async (
         cta: { label: "Verify email address", url: verifyLink },
         footnote: "If you did not register for an account, you can safely ignore this email.",
       }),
-    });
+    }, options);
 
     if (error) {
       logger.error({ email, error, event: "email.verification_failed" }, "Failed to send verification email");
@@ -139,6 +155,7 @@ export const sendInviteEmail = async (
   email: string,
   token: string,
   orgName: string,
+  options?: SendEmailOptions,
 ): Promise<void> => {
   // Same underlying token/link as sendVerificationEmail — clicking it both
   // verifies the email and logs the invitee in (see verifyEmailToken). If
@@ -160,7 +177,7 @@ export const sendInviteEmail = async (
         cta: { label: "Accept invitation", url: verifyLink },
         footnote: "If you weren't expecting this, you can safely ignore this email.",
       }),
-    });
+    }, options);
 
     if (error) {
       logger.error({ email, orgName, error, event: "email.invite_failed" }, "Failed to send invite email");
@@ -179,6 +196,7 @@ export const sendEventStartedEmail = async (
   email: string,
   roomTitle: string,
   watchUrl: string,
+  options?: SendEmailOptions,
 ): Promise<void> => {
   if (resend) {
     const { error } = await resend.emails.send({
@@ -190,7 +208,7 @@ export const sendEventStartedEmail = async (
         intro: `<strong>${escapeHtml(roomTitle)}</strong> is now live.`,
         cta: { label: "Join the stream", url: watchUrl },
       }),
-    });
+    }, options);
 
     if (error) {
       logger.error({ email, roomTitle, error, event: "email.event_started_failed" }, "Failed to send event-started email");
@@ -210,6 +228,7 @@ export const sendEventEndedEmail = async (
   roomTitle: string,
   recordingUrl?: string,
   summaryUrl?: string,
+  options?: SendEmailOptions,
 ): Promise<void> => {
   // recordingUrl/summaryUrl are omitted, not stubbed, when not yet available
   // (e.g. egress upload still processing at stopLive time) — see
@@ -238,7 +257,7 @@ export const sendEventEndedEmail = async (
         intro: `<strong>${escapeHtml(roomTitle)}</strong> has finished.`,
         bodyHtml: linksFallback,
       }),
-    });
+    }, options);
 
     if (error) {
       logger.error({ email, roomTitle, error, event: "email.event_ended_failed" }, "Failed to send event-ended email");
@@ -259,6 +278,7 @@ export const sendOrgBroadcastEmail = async (
   body: string,
   orgName: string,
   priority: "normal" | "urgent" = "normal",
+  options?: SendEmailOptions,
 ): Promise<void> => {
   const safeTitle = escapeHtml(title);
   // Author-entered newlines are the only formatting a broadcast carries, so
@@ -277,7 +297,7 @@ export const sendOrgBroadcastEmail = async (
         bodyHtml: `<p style="margin:0;">${safeBody}</p>`,
         footnote: `Sent to all members of ${safeOrg} on Eventclick.`,
       }),
-    });
+    }, options);
 
     if (error) {
       logger.error({ email, priority, error, event: "email.org_broadcast_failed" }, "Failed to send org-broadcast email");
@@ -298,6 +318,7 @@ export const sendEventCancelledEmail = async (
   reason: "cancelled" | "expired",
   scheduledStart: string,
   cancellationReason?: string | null,
+  options?: SendEmailOptions,
 ): Promise<void> => {
   const safeTitle = escapeHtml(roomTitle);
   const safeWhen = escapeHtml(scheduledStart);
@@ -325,7 +346,7 @@ export const sendEventCancelledEmail = async (
           : undefined,
         footnote: "No attendance is required. You do not need to do anything.",
       }),
-    });
+    }, options);
 
     if (error) {
       logger.error(
