@@ -174,7 +174,7 @@ describe("Ops Console database grants against a live database", () => {
         "SELECT id, organization_id, status, created_at, deleted_at FROM event_rooms",
         "SELECT id, organization_id, submitted_at, deleted_at FROM attendance_entries",
         "SELECT id, organization_id, severity, component, title, status, created_at FROM bug_reports",
-        "SELECT id, email_type, status, attempts, last_attempt_at, created_at FROM email_deliveries",
+        "SELECT id, email_type, status, attempts, last_attempt_at, created_at, failed_at FROM email_deliveries",
         "SELECT id, organization_id, channel, status, attempts, last_attempt_at, created_at FROM notification_deliveries",
         "SELECT id, status, attempts, max_attempts, error_message, created_at, updated_at FROM pdf_jobs",
         "SELECT * FROM maintainers",

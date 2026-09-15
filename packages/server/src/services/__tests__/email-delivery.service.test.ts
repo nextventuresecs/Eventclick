@@ -23,18 +23,21 @@ vi.mock("../../db", () => ({
         mockUpdateSet(values);
         // The claim update (attemptEmailDelivery's first write) sets
         // `attempts` via a sql`...` expression and chains .returning() —
-        // simulate the real UPDATE...WHERE status='PENDING' atomicity by
-        // only "matching" when the row is currently PENDING.
+        // simulate its WHERE: the row is PENDING and holds no unexpired
+        // lease. The race itself is covered against Postgres in
+        // email-delivery-claim.integration.test.ts.
         const isClaim = Object.prototype.hasOwnProperty.call(values, "attempts");
         if (isClaim) {
           return {
             where: () => ({
               returning: () => {
-                if (!mockDeliveryRow || mockDeliveryRow.status !== "PENDING") {
+                const leased = mockDeliveryRow?.claimedUntil && mockDeliveryRow.claimedUntil > new Date();
+                if (!mockDeliveryRow || mockDeliveryRow.status !== "PENDING" || leased) {
                   return Promise.resolve([]);
                 }
                 mockDeliveryRow.attempts += 1;
                 mockDeliveryRow.lastAttemptAt = values.lastAttemptAt;
+                mockDeliveryRow.claimedUntil = new Date(Date.now() + 120_000);
                 return Promise.resolve([{ ...mockDeliveryRow }]);
               },
             }),
@@ -91,7 +94,9 @@ const freshRow = (overrides: Partial<Record<string, any>> = {}) => ({
   status: "PENDING",
   attempts: 0,
   lastAttemptAt: null,
+  claimedUntil: null,
   failureReason: null,
+  failedAt: null,
   ...overrides,
 });
 
@@ -124,25 +129,29 @@ describe("email-delivery.service", () => {
       expect(mockSendVerificationEmail).not.toHaveBeenCalled();
     });
 
-    // Regression guard: two workers racing on the same PENDING row (e.g. a
-    // second SQS poller) must not both send. The claim is an atomic
-    // UPDATE...WHERE status='PENDING', not read-then-write, so only the
-    // first caller's update matches a row.
-    it("only sends once when two concurrent attempts claim the same PENDING row", async () => {
-      mockDeliveryRow = freshRow();
-      mockSendVerificationEmail.mockImplementation(() => {
-        // Simulate the claim having already flipped status away from PENDING
-        // by the time the "first" attempt's send resolves, as it would once
-        // the winning claim's UPDATE commits before the send call returns.
-        return Promise.resolve(undefined);
-      });
+    it("defers without sending when another consumer holds an unexpired claim", async () => {
+      mockDeliveryRow = freshRow({ claimedUntil: new Date(Date.now() + 60_000) });
 
-      await attemptEmailDelivery("delivery-1");
-      // A second attempt after the first has already moved the row past
-      // PENDING (status is now SENT) must be a no-op, not a second send.
-      await attemptEmailDelivery("delivery-1");
+      expect(await attemptEmailDelivery("delivery-1")).toBe("deferred");
+
+      expect(mockSendVerificationEmail).not.toHaveBeenCalled();
+      expect(mockDeliveryRow.status).toBe("PENDING");
+    });
+
+    it("reclaims a delivery whose claim expired (worker died mid-send)", async () => {
+      mockDeliveryRow = freshRow({ claimedUntil: new Date(Date.now() - 1_000), attempts: 1 });
+
+      expect(await attemptEmailDelivery("delivery-1")).toBe("sent");
 
       expect(mockSendVerificationEmail).toHaveBeenCalledTimes(1);
+      expect(mockDeliveryRow).toMatchObject({ status: "SENT", claimedUntil: null, attempts: 2 });
+    });
+
+    it("skips a delivery that is already terminal", async () => {
+      mockDeliveryRow = freshRow({ status: "FAILED" });
+
+      expect(await attemptEmailDelivery("delivery-1")).toBe("skipped");
+      expect(mockSendVerificationEmail).not.toHaveBeenCalled();
     });
 
     it("does not call the provider again for an already-DELIVERED delivery", async () => {
@@ -159,6 +168,8 @@ describe("email-delivery.service", () => {
 
       await expect(attemptEmailDelivery("delivery-1")).rejects.toThrow("Resend is down");
       expect(mockDeliveryRow.failureReason).toBe("Resend is down");
+      // The claim is released so the redelivered message retries immediately.
+      expect(mockDeliveryRow.claimedUntil).toBeNull();
       // Status is left alone on failure (not flipped to FAILED here) — only
       // the DLQ consumer, after the queue's redrive policy is exhausted,
       // makes that terminal call.
@@ -221,10 +232,10 @@ describe("email-delivery.service", () => {
       expect(mockSendInviteEmail).toHaveBeenCalledTimes(1);
     });
 
-    it("does nothing and does not throw when the delivery row is missing", async () => {
+    it("skips and does not throw when the delivery row is missing", async () => {
       mockDeliveryRow = null;
 
-      await expect(attemptEmailDelivery("ghost-id")).resolves.toBeUndefined();
+      await expect(attemptEmailDelivery("ghost-id")).resolves.toBe("skipped");
       expect(mockSendVerificationEmail).not.toHaveBeenCalled();
     });
   });
@@ -287,6 +298,7 @@ describe("email-delivery.service", () => {
 
       expect(mockDeliveryRow.status).toBe("FAILED");
       expect(mockDeliveryRow.failureReason).toBe("Exceeded max receive count");
+      expect(mockDeliveryRow.failedAt).toBeInstanceOf(Date);
     });
   });
 });

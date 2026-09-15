@@ -27,7 +27,14 @@ export const emailDeliveries = pgTable(
     status: notificationDeliveryStatusEnum("status").default("PENDING").notNull(),
     attempts: integer("attempts").default(0).notNull(),
     lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    // Set by the claim for the length of one send, cleared when it ends. The
+    // status stays PENDING while sending, so without a lease a second consumer
+    // (SQS redelivery, the outbox sweeper) could claim the same row mid-send.
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
     failureReason: text("failure_reason"),
+    // When the row became FAILED. Ops Console counts recent failures by this,
+    // not created_at: a delivery fails only after its retries are exhausted.
+    failedAt: timestamp("failed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

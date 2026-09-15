@@ -478,7 +478,7 @@ export async function startEmailSqsWorker(): Promise<void> {
   }
 }
 
-async function processEmailMessage(msg: { Body?: string; ReceiptHandle?: string; MessageId?: string }): Promise<void> {
+export async function processEmailMessage(msg: { Body?: string; ReceiptHandle?: string; MessageId?: string }): Promise<void> {
   if (!msg.Body || !msg.ReceiptHandle) return;
 
   try {
@@ -489,7 +489,10 @@ async function processEmailMessage(msg: { Body?: string; ReceiptHandle?: string;
       return;
     }
 
-    await attemptEmailDelivery(payload.deliveryId);
+    const outcome = await attemptEmailDelivery(payload.deliveryId);
+    // Another consumer holds the delivery. Keep the message: if that consumer
+    // dies mid-send, this redelivery is what retries it once the lease expires.
+    if (outcome === "deferred") return;
     // Only delete on success — a thrown error above leaves the message for
     // SQS to redeliver per the queue's own visibility timeout/redrive policy.
     await deleteEmailMessage(msg.ReceiptHandle);
