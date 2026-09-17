@@ -2,8 +2,8 @@
  * How long a failed email message stays hidden before SQS delivers it again.
  *
  * Indexed by the receive that just failed: the first failure waits 30s, the
- * fourth and later 15 minutes. With the maxReceiveCount of 8 planned in #162, a
- * message is retried for a little over an hour before it redrives to the DLQ.
+ * fourth and later 15 minutes. With EMAIL_MAX_RECEIVE_COUNT, a message is
+ * retried for a little over an hour before it redrives to the DLQ.
  *
  * This is the failure path only. A message deferred because another consumer
  * holds the delivery is hidden for the claim lease instead
@@ -11,6 +11,12 @@
  * share a number.
  */
 export const EMAIL_RETRY_DELAYS_SECONDS = [30, 120, 300, 900] as const;
+
+/**
+ * The maxReceiveCount of the email queue's redrive policy (set in AWS, #162).
+ * Change both together: the outbox sweeper's wait is derived from it.
+ */
+export const EMAIL_MAX_RECEIVE_COUNT = 8;
 
 /** Up to this fraction is added, so a burst of failures does not retry in lockstep. */
 const JITTER_FRACTION = 0.2;
@@ -26,4 +32,17 @@ export function emailRetryDelaySeconds(receiveCount: string | number | undefined
   const index = Number.isInteger(count) && count >= 1 ? Math.min(count, EMAIL_RETRY_DELAYS_SECONDS.length) - 1 : 0;
   const base = EMAIL_RETRY_DELAYS_SECONDS[index]!;
   return Math.round(base * (1 + JITTER_FRACTION * random()));
+}
+
+/**
+ * The longest a message can spend failing before it redrives to the DLQ: every
+ * receive fails and is hidden for its delay with full jitter. A delivery with
+ * no attempt for longer than this has no message still being retried.
+ */
+export function emailRetryLadderSeconds(): number {
+  let total = 0;
+  for (let receive = 1; receive <= EMAIL_MAX_RECEIVE_COUNT; receive++) {
+    total += emailRetryDelaySeconds(receive, () => 1);
+  }
+  return total;
 }

@@ -16,6 +16,16 @@ export const USER_LEFT_EVENT_DEBOUNCE_MS = 3000;
 // the memory cannot outlive the access it was recorded for.
 export const ACTIVE_ROOM_TTL_SEC = 2 * 60 * 60; // 2 hours
 
+// DLQ drain (queues/dlq-consumer.ts). The email outbox sweeper waits for one
+// drain before it re-sends a row whose message may have reached the DLQ.
+export const DLQ_DRAIN_INTERVAL_MS = 300_000;
+
+// Email outbox sweeper (jobs/emailOutboxSweeper.ts). With the 10-minute grace
+// period in email-delivery.service.ts, a stranded new email is sent on within 15
+// minutes. The lock outlives a normal sweep but not the poll interval.
+export const EMAIL_OUTBOX_SWEEP_POLL_MS = 5 * 60 * 1000;
+export const EMAIL_OUTBOX_SWEEP_LOCK_TTL_SEC = 4 * 60;
+
 // Attendance window notification job (jobs/attendanceWindowNotifier.ts)
 export const ATTENDANCE_WINDOW_CLOSING_LOOKAHEAD_MIN = 5; // warn this many minutes before the post-event grace window closes
 export const ATTENDANCE_WINDOW_NOTIFIER_POLL_MS = 60 * 1000; // 1 minute poll interval

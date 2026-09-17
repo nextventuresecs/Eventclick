@@ -64,13 +64,13 @@ What it does and skips:
 - Skips rows whose link has expired, counted from when the email was created: `verification` and `invite` 24 hours, `reset-password` 1 hour. Those users need a new email: resend-verification, or a new reset request.
 - Skips rows attempted in the last 2 minutes (a send may still be in flight). Run again later for those.
 - Each re-sent row gets a new idempotency key, so Resend treats it as a new request.
-- With `SQS_QUEUE_URL` unset (production today) rows are sent inline, one at a time, with **no retry**: a row Resend rate-limits (`rate_limit_exceeded`) or that hits any other transient error is left `PENDING`, and nothing picks it up until the outbox sweeper (#162 step 3) exists. Keep `limit` small (50) and check step 4 between runs. With the queue on, rows are enqueued for the email worker, which retries with backoff, and `limit: 500` is fine.
+- With `SQS_QUEUE_URL` unset (production today) rows are sent inline, one at a time, with **no retry**: a row Resend rate-limits (`rate_limit_exceeded`) or that hits any other transient error is left `PENDING`. The outbox sweeper sends it again only 1 hour 46 minutes after that attempt (or closes it `FAILED` if its link expires first), so keep `limit` small (50) and check step 4 between runs. With the queue on, rows are enqueued for the email worker, which retries with backoff, and `limit: 500` is fine.
 
 ## 4. Verify
 
 Rerun the step 1 query: the count for that type and reason should drop to the expired and in-flight rows only.
 
-Then look for re-sent rows that did not go out. Inline sending does not retry, so these stay `PENDING`:
+Then look for re-sent rows that did not go out. Inline sending does not retry, so these stay `PENDING` until the outbox sweeper reaches them:
 
 ```bash
 docker exec eventclick_postgres_prod sh -c \
@@ -81,7 +81,7 @@ docker exec eventclick_postgres_prod sh -c \
     GROUP BY 1, 2"'
 ```
 
-Rows here were requeued and then failed transiently. Until the sweeper exists, set them back to `FAILED` with `failed_at = now()` and run step 3 again after a pause:
+Rows here were requeued and then failed transiently. The outbox sweeper sends them again 1 hour 46 minutes after their last attempt; a `reset-password` link has expired by then, so the sweeper closes those `FAILED` instead. To recover sooner, set them back to `FAILED` with `failed_at = now()` and run step 3 again after a pause:
 
 ```bash
 docker exec eventclick_postgres_prod sh -c \
