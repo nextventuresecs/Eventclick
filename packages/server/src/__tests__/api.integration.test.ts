@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
-import { app } from "../index";
+import { app } from "../app";
 
 vi.mock("rate-limit-redis", () => ({
   default: class MockRedisStore {

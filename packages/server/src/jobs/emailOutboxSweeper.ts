@@ -36,7 +36,18 @@ export const pollEmailOutbox = async (): Promise<void> => {
   }
 };
 
+let sweepTimer: NodeJS.Timeout | null = null;
+
 export const startEmailOutboxSweeperJob = (): void => {
+  if (sweepTimer) return;
   void pollEmailOutbox();
-  setInterval(() => void pollEmailOutbox(), EMAIL_OUTBOX_SWEEP_POLL_MS);
+  sweepTimer = setInterval(() => void pollEmailOutbox(), EMAIL_OUTBOX_SWEEP_POLL_MS);
+  sweepTimer.unref();
+};
+
+export const stopEmailOutboxSweeperJob = (): void => {
+  if (sweepTimer) {
+    clearInterval(sweepTimer);
+    sweepTimer = null;
+  }
 };

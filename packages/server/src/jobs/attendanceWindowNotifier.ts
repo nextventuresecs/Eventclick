@@ -313,7 +313,18 @@ export const pollAttendanceWindowNotifications = async (): Promise<void> => {
   ]);
 };
 
+let notifierTimer: NodeJS.Timeout | null = null;
+
 export const startAttendanceWindowNotifierJob = (): void => {
-  pollAttendanceWindowNotifications();
-  setInterval(pollAttendanceWindowNotifications, ATTENDANCE_WINDOW_NOTIFIER_POLL_MS);
+  if (notifierTimer) return;
+  void pollAttendanceWindowNotifications();
+  notifierTimer = setInterval(pollAttendanceWindowNotifications, ATTENDANCE_WINDOW_NOTIFIER_POLL_MS);
+  notifierTimer.unref();
+};
+
+export const stopAttendanceWindowNotifierJob = (): void => {
+  if (notifierTimer) {
+    clearInterval(notifierTimer);
+    notifierTimer = null;
+  }
 };

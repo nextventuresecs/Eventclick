@@ -134,7 +134,18 @@ export const pollEventExpiryNotifications = async (): Promise<void> => {
   }
 };
 
+let expiryTimer: NodeJS.Timeout | null = null;
+
 export const startEventExpiryNotifierJob = (): void => {
-  pollEventExpiryNotifications();
-  setInterval(pollEventExpiryNotifications, EVENT_EXPIRY_NOTIFIER_POLL_MS);
+  if (expiryTimer) return;
+  void pollEventExpiryNotifications();
+  expiryTimer = setInterval(pollEventExpiryNotifications, EVENT_EXPIRY_NOTIFIER_POLL_MS);
+  expiryTimer.unref();
+};
+
+export const stopEventExpiryNotifierJob = (): void => {
+  if (expiryTimer) {
+    clearInterval(expiryTimer);
+    expiryTimer = null;
+  }
 };

@@ -31,9 +31,20 @@ export const cleanupExpiredSessions = async () => {
   }
 };
 
+let sessionCleanupTimer: NodeJS.Timeout | null = null;
+
 export const startSessionCleanupJob = () => {
+  if (sessionCleanupTimer) return;
   // Run on startup
-  cleanupExpiredSessions();
+  void cleanupExpiredSessions();
   // Run every 1 hour
-  setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
+  sessionCleanupTimer = setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
+  sessionCleanupTimer.unref();
+};
+
+export const stopSessionCleanupJob = () => {
+  if (sessionCleanupTimer) {
+    clearInterval(sessionCleanupTimer);
+    sessionCleanupTimer = null;
+  }
 };

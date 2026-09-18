@@ -310,10 +310,26 @@ export const startAuditRetentionJob = (): void => {
       : "Audit retention scheduled",
   );
 
+let auditRetentionTimer: NodeJS.Timeout | null = null;
+let auditRetentionDelayTimer: NodeJS.Timeout | null = null;
+
   // Offset from the data purge rather than racing it at boot: both sweep the
   // same pool, and a restart loop would otherwise start every scan at once.
-  setTimeout(() => {
+  auditRetentionDelayTimer = setTimeout(() => {
     run();
-    setInterval(run, AUDIT_RETENTION_POLL_MS);
-  }, AUDIT_RETENTION_START_DELAY_MS).unref();
+    auditRetentionTimer = setInterval(run, AUDIT_RETENTION_POLL_MS);
+    auditRetentionTimer.unref();
+  }, AUDIT_RETENTION_START_DELAY_MS);
+  auditRetentionDelayTimer.unref();
+};
+
+export const stopAuditRetentionJob = (): void => {
+  if (auditRetentionDelayTimer) {
+    clearTimeout(auditRetentionDelayTimer);
+    auditRetentionDelayTimer = null;
+  }
+  if (auditRetentionTimer) {
+    clearInterval(auditRetentionTimer);
+    auditRetentionTimer = null;
+  }
 };
