@@ -88,7 +88,6 @@ beforeAll(async () => {
 afterAll(async () => {
   env.SQS_QUEUE_URL = QUEUE_URL_FROM_ENV;
   if (available) await authPool.query("DELETE FROM users WHERE id = $1", [USER_ID]);
-  await authPool.end().catch(() => {});
 });
 
 beforeEach(async (ctx) => {

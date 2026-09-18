@@ -70,7 +70,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (available) await authPool.query("DELETE FROM users WHERE id = $1", [USER_ID]);
-  await authPool.end().catch(() => {});
 });
 
 beforeEach(() => {
