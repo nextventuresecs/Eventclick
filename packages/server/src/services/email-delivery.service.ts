@@ -1,5 +1,6 @@
 import { eq, and, or, isNull, lt, notInArray, sql } from "drizzle-orm";
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
+import { z } from "zod";
 import { authDb } from "../db";
 import { emailDeliveries, type EmailDelivery } from "../db/schema/emailDeliveries";
 import { sqsClient } from "../queues/sqs.client";
@@ -29,6 +30,49 @@ export type EmailType =
   | "org-broadcast"
   | "event-cancelled";
 
+export const VerificationPayloadSchema = z.object({
+  token: z.string().min(1),
+});
+
+export const PasswordResetPayloadSchema = z.object({
+  token: z.string().min(1),
+});
+
+export const ReportReadyPayloadSchema = z.object({
+  s3Url: z.string().min(1),
+  roomLabel: z.string().min(1),
+});
+
+export const InvitePayloadSchema = z.object({
+  token: z.string().min(1),
+  orgName: z.string().min(1),
+});
+
+export const EventStartedPayloadSchema = z.object({
+  roomTitle: z.string().min(1),
+  watchUrl: z.string().min(1),
+});
+
+export const EventEndedPayloadSchema = z.object({
+  roomTitle: z.string().min(1),
+  recordingUrl: z.string().optional(),
+  summaryUrl: z.string().optional(),
+});
+
+export const OrgBroadcastPayloadSchema = z.object({
+  title: z.string().min(1),
+  body: z.string().min(1),
+  orgName: z.string().min(1),
+  priority: z.enum(["normal", "urgent"]),
+});
+
+export const EventCancelledPayloadSchema = z.object({
+  roomTitle: z.string().min(1),
+  reason: z.enum(["cancelled", "expired"]),
+  scheduledStart: z.string().min(1),
+  cancellationReason: z.string().nullable().optional(),
+});
+
 export interface DispatchEmailParams {
   userId: string;
   recipientEmail: string;
@@ -57,42 +101,45 @@ const sendEmailByType = (
 ): Promise<void> => {
   const options = { idempotencyKey };
   switch (type) {
-    case "verification":
-      return sendVerificationEmail(email, payload.token as string, options);
-    case "reset-password":
-      return sendPasswordResetEmail(email, payload.token as string, options);
-    case "report-ready":
-      return sendReportReadyEmail(email, payload.s3Url as string, payload.roomLabel as string, options);
-    case "invite":
-      return sendInviteEmail(email, payload.token as string, payload.orgName as string, options);
-    case "event-started":
-      return sendEventStartedEmail(email, payload.roomTitle as string, payload.watchUrl as string, options);
-    case "event-ended":
-      return sendEventEndedEmail(
-        email,
-        payload.roomTitle as string,
-        payload.recordingUrl as string | undefined,
-        payload.summaryUrl as string | undefined,
-        options,
-      );
-    case "org-broadcast":
-      return sendOrgBroadcastEmail(
-        email,
-        payload.title as string,
-        payload.body as string,
-        payload.orgName as string,
-        payload.priority as "normal" | "urgent",
-        options,
-      );
-    case "event-cancelled":
+    case "verification": {
+      const p = VerificationPayloadSchema.parse(payload);
+      return sendVerificationEmail(email, p.token, options);
+    }
+    case "reset-password": {
+      const p = PasswordResetPayloadSchema.parse(payload);
+      return sendPasswordResetEmail(email, p.token, options);
+    }
+    case "report-ready": {
+      const p = ReportReadyPayloadSchema.parse(payload);
+      return sendReportReadyEmail(email, p.s3Url, p.roomLabel, options);
+    }
+    case "invite": {
+      const p = InvitePayloadSchema.parse(payload);
+      return sendInviteEmail(email, p.token, p.orgName, options);
+    }
+    case "event-started": {
+      const p = EventStartedPayloadSchema.parse(payload);
+      return sendEventStartedEmail(email, p.roomTitle, p.watchUrl, options);
+    }
+    case "event-ended": {
+      const p = EventEndedPayloadSchema.parse(payload);
+      return sendEventEndedEmail(email, p.roomTitle, p.recordingUrl, p.summaryUrl, options);
+    }
+    case "org-broadcast": {
+      const p = OrgBroadcastPayloadSchema.parse(payload);
+      return sendOrgBroadcastEmail(email, p.title, p.body, p.orgName, p.priority, options);
+    }
+    case "event-cancelled": {
+      const p = EventCancelledPayloadSchema.parse(payload);
       return sendEventCancelledEmail(
         email,
-        payload.roomTitle as string,
-        payload.reason as "cancelled" | "expired",
-        payload.scheduledStart as string,
-        payload.cancellationReason as string | null | undefined,
+        p.roomTitle,
+        p.reason,
+        p.scheduledStart,
+        p.cancellationReason,
         options,
       );
+    }
     default:
       throw new Error(`Unknown email type: ${type}`);
   }

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { z } from "zod";
 import { describeEmailError, isPermanentEmailError } from "../email-error";
 
 // Shapes as the Resend SDK (6.x) returns them. The senders rethrow these plain
@@ -7,6 +8,15 @@ import { describeEmailError, isPermanentEmailError } from "../email-error";
 const resend = (name: string, statusCode: number | null, message = "m") => ({ name, statusCode, message });
 
 describe("isPermanentEmailError", () => {
+  it("fails fast on ZodError: payload validation failed", () => {
+    const schema = z.object({ token: z.string() });
+    const parsed = schema.safeParse({});
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(isPermanentEmailError(parsed.error)).toBe(true);
+    }
+  });
+
   it.for([
     ["validation_error", 422],
     ["validation_error", 400],
@@ -43,6 +53,15 @@ describe("isPermanentEmailError", () => {
 });
 
 describe("describeEmailError", () => {
+  it("formats ZodError cleanly", () => {
+    const schema = z.object({ token: z.string() });
+    const parsed = schema.safeParse({});
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(describeEmailError(parsed.error)).toContain("Invalid email payload (ZodError): token:");
+    }
+  });
+
   it("keeps the provider's name, status and message", () => {
     expect(describeEmailError(resend("validation_error", 422, "Invalid `to` field."))).toBe(
       "validation_error 422: Invalid `to` field.",

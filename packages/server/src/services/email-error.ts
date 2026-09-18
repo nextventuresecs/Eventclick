@@ -1,3 +1,5 @@
+import { ZodError } from "zod";
+
 /**
  * Reading errors thrown by the email senders in email.service.ts.
  *
@@ -41,12 +43,17 @@ const PERMANENT_NAMES = new Set(["validation_error", "missing_required_field", "
 const PERMANENT_STATUS = new Set([400, 422]);
 
 export function isPermanentEmailError(err: unknown): boolean {
+  if (err instanceof ZodError) return true;
   if (!isProviderError(err)) return false;
   return PERMANENT_NAMES.has(err.name) && err.statusCode !== null && PERMANENT_STATUS.has(err.statusCode);
 }
 
 /** A failure_reason worth reading, whatever was thrown. */
 export function describeEmailError(err: unknown): string {
+  if (err instanceof ZodError) {
+    const issues = err.issues.map((i) => `${i.path.join(".") || "payload"}: ${i.message}`).join("; ");
+    return `Invalid email payload (ZodError): ${issues}`;
+  }
   if (isProviderError(err)) {
     const status = err.statusCode === null ? "" : ` ${err.statusCode}`;
     return `${err.name}${status}: ${err.message}`;

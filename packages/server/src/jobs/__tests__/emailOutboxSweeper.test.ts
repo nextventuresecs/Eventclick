@@ -5,6 +5,16 @@ const { sweep, redis } = vi.hoisted(() => ({
   redis: { isOpen: true, set: vi.fn(), del: vi.fn() },
 }));
 
+vi.mock("../../config/env", () => ({
+  env: {
+    EMAIL_MAX_RECEIVE_COUNT: 8,
+  },
+}));
+
+vi.mock("../../utils/logger", () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
 vi.mock("../../services/email-delivery.service", () => ({ sweepPendingEmailDeliveries: sweep }));
 vi.mock("../../config/redis", () => ({ redisClient: redis }));
 

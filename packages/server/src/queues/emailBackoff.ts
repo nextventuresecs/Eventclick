@@ -13,10 +13,10 @@
 export const EMAIL_RETRY_DELAYS_SECONDS = [30, 120, 300, 900] as const;
 
 /**
- * The maxReceiveCount of the email queue's redrive policy (set in AWS, #162).
+ * The maxReceiveCount of the email queue's redrive policy (set in AWS / env, #162).
  * Change both together: the outbox sweeper's wait is derived from it.
  */
-export const EMAIL_MAX_RECEIVE_COUNT = 8;
+export const EMAIL_MAX_RECEIVE_COUNT = Number(process.env.EMAIL_MAX_RECEIVE_COUNT) || 8;
 
 /** Up to this fraction is added, so a burst of failures does not retry in lockstep. */
 const JITTER_FRACTION = 0.2;

@@ -236,6 +236,17 @@ describe("email-delivery.service", () => {
       expect(mockDeliveryRow.failedAt).not.toBeNull();
     });
 
+    it("marks an unvalidated payload with a missing property FAILED at once (Zod validation fail)", async () => {
+      mockDeliveryRow = freshRow({ payload: {} });
+
+      expect(await attemptEmailDelivery("delivery-1")).toBe("failed");
+
+      expect(mockSendVerificationEmail).not.toHaveBeenCalled();
+      expect(mockDeliveryRow.status).toBe("FAILED");
+      expect(mockDeliveryRow.failureReason).toContain("Invalid email payload (ZodError): token:");
+      expect(mockDeliveryRow.failedAt).not.toBeNull();
+    });
+
     it("retries an invalid API key rather than failing every email for good", async () => {
       mockDeliveryRow = freshRow();
       mockSendVerificationEmail.mockRejectedValueOnce({ name: "validation_error", statusCode: 401, message: "API key is invalid" });
