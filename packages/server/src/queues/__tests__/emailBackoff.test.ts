@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { emailRetryDelaySeconds } from "../emailBackoff";
+import { emailRetryDelaySeconds, emailRetryLadderSeconds } from "../emailBackoff";
 
 const noJitter = () => 0;
 
@@ -33,5 +33,15 @@ describe("emailRetryDelaySeconds", () => {
 
   it("stays far below the SQS visibility limit of 12 hours", () => {
     expect(emailRetryDelaySeconds("1000", () => 0.999999)).toBeLessThanOrEqual(43_200);
+  });
+});
+
+describe("emailRetryLadderSeconds", () => {
+  // The outbox sweeper waits this long after a delivery's last attempt, so it
+  // never starts a second message while the first is still being retried.
+  // 8 receives, each failure hidden for its delay with full jitter:
+  // (30 + 120 + 300 + 900 * 5) * 1.2.
+  it("is the longest a message can spend failing before it redrives to the DLQ", () => {
+    expect(emailRetryLadderSeconds()).toBe(5940);
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AsyncLocalStorage } from "async_hooks";
 import request from "supertest";
-import { app } from "../index";
+import { app } from "../app";
 import { verifyAccessToken } from "../services/jwt.service";
 import { recordAudit } from "../services/audit.service";
 import { deleteUserAccount } from "../services/admin.service";

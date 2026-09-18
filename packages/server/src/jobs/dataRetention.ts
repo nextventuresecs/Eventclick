@@ -272,5 +272,15 @@ export const startDataRetentionJob = (): void => {
   );
 
   run();
-  setInterval(run, DATA_RETENTION_POLL_MS);
+  dataRetentionTimer = setInterval(run, DATA_RETENTION_POLL_MS);
+  dataRetentionTimer.unref();
+};
+
+let dataRetentionTimer: NodeJS.Timeout | null = null;
+
+export const stopDataRetentionJob = (): void => {
+  if (dataRetentionTimer) {
+    clearInterval(dataRetentionTimer);
+    dataRetentionTimer = null;
+  }
 };

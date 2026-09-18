@@ -7,6 +7,7 @@ import { runInBackgroundTenantContext } from "../db/backgroundTenantContext";
 import { pdfJobs } from "../db/schema";
 import { markEmailDeliveryFailed } from "../services/email-delivery.service";
 import { notificationService } from "../services/notification.service";
+import { DLQ_DRAIN_INTERVAL_MS } from "../config/constants";
 import { sqsClient } from "./sqs.client";
 
 /**
@@ -25,7 +26,6 @@ const MAX_MESSAGES = 10;
 const WAIT_TIME_SECONDS = 20;
 const VISIBILITY_TIMEOUT_SECONDS = 60;
 const RAW_BODY_LOG_LIMIT = 2_000;
-export const DLQ_DRAIN_INTERVAL_MS = 300_000;
 
 const DLQ_FAILURE_MESSAGE = "Moved to the dead-letter queue after exceeding the queue's max receive count";
 
