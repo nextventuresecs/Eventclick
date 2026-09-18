@@ -38,7 +38,7 @@ const failedDelivery = async (type: string, createdAgo: string, failedAgo = crea
     await authPool.query<{ id: string }>(
       `INSERT INTO email_deliveries
          (user_id, recipient_email, email_type, payload, status, attempts, created_at, last_attempt_at, failed_at, failure_reason)
-       VALUES ($1, 'requeue@test.local', $2, '{"token":"t","title":"T","body":"B","orgName":"O"}', 'FAILED', 1,
+       VALUES ($1, 'requeue@test.local', $2, '{"token":"t","title":"T","body":"B","orgName":"O","priority":"normal","s3Url":"s","roomLabel":"r","roomTitle":"R","watchUrl":"w","scheduledStart":"s"}', 'FAILED', 1,
                now() - $3::interval, now() - $4::interval, now() - $4::interval, 'validation_error 422: bad template')
        RETURNING id`,
       [USER_ID, type, createdAgo, failedAgo],
