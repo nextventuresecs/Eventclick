@@ -9,6 +9,7 @@ import {
   hasRolePermission,
   ActivityPhotoUploadRequestSchema,
   SubmitActivityPhotoSchema,
+  PdfJobStatusParamsSchema,
 } from "@application/shared";
 import { requireAuth } from "../middleware/requireAuth";
 import { requirePermission } from "../middleware/requirePermission";
@@ -111,7 +112,7 @@ roomRouter.post(
 );
 roomRouter.get("/:id/attendance", canViewAttendance, listRoomAttendance);
 roomRouter.get("/:id/report/pdf", requirePermission("view_reports"), downloadRoomReportPdf);
-roomRouter.get("/:id/report/status/:jobId", requirePermission("view_reports"), getPdfJobStatus);
+roomRouter.get("/:id/report/status/:jobId", requirePermission("view_reports"), validate(PdfJobStatusParamsSchema, "params"), getPdfJobStatus);
 
 roomRouter.get("/:id/activities", canTakeAttendance, getActivitiesAndSubmissions);
 roomRouter.post(

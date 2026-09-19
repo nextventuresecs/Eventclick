@@ -1,4 +1,4 @@
-import type { AuthUser, UpdateProfileInput, ChangePasswordInput, SetPasswordInput, UpdateOrganizationInput, UpdatePreferencesInput, SubmitFeedbackInput, SubmitBugReportInput, SavePushSubscriptionInput } from "@application/shared";
+import type { AuthUser, UpdateProfileInput, ChangePasswordInput, SetPasswordInput, UpdateOrganizationInput, UpdatePreferencesInput, SubmitFeedbackInput, SubmitBugReportInput, SavePushSubscriptionInput, SubmitContactRequestInput } from "@application/shared";
 import { ORG_USER_MAX_PAGE_SIZE } from "@application/shared";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
@@ -381,6 +381,11 @@ export const adminApi = {
     const query = search.toString();
     return api.get<AuditLogPage>(`/admin/audit-logs${query ? `?${query}` : ""}`);
   },
+};
+
+export const contactApi = {
+  submit: (body: SubmitContactRequestInput) =>
+    api.post<{ status: string }>("/contact", body),
 };
 
 export const uploadToPresignedUrl = async (

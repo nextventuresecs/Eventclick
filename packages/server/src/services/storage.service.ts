@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectsCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
@@ -149,6 +149,97 @@ export const createPresignedGet = async (
     Key: key,
   });
   return await getSignedUrl(s3, cmd, { expiresIn });
+};
+
+export interface VerifyStorageObjectOptions {
+  expectedPrefix: string;
+  allowedContentTypes?: RegExp;
+  maxBytes?: number;
+}
+
+/**
+ * Verifies that an object exists in storage, belongs to the expected resource prefix,
+ * and contains valid non-empty data within configured limits before database persistence.
+ */
+export const verifyStorageObject = async (
+  key: string,
+  options: VerifyStorageObjectOptions,
+): Promise<{ contentLength: number; contentType: string }> => {
+  if (!key || typeof key !== "string") {
+    throw ApiError.badRequest("Storage key must be a non-empty string");
+  }
+
+  // Security: Prevent path traversal and enforce exact prefix
+  if (key.includes("..") || key.startsWith("/") || key.startsWith("\\")) {
+    throw ApiError.badRequest("Invalid storage key path");
+  }
+
+  if (!key.startsWith(options.expectedPrefix)) {
+    throw ApiError.badRequest(
+      "Invalid storage key: does not match expected prefix for this resource",
+    );
+  }
+
+  const maxBytes = options.maxBytes ?? MAX_UPLOAD_BYTES;
+  const allowedTypes = options.allowedContentTypes ?? /^image\/(jpeg|png|webp)$/;
+
+  try {
+    const head = await s3.send(
+      new HeadObjectCommand({
+        Bucket: env.S3_BUCKET,
+        Key: key,
+      }),
+      {
+        abortSignal: AbortSignal.timeout(5000),
+      },
+    );
+
+    const contentLength = head.ContentLength ?? 0;
+    if (contentLength <= 0) {
+      throw ApiError.badRequest("Uploaded storage object is empty (0 bytes)");
+    }
+
+    if (contentLength > maxBytes) {
+      throw ApiError.badRequest(
+        `Uploaded storage object (${Math.round(contentLength / 1024)}KB) exceeds the limit of ${Math.round(maxBytes / 1024)}KB`,
+      );
+    }
+
+    const contentType = head.ContentType ?? "";
+    if (!allowedTypes.test(contentType)) {
+      throw ApiError.badRequest(
+        `Invalid storage object type "${contentType}". Must be image/jpeg, image/png, or image/webp`,
+      );
+    }
+
+    return { contentLength, contentType };
+  } catch (err: unknown) {
+    if (err instanceof ApiError) throw err;
+
+    const errorObj = err && typeof err === "object" ? (err as Record<string, unknown>) : {};
+    const metadata = errorObj.$metadata && typeof errorObj.$metadata === "object"
+      ? (errorObj.$metadata as Record<string, unknown>)
+      : {};
+    const statusCode = metadata.httpStatusCode;
+    const errName = typeof errorObj.name === "string" ? errorObj.name : "";
+
+    if (statusCode === 404 || errName === "NotFound" || errName === "NoSuchKey") {
+      throw ApiError.badRequest("Photo proof does not exist in storage. Please upload the photo first.");
+    }
+
+    if (statusCode === 403 || errName === "AccessDenied") {
+      logger.error({ err, key, bucket: env.S3_BUCKET }, "[storage] Access denied checking S3 object");
+      throw ApiError.internal("Storage service access error");
+    }
+
+    if (errName === "TimeoutError" || errName === "AbortError") {
+      logger.warn({ err, key }, "[storage] HeadObject timed out");
+      throw ApiError.gatewayTimeout("Storage verification timed out. Please try again.");
+    }
+
+    logger.error({ err, key }, "[storage] Unexpected error verifying S3 object");
+    throw ApiError.internal("Failed to verify photo proof in storage");
+  }
 };
 
 /**

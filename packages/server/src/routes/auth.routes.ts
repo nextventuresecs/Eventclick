@@ -10,6 +10,8 @@ import {
   UpdateProfileSchema,
   ChangePasswordSchema,
   SetPasswordSchema,
+  VerifyEmailSchema,
+  ResendVerificationSchema,
 } from "@application/shared";
 import { env } from "../config/env";
 import { createFailClosedStore } from "../middleware/rateLimitStore";
@@ -98,5 +100,5 @@ authRouter.post("/forgot-password", recoveryLimiter, validate(ForgotPasswordSche
 authRouter.post("/reset-password", recoveryLimiter, validate(ResetPasswordSchema), authController.reset);
 authRouter.post("/onboarding", requireAuth, validate(OnboardingSchema), authController.onboard);
 
-authRouter.post("/verify-email", recoveryLimiter, authController.verifyEmail);
-authRouter.post("/resend-verification", recoveryLimiter, authController.resendVerification);
+authRouter.post("/verify-email", recoveryLimiter, validate(VerifyEmailSchema), authController.verifyEmail);
+authRouter.post("/resend-verification", recoveryLimiter, validate(ResendVerificationSchema), authController.resendVerification);

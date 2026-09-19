@@ -1,20 +1,24 @@
 import type { RequestHandler } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import { PdfJobStatusParamsSchema } from "@application/shared";
 import { db } from "../db";
 import { pdfJobs } from "../db/schema";
 import { ApiError } from "../utils/errors";
 
 export const getPdfJobStatus: RequestHandler = async (req, res, next) => {
   try {
-    const jobId = req.params.jobId as string;
-    if (!jobId) {
-      throw ApiError.badRequest("jobId is required");
+    const { id: roomId, jobId } = PdfJobStatusParamsSchema.parse(req.params);
+
+    const orgId = req.user?.organizationId;
+    const conditions = [eq(pdfJobs.jobId, jobId), eq(pdfJobs.roomId, roomId)];
+    if (orgId) {
+      conditions.push(eq(pdfJobs.orgId, orgId));
     }
 
     const [job] = await db
       .select()
       .from(pdfJobs)
-      .where(eq(pdfJobs.jobId, jobId))
+      .where(and(...conditions))
       .limit(1);
 
     if (!job) {

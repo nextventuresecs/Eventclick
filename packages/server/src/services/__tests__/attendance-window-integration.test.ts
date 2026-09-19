@@ -20,6 +20,12 @@ vi.mock("../event-assignment.service", () => ({
   assertRoomAccessWithRoom: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock storage service
+vi.mock("../storage.service", () => ({
+  buildPublicUrl: vi.fn((key: string) => `https://s3.example.com/${key}`),
+  verifyStorageObject: vi.fn().mockResolvedValue({ contentLength: 1024, contentType: "image/jpeg" }),
+}));
+
 // Mock db
 vi.mock("../../db", () => {
   let lastTable: any = null;
@@ -54,6 +60,7 @@ vi.mock("../../db", () => {
 
 // Import service after mocking
 import { submitAttendance } from "../attendance.service";
+import { verifyStorageObject } from "../storage.service";
 
 describe("submitAttendance - Time-Window Integration", () => {
   const roomId = "room-123";
@@ -293,5 +300,62 @@ describe("submitAttendance - Time-Window Integration", () => {
     expect(result.id).toBe("entry-123");
 
     vi.useRealTimers();
+  });
+
+  it("verifies photo proof in storage when photoKey is provided (DEF-004)", async () => {
+    mockSelectRoomResult = [
+      {
+        id: roomId,
+        status: "live",
+        scheduledStart: new Date(),
+        scheduledEnd: new Date(Date.now() + 3600000),
+        actualStart: new Date(),
+        actualEnd: null,
+      },
+    ];
+
+    const ctxWithPhoto = {
+      ...standardCtx,
+      input: {
+        ...standardCtx.input,
+        photoKey: "attendance/room-123/proof-1.jpg",
+      },
+    };
+
+    const result = await submitAttendance(ctxWithPhoto);
+    expect(result).toBeDefined();
+    expect(verifyStorageObject).toHaveBeenCalledWith("attendance/room-123/proof-1.jpg", {
+      expectedPrefix: "attendance/room-123/",
+    });
+  });
+
+  it("rejects submission when photoKey storage verification fails (DEF-004)", async () => {
+    mockSelectRoomResult = [
+      {
+        id: roomId,
+        status: "live",
+        scheduledStart: new Date(),
+        scheduledEnd: new Date(Date.now() + 3600000),
+        actualStart: new Date(),
+        actualEnd: null,
+      },
+    ];
+
+    vi.mocked(verifyStorageObject).mockRejectedValueOnce(
+      ApiError.badRequest("Photo proof does not exist in storage. Please upload the photo first."),
+    );
+
+    const ctxWithPhoto = {
+      ...standardCtx,
+      input: {
+        ...standardCtx.input,
+        photoKey: "attendance/room-123/non-existent.jpg",
+      },
+    };
+
+    await expect(submitAttendance(ctxWithPhoto)).rejects.toMatchObject({
+      statusCode: 400,
+      message: expect.stringContaining("Photo proof does not exist in storage"),
+    });
   });
 });

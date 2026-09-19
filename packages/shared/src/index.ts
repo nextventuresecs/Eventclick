@@ -125,6 +125,16 @@ export const OnboardingSchema = z.object({
 });
 export type OnboardingInput = z.infer<typeof OnboardingSchema>;
 
+export const VerifyEmailSchema = z.object({
+  token: z.string().min(1, "Verification token is required"),
+});
+export type VerifyEmailInput = z.infer<typeof VerifyEmailSchema>;
+
+export const ResendVerificationSchema = z.object({
+  email: z.string().email("Invalid email address").toLowerCase(),
+});
+export type ResendVerificationInput = z.infer<typeof ResendVerificationSchema>;
+
 export const ImageUrlSchema = z
   .string()
   .max(1000, "Image URL is too long — upload the file instead of pasting a data URL")
@@ -487,7 +497,7 @@ export const SubmitActivityPhotoSchema = z.object({
   photoKey: z.string().min(1).max(256),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
-  idempotencyKey: z.string().max(100).optional(),
+  idempotencyKey: z.string().max(128).optional(),
 });
 export type SubmitActivityPhotoInput = z.infer<
   typeof SubmitActivityPhotoSchema
@@ -566,16 +576,21 @@ export const CANCELLATION_REASONS = [
 ] as const;
 export type CancellationReason = typeof CANCELLATION_REASONS[number];
 
-export const UpdateRoomSchema = CreateRoomBase.partial().extend({
-  status: RoomStatusSchema.optional(),
-  cancellationReason: z.string().max(500).optional(),
-});
+export const UpdateRoomSchema = CreateRoomBase.partial()
+  .extend({
+    status: RoomStatusSchema.optional(),
+    cancellationReason: z.string().max(500).optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.scheduledStart && data.scheduledEnd) {
+        return new Date(data.scheduledEnd) > new Date(data.scheduledStart);
+      }
+      return true;
+    },
+    { message: "Scheduled end must be after scheduled start", path: ["scheduledEnd"] }
+  );
 export type UpdateRoomInput = z.infer<typeof UpdateRoomSchema>;
-
-export const UpdateRoomStatusSchema = z.object({
-  status: RoomStatusSchema,
-});
-export type UpdateRoomStatusInput = z.infer<typeof UpdateRoomStatusSchema>;
 
 export interface EventRoom {
   id: string;
@@ -647,7 +662,7 @@ export type UpdateEventAdminAssignmentInput = z.infer<
 
 // ── Admin user management ──────────────────────────────────────────────────
 export const CreateOrgUserSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().toLowerCase(),
   fullName: z.string().min(1).max(120),
   // Optional: when omitted, the invited user has no usable password and
   // must set one via the USER_INVITED magic-link flow (verify-email ->
@@ -658,15 +673,15 @@ export const CreateOrgUserSchema = z.object({
 export type CreateOrgUserInput = z.infer<typeof CreateOrgUserSchema>;
 
 export const DeleteUserSchema = z.object({
-  confirmEmail: z.string().email(),
+  confirmEmail: z.string().email().toLowerCase(),
 });
 export type DeleteUserInput = z.infer<typeof DeleteUserSchema>;
 
-export const UpdateUserProfileSchema = z.object({
-  fullName: z.string().min(1).max(120).optional(),
-  photoUrl: z.string().url().max(500).nullable().optional(),
-});
-export type UpdateUserProfileInput = z.infer<typeof UpdateUserProfileSchema>;
+/**
+ * @deprecated Use UpdateProfileSchema instead. Preserved as an alias for backwards compatibility.
+ */
+export const UpdateUserProfileSchema = UpdateProfileSchema;
+export type UpdateUserProfileInput = UpdateProfileInput;
 
 
 
@@ -769,11 +784,22 @@ export const SubmitAttendanceSchema = z.object({
   formDefinitionId: z.uuid(),
   data: z.record(z.string().min(1).max(64), ATTENDANCE_VALUE),
   photoKey: z.string().min(1).max(200).optional(),
-  idempotencyKey: z.string().max(100).optional(),
+  idempotencyKey: z.string().max(128).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
 });
 export type SubmitAttendanceInput = z.infer<typeof SubmitAttendanceSchema>;
+
+export const PdfJobStatusParamsSchema = z.object({
+  id: z.string().uuid("Invalid room ID"),
+  jobId: z
+    .string()
+    .regex(
+      /^(pdf_)?[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      "Invalid jobId: must be a valid UUID or pdf_<uuid>"
+    ),
+});
+export type PdfJobStatusParamsInput = z.infer<typeof PdfJobStatusParamsSchema>;
 
 export interface AttendanceEntry {
   id: string;

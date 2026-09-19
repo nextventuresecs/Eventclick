@@ -554,41 +554,55 @@ export const ActivityTrackerPanel: React.FC<ActivityTrackerPanelProps> = ({
       setUploadProgress("Compressing image…");
       const compressedBlob = await compressImage(file);
 
-      setUploadProgress("Getting S3 ticket…");
-      const ticket = await activitiesApi.presignPhoto(roomId, {
-        activityId: selectedActivityId,
-        contentType: "image/jpeg",
-        sizeBytes: compressedBlob.size,
-      });
-
-      setUploadProgress("Uploading photo…");
-      await uploadToPresignedUrl(ticket.uploadUrl, compressedBlob);
-
-      setUploadProgress("Saving proof…");
-      
       if (isOnline) {
+        setUploadProgress("Getting S3 ticket…");
+        const ticket = await activitiesApi.presignPhoto(roomId, {
+          activityId: selectedActivityId,
+          contentType: "image/jpeg",
+          sizeBytes: compressedBlob.size,
+        });
+
+        setUploadProgress("Uploading photo…");
+        await uploadToPresignedUrl(ticket.uploadUrl, compressedBlob);
+
+        const randomSuffix =
+          typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : Math.random().toString(36).slice(2, 10);
+        const idempotencyKey = `act_${roomId}_${Date.now()}_${randomSuffix}`;
+
+        setUploadProgress("Saving proof…");
         await activitiesApi.submitPhoto(roomId, {
           activityId: selectedActivityId,
           photoKey: ticket.key,
           latitude: latitude ?? undefined,
           longitude: longitude ?? undefined,
+          idempotencyKey,
         });
+        setSuccess("Photo proof successfully saved!");
+        await onRefresh();
       } else {
+        const randomSuffix =
+          typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : Math.random().toString(36).slice(2, 10);
+        const idempotencyKey = `act_${roomId}_${Date.now()}_${randomSuffix}`;
+
+        setUploadProgress("Saving proof offline…");
         if (user?.id) {
           await db.activities.add({
             roomId,
             activityId: selectedActivityId,
-            photoKey: ticket.key,
+            photoBlob: compressedBlob,
             latitude: latitude ?? undefined,
             longitude: longitude ?? undefined,
+            idempotencyKey,
             synced: false,
             createdAt: Date.now(),
           });
         }
+        setSuccess("Photo proof saved offline; will sync when reconnected.");
       }
-
-      setSuccess("Photo proof successfully saved!");
-      await onRefresh();
     } catch (err) {
       // Error already surfaced via setError below
       setError(err instanceof ApiClientError ? err.message : "Upload failed. Try again.");
