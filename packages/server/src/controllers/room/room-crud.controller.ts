@@ -183,6 +183,35 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
     const input = req.body as UpdateRoomInput;
     await assertRoomAccessWithRoom(req.user!, orgId, id);
 
+    // Read before writing so the schedule can be validated against existing values
+    // and the audit entry can carry both sides.
+    const [before] = await db
+      .select({
+        title: eventRooms.title,
+        status: eventRooms.status,
+        scheduledStart: eventRooms.scheduledStart,
+        scheduledEnd: eventRooms.scheduledEnd,
+        cancellationReason: eventRooms.cancellationReason,
+      })
+      .from(eventRooms)
+      .where(and(eq(eventRooms.id, id), eq(eventRooms.organizationId, orgId), isNull(eventRooms.deletedAt)))
+      .limit(1);
+
+    if (!before) throw ApiError.notFound("Room not found");
+
+    if (input.scheduledStart !== undefined || input.scheduledEnd !== undefined) {
+      const effectiveStart = input.scheduledStart !== undefined
+        ? new Date(input.scheduledStart)
+        : new Date(before.scheduledStart);
+      const effectiveEnd = input.scheduledEnd !== undefined
+        ? new Date(input.scheduledEnd)
+        : new Date(before.scheduledEnd);
+
+      if (effectiveStart && effectiveEnd && effectiveEnd.getTime() <= effectiveStart.getTime()) {
+        throw ApiError.badRequest("Scheduled end must be after scheduled start");
+      }
+    }
+
     const patch: Partial<typeof eventRooms.$inferInsert> = { updatedAt: new Date() };
     if (input.title !== undefined) patch.title = input.title;
     if (input.description !== undefined) patch.description = input.description;
@@ -204,21 +233,6 @@ export const updateRoom: RequestHandler = async (req, res, next) => {
     if (input.cancellationReason !== undefined) {
       patch.cancellationReason = input.cancellationReason;
     }
-
-    // Read before writing so the audit entry can carry both sides. One extra
-    // scoped SELECT on an admin-rate path, which is the cost of "what did it
-    // used to say" being answerable at all.
-    const [before] = await db
-      .select({
-        title: eventRooms.title,
-        status: eventRooms.status,
-        scheduledStart: eventRooms.scheduledStart,
-        scheduledEnd: eventRooms.scheduledEnd,
-        cancellationReason: eventRooms.cancellationReason,
-      })
-      .from(eventRooms)
-      .where(and(eq(eventRooms.id, id), eq(eventRooms.organizationId, orgId), isNull(eventRooms.deletedAt)))
-      .limit(1);
 
     const [row] = await db
       .update(eventRooms)

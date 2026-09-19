@@ -3,6 +3,15 @@ import {
   RegisterSchema,
   LoginSchema,
   CreateRoomSchema,
+  UpdateRoomSchema,
+  VerifyEmailSchema,
+  ResendVerificationSchema,
+  CreateOrgUserSchema,
+  DeleteUserSchema,
+  UpdateUserProfileSchema,
+  UpdateProfileSchema,
+  PdfJobStatusParamsSchema,
+  SubmitAttendanceSchema,
   FormFieldSchema,
   UserRoleSchema,
   RoomStatusSchema,
@@ -87,6 +96,170 @@ describe("Zod schema validation", () => {
         scheduledStart: "2026-07-17T12:00:00Z",
         scheduledEnd: "2026-07-17T09:00:00Z",
         activityDefinitions: [],
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("UpdateRoomSchema (DEF-007)", () => {
+    it("accepts when both dates provided and scheduledEnd > scheduledStart", () => {
+      const result = UpdateRoomSchema.safeParse({
+        scheduledStart: "2026-07-17T09:00:00Z",
+        scheduledEnd: "2026-07-17T12:00:00Z",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects when both dates provided and scheduledEnd <= scheduledStart", () => {
+      const result = UpdateRoomSchema.safeParse({
+        scheduledStart: "2026-07-17T12:00:00Z",
+        scheduledEnd: "2026-07-17T09:00:00Z",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toContain("Scheduled end must be after scheduled start");
+      }
+    });
+
+    it("rejects when both dates provided and scheduledEnd === scheduledStart", () => {
+      const result = UpdateRoomSchema.safeParse({
+        scheduledStart: "2026-07-17T09:00:00Z",
+        scheduledEnd: "2026-07-17T09:00:00Z",
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("accepts partial update when only scheduledStart is provided", () => {
+      const result = UpdateRoomSchema.safeParse({
+        scheduledStart: "2026-07-17T09:00:00Z",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts partial update when only scheduledEnd is provided", () => {
+      const result = UpdateRoomSchema.safeParse({
+        scheduledEnd: "2026-07-17T12:00:00Z",
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("VerifyEmailSchema & ResendVerificationSchema (DEF-013)", () => {
+    it("VerifyEmailSchema accepts non-empty token", () => {
+      const result = VerifyEmailSchema.safeParse({ token: "tok-valid-123" });
+      expect(result.success).toBe(true);
+    });
+
+    it("VerifyEmailSchema rejects empty token", () => {
+      const result = VerifyEmailSchema.safeParse({ token: "" });
+      expect(result.success).toBe(false);
+    });
+
+    it("ResendVerificationSchema accepts email and normalizes to lowercase", () => {
+      const result = ResendVerificationSchema.safeParse({ email: "User.Name@Example.COM" });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.email).toBe("user.name@example.com");
+      }
+    });
+
+    it("ResendVerificationSchema rejects invalid email format", () => {
+      const result = ResendVerificationSchema.safeParse({ email: "not-an-email" });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("CreateOrgUserSchema & DeleteUserSchema normalization (DEF-019)", () => {
+    it("CreateOrgUserSchema normalizes email to lowercase", () => {
+      const result = CreateOrgUserSchema.safeParse({
+        email: "Volunteer.Lead@OrgDomain.ORG",
+        fullName: "Jane Volunteer",
+        role: "volunteer",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.email).toBe("volunteer.lead@orgdomain.org");
+      }
+    });
+
+    it("DeleteUserSchema normalizes confirmEmail to lowercase", () => {
+      const result = DeleteUserSchema.safeParse({
+        confirmEmail: "ADMIN.USER@DOMAIN.COM",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.confirmEmail).toBe("admin.user@domain.com");
+      }
+    });
+  });
+
+  describe("UpdateUserProfileSchema alias (DEF-017)", () => {
+    it("is identical to UpdateProfileSchema", () => {
+      expect(UpdateUserProfileSchema).toBe(UpdateProfileSchema);
+      const result = UpdateUserProfileSchema.safeParse({
+        fullName: "Updated Name",
+        photoUrl: "https://cdn.example.com/photo.jpg",
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe("PdfJobStatusParamsSchema (DEF-024)", () => {
+    const validRoomId = "123e4567-e89b-12d3-a456-426614174000";
+    const validJobUuid = "987fcdeb-51a2-43d7-9876-543210987654";
+
+    it("accepts pure UUID jobId", () => {
+      const result = PdfJobStatusParamsSchema.safeParse({
+        id: validRoomId,
+        jobId: validJobUuid,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts pdf_<uuid> prefixed jobId", () => {
+      const result = PdfJobStatusParamsSchema.safeParse({
+        id: validRoomId,
+        jobId: `pdf_${validJobUuid}`,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects non-UUID arbitrary string jobId", () => {
+      const result = PdfJobStatusParamsSchema.safeParse({
+        id: validRoomId,
+        jobId: "arbitrary-job-string-123",
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects invalid roomId", () => {
+      const result = PdfJobStatusParamsSchema.safeParse({
+        id: "not-a-uuid",
+        jobId: validJobUuid,
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("SubmitAttendanceSchema idempotencyKey (DEF-008)", () => {
+    const validFormId = "123e4567-e89b-12d3-a456-426614174000";
+
+    it("accepts valid attendance payload with client-generated idempotencyKey up to 128 chars", () => {
+      const idempotencyKey = `att_${validFormId}_${Date.now()}_987fcdeb-51a2-43d7-9876-543210987654`;
+      const result = SubmitAttendanceSchema.safeParse({
+        formDefinitionId: validFormId,
+        data: { attendee_name: "Alice" },
+        idempotencyKey,
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects idempotencyKey exceeding 128 chars", () => {
+      const tooLongKey = "a".repeat(129);
+      const result = SubmitAttendanceSchema.safeParse({
+        formDefinitionId: validFormId,
+        data: { attendee_name: "Alice" },
+        idempotencyKey: tooLongKey,
       });
       expect(result.success).toBe(false);
     });

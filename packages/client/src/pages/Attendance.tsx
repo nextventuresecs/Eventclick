@@ -341,18 +341,23 @@ export const Attendance = () => {
     setSubmitting(true);
     try {
       let photoKey: string | undefined;
+      let photoBlob: Blob | undefined;
 
       if (photoFile) {
         setUploadProgress("Compressing photo…");
         const blob = await compressImage(photoFile);
 
-        setUploadProgress("Uploading photo…");
-        const presign = await attendanceApi.presignPhoto(id, {
-          contentType: "image/jpeg",
-          sizeBytes: blob.size,
-        });
-        await uploadToPresignedUrl(presign.uploadUrl, blob);
-        photoKey = presign.key;
+        if (isOnline) {
+          setUploadProgress("Uploading photo…");
+          const presign = await attendanceApi.presignPhoto(id, {
+            contentType: "image/jpeg",
+            sizeBytes: blob.size,
+          });
+          await uploadToPresignedUrl(presign.uploadUrl, blob);
+          photoKey = presign.key;
+        } else {
+          photoBlob = blob;
+        }
       }
 
       setUploadProgress("Saving entry…");
@@ -368,6 +373,12 @@ export const Attendance = () => {
         }
       }
 
+      const randomSuffix =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : Math.random().toString(36).slice(2, 10);
+      const idempotencyKey = `att_${id}_${Date.now()}_${randomSuffix}`;
+
       if (isOnline) {
         await attendanceApi.submit(id, {
           formDefinitionId: form.id,
@@ -375,6 +386,7 @@ export const Attendance = () => {
           photoKey,
           latitude: latitude ?? undefined,
           longitude: longitude ?? undefined,
+          idempotencyKey,
         });
       } else {
         // Save locally for offline sync
@@ -384,8 +396,10 @@ export const Attendance = () => {
             formDefinitionId: form.id,
             data: coerced,
             photoKey,
+            photoBlob,
             latitude: latitude ?? undefined,
             longitude: longitude ?? undefined,
+            idempotencyKey,
             synced: false,
             createdAt: Date.now(),
           });

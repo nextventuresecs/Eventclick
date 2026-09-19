@@ -19,8 +19,11 @@ import {
   buildActivityPhotoKey,
   buildPublicUrl,
   createPresignedPut,
+  verifyStorageObject,
 } from "./storage.service";
 import { assertRoomAccessForUser, assertRoomAccessWithRoom } from "./event-assignment.service";
+import { redisClient } from "../config/redis";
+import { logger } from "../utils/logger";
 
 /**
  * Minimal principal shape required for room-access checks.
@@ -82,6 +85,22 @@ export const submitActivityPhoto = async (
   user: RoomAccessPrincipal,
   input: SubmitActivityPhotoInput,
 ): Promise<ActivitySubmission> => {
+  // Check idempotency if key provided
+  const idempKey = input.idempotencyKey
+    ? `idemp:activity:${orgId}:${roomId}:${input.activityId}:${input.idempotencyKey}`
+    : null;
+
+  if (idempKey && redisClient.isOpen) {
+    try {
+      const cached = await redisClient.get(idempKey);
+      if (cached) {
+        return JSON.parse(cached) as ActivitySubmission;
+      }
+    } catch (err) {
+      logger.warn({ err, idempKey }, "[activity] failed to read idempotency cache");
+    }
+  }
+
   const [room] = await db
     .select()
     .from(eventRooms)
@@ -132,6 +151,11 @@ export const submitActivityPhoto = async (
     throw ApiError.internal("Failed to create activity submission");
   }
 
+  // Verify that the photo proof actually exists in storage and belongs to this room & activity
+  await verifyStorageObject(input.photoKey, {
+    expectedPrefix: `rooms/${roomId}/activities/${input.activityId}_`,
+  });
+
   // Keep the photo-count-check + insert atomic. withTransaction, not
   // db.transaction: inside a request this already runs in the tenant
   // transaction, and opening a nested one there commits it early and drops
@@ -171,7 +195,7 @@ export const submitActivityPhoto = async (
     .where(eq(activityPhotos.submissionId, existingSub.id))
     .orderBy(activityPhotos.createdAt);
 
-  return {
+  const result: ActivitySubmission = {
     id: existingSub.id,
     roomId: existingSub.roomId,
     activityId: existingSub.activityId,
@@ -187,6 +211,16 @@ export const submitActivityPhoto = async (
     createdAt: existingSub.createdAt.toISOString(),
     updatedAt: existingSub.updatedAt.toISOString(),
   };
+
+  if (idempKey && redisClient.isOpen) {
+    try {
+      await redisClient.set(idempKey, JSON.stringify(result), { EX: 86400 });
+    } catch (err) {
+      logger.warn({ err, idempKey }, "[activity] failed to write idempotency cache");
+    }
+  }
+
+  return result;
 };
 
 /**

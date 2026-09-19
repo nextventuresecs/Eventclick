@@ -19,7 +19,7 @@ import {
   type AuthResult,
 } from "../services/auth";
 import { refreshTtlMs } from "../services/session.service";
-import { API_PREFIX } from "@application/shared";
+import { API_PREFIX, type VerifyEmailInput, type ResendVerificationInput } from "@application/shared";
 
 const REFRESH_COOKIE = "Eventclick_rt";
 const REFRESH_COOKIE_PATH = `${API_PREFIX}/auth`;
@@ -72,8 +72,7 @@ export const login: RequestHandler = async (req, res, next) => {
 
 export const verifyEmail: RequestHandler = async (req, res, next) => {
   try {
-    const { token } = req.body;
-    if (!token) throw ApiError.badRequest("Verification token is required");
+    const { token } = req.body as VerifyEmailInput;
     const result = await verifyEmailToken(token, extractMeta(req));
     setRefreshCookie(res, result.refreshToken);
     res.status(200).json({
@@ -98,8 +97,7 @@ export const setPassword: RequestHandler = async (req, res, next) => {
 
 export const resendVerification: RequestHandler = async (req, res, next) => {
   try {
-    const { email } = req.body;
-    if (!email) throw ApiError.badRequest("Email is required");
+    const { email } = req.body as ResendVerificationInput;
     await resendVerificationToken(email);
     res.status(200).json({ message: "If the email is unverified, a new link has been sent." });
   } catch (err) {

@@ -18,9 +18,11 @@ import {
 } from "../db/schema";
 import { ApiError } from "../utils/errors";
 import { buildLiveAttendanceWindow, isWithinAttendanceWindow } from "./attendance-live-window.service";
-import { buildPublicUrl } from "./storage.service";
+import { buildPublicUrl, verifyStorageObject } from "./storage.service";
 import { assertRoomAccessWithRoom } from "./event-assignment.service";
 import { env } from "../config/env";
+import { redisClient } from "../config/redis";
+import { logger } from "../utils/logger";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[0-9\s\-()]{7,20}$/;
@@ -181,6 +183,22 @@ export const submitAttendance = async (
 ): Promise<AttendanceEntry> => {
   const room = await assertRoomAccess(ctx.roomId, ctx.orgId, ctx.user);
 
+  // 1. Check idempotency if key provided
+  const idempKey = ctx.input.idempotencyKey
+    ? `idemp:attendance:${ctx.orgId}:${ctx.roomId}:${ctx.input.idempotencyKey}`
+    : null;
+
+  if (idempKey && redisClient.isOpen) {
+    try {
+      const cached = await redisClient.get(idempKey);
+      if (cached) {
+        return JSON.parse(cached) as AttendanceEntry;
+      }
+    } catch (err) {
+      logger.warn({ err, idempKey }, "[attendance] failed to read idempotency cache");
+    }
+  }
+
   const now = new Date();
   const isAllowed = isWithinAttendanceWindow(
     room,
@@ -203,6 +221,13 @@ export const submitAttendance = async (
   }
 
   const data = validateAndCoerceData(formDef.fields, ctx.input.data);
+
+  if (ctx.input.photoKey) {
+    await verifyStorageObject(ctx.input.photoKey, {
+      expectedPrefix: `attendance/${ctx.roomId}/`,
+    });
+  }
+
   const photoUrl = ctx.input.photoKey ? buildPublicUrl(ctx.input.photoKey) : null;
 
   const [row] = await db
@@ -227,7 +252,18 @@ export const submitAttendance = async (
     .returning();
 
   if (!row) throw ApiError.internal("Failed to record attendance");
-  return toAttendanceEntry(row);
+  const entry = toAttendanceEntry(row);
+
+  // 2. Cache response under idempotency key for 24 hours
+  if (idempKey && redisClient.isOpen) {
+    try {
+      await redisClient.set(idempKey, JSON.stringify(entry), { EX: 86400 });
+    } catch (err) {
+      logger.warn({ err, idempKey }, "[attendance] failed to write idempotency cache");
+    }
+  }
+
+  return entry;
 };
 
 export const listAttendance = async (
